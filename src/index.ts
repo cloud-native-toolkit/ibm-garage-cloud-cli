@@ -16,6 +16,7 @@ class EnvironmentOptions {
   IMAGE_BUILD_NUMBER: string;
   IMAGE_NAME: string;
   IMAGE_VERSION: string;
+  ENVIRONMENT_NAME: string;
 }
 
 class BaseOptions extends EnvironmentOptions {
@@ -43,7 +44,8 @@ const ENV_PROPERTIES: Array<EnvironmentOptionKeys> = [
   'CHART_ROOT',
   'IMAGE_BUILD_NUMBER',
   'IMAGE_NAME',
-  'IMAGE_VERSION'
+  'IMAGE_VERSION',
+  'ENVIRONMENT_NAME'
 ];
 
 function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
@@ -154,10 +156,10 @@ scriptName('ibmcloud-image')
           describe: 'The root directory where the chart is located, e.g. {CHART_ROOT}/{CHART_NAME}. Can also be provided as an environment property',
           type: 'string',
         })
-        .option('environmentName', {
-          alias: 'env',
+        .option('ENVIRONMENT_NAME', {
+          alias: ['environmentName', 'env'],
           required: true,
-          describe: 'The name of the environment into which the image will be deployed',
+          describe: 'The name of the environment into which the image will be deployed. Can also be provided as an environment property',
           type: 'string',
         }),
       (argv: Arguments<DeployOptions>) => {
