@@ -1,8 +1,49 @@
 {
-  "name": "ibmcloud-image",
+  "name": "@garage-catalyst/ibmcloud-image",
   "version": "0.0.1",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "main": "src/index.ts",
+  "bin": {
+    "ibmcloud-image": "dist/index.js"
+  },
+  "jest": {
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/logs/",
+      "/pacts/",
+      "/coverage/"
+    ],
+    "coverageDirectory": "coverage"
+  },
+  "scripts": {
+    "test": "jest",
+    "tdd": "jest --watch",
+    "build": "tsc",
+    "postbuild": "chmod +x dist/index.js",
+    "prelink": "npm run build",
+    "link": "npm link $npm_package_name",
+    "unlink": "npm unlink $npm_package_name",
+    "prepublish": "npm run build",
+    "ibmcloud-image": "ts-node src"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@babel/preset-typescript": "^7.3.3",
+    "@types/jest": "^24.0.11",
+    "@types/node": "^11.13.2",
+    "@types/yargs": "^13.0.0",
+    "babel-jest": "^24.7.1",
+    "jest": "^24.7.1",
+    "ts-jest": "^24.0.2",
+    "ts-node": "^8.0.3",
+    "typescript": "^3.4.3"
+  },
+  "dependencies": {
+    "tslib": "^1.9.3",
+    "yargs": "^13.2.2"
+  }
 }
