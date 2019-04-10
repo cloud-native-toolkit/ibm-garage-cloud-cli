@@ -25,7 +25,7 @@
     "prelink": "npm run build",
     "link": "npm link $npm_package_name",
     "unlink": "npm unlink $npm_package_name",
-    "prepublish": "npm run build",
+    "prepare": "npm run build",
     "ibmcloud-image": "ts-node src"
   },
   "devDependencies": {
