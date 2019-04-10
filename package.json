@@ -1,0 +1,8 @@
+{
+  "name": "ibmcloud-image",
+  "version": "0.0.1",
+  "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
+  "main": "index.js",
+  "author": "Sean Sundberg <seansund@us.ibm.com>",
+  "license": "MIT"
+}
