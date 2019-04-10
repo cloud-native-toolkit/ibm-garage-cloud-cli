@@ -12,8 +12,10 @@ class EnvironmentOptions {
   REGISTRY_URL: string;
   REGISTRY_NAMESPACE: string;
   REGION: string;
-  BUILD_NUMBER: string;
   CHART_ROOT: string;
+  IMAGE_BUILD_NUMBER: string;
+  IMAGE_NAME: string;
+  IMAGE_VERSION: string;
 }
 
 class BaseOptions extends EnvironmentOptions {
@@ -38,8 +40,10 @@ const ENV_PROPERTIES: Array<EnvironmentOptionKeys> = [
   'REGISTRY_URL',
   'REGISTRY_NAMESPACE',
   'REGION',
-  'BUILD_NUMBER',
-  'CHART_ROOT'
+  'CHART_ROOT',
+  'IMAGE_BUILD_NUMBER',
+  'IMAGE_NAME',
+  'IMAGE_VERSION'
 ];
 
 function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
@@ -74,19 +78,19 @@ function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
       type: 'string',
       default: 'default',
     })
-    .option('imageName', {
-      alias: 'image',
+    .option('IMAGE_NAME', {
+      alias: ['imageName', 'image'],
       required: true,
-      describe: 'The name of the image that will be built',
+      describe: 'The name of the image that will be built. Can be provided as an environment variable',
       type: 'string',
     })
-    .option('imageVersion', {
-      alias: 'ver',
+    .option('IMAGE_VERSION', {
+      alias: ['imageVersion', 'ver'],
       required: true,
-      describe: 'The version of the image that will be built',
+      describe: 'The version of the image that will be built. Can be provided as an environment variable',
       type: 'string',
     })
-    .option('BUILD_NUMBER', {
+    .option('IMAGE_BUILD_NUMBER', {
       alias: 'buildNumber',
       describe: 'The buildNumber that will be added to the image version, if provided. Can be provided as an environment variable',
       type: 'string',

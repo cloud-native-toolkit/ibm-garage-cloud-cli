@@ -1,6 +1,6 @@
 {
   "name": "@garage-catalyst/ibmcloud-image",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "src/index.ts",
   "author": "Sean Sundberg <seansund@us.ibm.com>",

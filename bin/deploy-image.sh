@@ -70,10 +70,10 @@ fi
 echo "RELEASE_NAME: $RELEASE_NAME"
 
 ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME} -q > ./.images
-if [[ -n "${BUILD_NUMBER}" ]]; then
-  grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${BUILD_NUMBER}" ./.images -q
+if [[ -n "${IMAGE_BUILD_NUMBER}" ]]; then
+  grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER}" ./.images -q
   if [[ $? -eq 0 ]]; then
-    IMAGE_VER = "${IMAGE_VER}-${BUILD_NUMBER}"
+    IMAGE_VER = "${IMAGE_VER}-${IMAGE_BUILD_NUMBER}"
   fi
 fi
 
@@ -164,10 +164,10 @@ echo ""
 echo -e "History for release:${RELEASE_NAME}"
 helm history ${RELEASE_NAME}
 
-PIPELINE_IMAGE_URL="$REGISTRY_URL/$REGISTRY_NAMESPACE/$IMAGE_NAME:$BUILD_NUMBER"
+PIPELINE_IMAGE_URL="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_BUILD_NUMBER}"
 
 echo "=========================================================="
 IP_ADDR=$(ibmcloud cs workers --cluster ${CLUSTER_NAME} ${PIPELINE_KUBERNETES_CLUSTER_NAME} | grep normal | head -n 1 | awk '{ print $2 }')
-echo "IP Address: $IP_ADDR"
+echo "IP Address: ${IP_ADDR}"
 PORT=$(kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${RELEASE_NAME} | sed 's/[^:]*:\([0-9]*\).*/\1/g')
 echo -e "View the application health at: http://${IP_ADDR}:${PORT}/health"

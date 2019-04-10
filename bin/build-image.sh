@@ -33,7 +33,7 @@ else
 fi
 
 if [[ ! -z "$3" ]]; then
-  BUILD_NUMBER="$3"
+  IMAGE_BUILD_NUMBER="$3"
 fi
 
 ibmcloud login -a https://cloud.ibm.com --apikey ${APIKEY} -g ${RESOURCE_GROUP} -r ${REGION}
@@ -59,15 +59,15 @@ echo "=========================================================="
 echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}"
 set -x
 ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER} .
-if [[ -z "$BUILD_NUMBER" ]]; then
-    echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${BUILD_NUMBER}"
-    ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${BUILD_NUMBER} .
+if [[ -z "$IMAGE_BUILD_NUMBER" ]]; then
+    echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER}"
+    ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER} .
 fi
 
 set +x
 ibmcloud cr image-inspect ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}
-if [[ -z "$BUILD_NUMBER" ]]; then
-    ibmcloud cr image-inspect ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${BUILD_NUMBER}
+if [[ -z "$IMAGE_BUILD_NUMBER" ]]; then
+    ibmcloud cr image-inspect ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER}
 fi
 
 ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME}
