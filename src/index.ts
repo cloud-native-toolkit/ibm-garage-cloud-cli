@@ -48,6 +48,16 @@ const ENV_PROPERTIES: Array<EnvironmentOptionKeys> = [
   'ENVIRONMENT_NAME'
 ];
 
+function initializeArgumentsFromEnvironment(argv: Arguments<EnvironmentOptions>) {
+  ENV_PROPERTIES
+    .filter(function (name) {
+      return !!process.env[name];
+    })
+    .forEach(function(name) {
+      argv[name] = process.env[name];
+    });
+}
+
 function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
   yargs
     .option('APIKEY', {
@@ -108,21 +118,13 @@ function extractEnvironmentProperties(argv: Arguments<EnvironmentOptions>): Proc
         result[name] = argv[name];
         return result;
       },
-      {} as ProcessEnv,
+      {HOME: process.env.HOME, PATH: process.env.PATH} as ProcessEnv,
     );
 }
 
 scriptName('ibmcloud-image')
   .usage('$0 <cmd> [args]')
-    .middleware((argv: Arguments<EnvironmentOptions>) => {
-      ENV_PROPERTIES
-          .filter(function (name) {
-            return !!process.env[name];
-          })
-          .forEach(function(name) {
-            argv[name] = process.env[name];
-          });
-    }, true)
+    .middleware(initializeArgumentsFromEnvironment, true)
     .command(
       'build [args]',
       'build the image and push it into the IBM Cloud registry',
@@ -135,6 +137,7 @@ scriptName('ibmcloud-image')
           (error, stdout, stderr) => {
             if (error) {
               console.log('error', error);
+              process.exit(1);
             }
             console.log(stdout);
             console.error(stderr);
@@ -170,11 +173,31 @@ scriptName('ibmcloud-image')
           (error, stdout, stderr) => {
             if (error) {
               console.log('error', error);
+              process.exit(1);
             }
             console.log(stdout);
             console.error(stderr);
           });
       },
+    )
+    .command(
+      'cr',
+      'run the container-registry plugin',
+      (argv: Argv<any>) => argv,
+      (argv: Arguments<any>) => {
+        execFile(
+          'ibmcloud',
+          ['cr'],
+          {env: extractEnvironmentProperties(argv)},
+          (error, stdout, stderr) => {
+            if (error) {
+              console.log('error', error);
+              process.exit(1);
+            }
+            console.log(stdout);
+            console.error(stderr);
+          });
+      }
     )
     .demandCommand()
     .help()

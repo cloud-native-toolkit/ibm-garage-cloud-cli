@@ -1,10 +1,11 @@
 {
   "name": "@garage-catalyst/ibmcloud-image-cli",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "src/index.ts",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
   "license": "MIT",
+  "private": false,
   "bin": {
     "ibmcloud-image": "dist/index.js"
   },
