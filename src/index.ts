@@ -22,7 +22,8 @@ class EnvironmentOptions {
 class BaseOptions extends EnvironmentOptions {
   imageName: string;
   imageVersion: string;
-  debug: string;
+  debug: boolean;
+  quiet: boolean;
 }
 
 class BuildOptions extends BaseOptions {
@@ -111,6 +112,10 @@ function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
     .option('debug', {
       describe: 'Turn on extra logging',
       type: 'boolean',
+    })
+    .option('quiet', {
+      describe: 'Suppress all logging',
+      type: 'boolean',
     });
 
   return yargs;
@@ -147,7 +152,7 @@ scriptName('ibmcloud-image')
               console.log('error', error);
               process.exit(1);
             }
-            if (argv.debug) {
+            if (!argv.quiet) {
               console.log(stdout);
               console.error(stderr);
             }
@@ -188,7 +193,7 @@ scriptName('ibmcloud-image')
               console.log('error', error);
               process.exit(1);
             }
-            if (argv.debug) {
+            if (!argv.quiet) {
               console.log(stdout);
               console.error(stderr);
             }
@@ -216,8 +221,10 @@ scriptName('ibmcloud-image')
               console.log('error', error);
               process.exit(1);
             }
-            console.log(stdout);
-            console.error(stderr);
+            if (!argv.quiet) {
+              console.log(stdout);
+              console.error(stderr);
+            }
           });
       }
     )
