@@ -22,6 +22,7 @@ class EnvironmentOptions {
 class BaseOptions extends EnvironmentOptions {
   imageName: string;
   imageVersion: string;
+  debug: string;
 }
 
 class BuildOptions extends BaseOptions {
@@ -106,6 +107,10 @@ function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
       alias: 'buildNumber',
       describe: 'The buildNumber that will be added to the image version, if provided. Can be provided as an environment variable',
       type: 'string',
+    })
+    .option('debug', {
+      describe: 'Turn on extra logging',
+      type: 'boolean',
     });
 
   return yargs;
@@ -118,7 +123,7 @@ function extractEnvironmentProperties(argv: Arguments<EnvironmentOptions>): Proc
         result[name] = argv[name];
         return result;
       },
-      {HOME: process.env.HOME, PATH: process.env.PATH} as ProcessEnv,
+      process.env,
     );
 }
 
@@ -130,6 +135,9 @@ scriptName('ibmcloud-image')
       'build the image and push it into the IBM Cloud registry',
       (argv: Argv<BuildOptions>) => withBaseOptions(argv),
       (argv: Arguments<BuildOptions>) => {
+        if (argv.debug) {
+          console.log('arguments', argv);
+        }
         execFile(
           path.join(__dirname, '../bin/build-image.sh'),
           [argv.imageName, argv.imageVersion],
@@ -139,8 +147,10 @@ scriptName('ibmcloud-image')
               console.log('error', error);
               process.exit(1);
             }
-            console.log(stdout);
-            console.error(stderr);
+            if (argv.debug) {
+              console.log(stdout);
+              console.error(stderr);
+            }
           });
         },
     )
@@ -166,6 +176,9 @@ scriptName('ibmcloud-image')
           type: 'string',
         }),
       (argv: Arguments<DeployOptions>) => {
+        if (argv.debug) {
+          console.log('arguments', argv);
+        }
         execFile(
           path.join(__dirname, '../bin/deploy-image.sh'),
           [argv.imageName, argv.imageVersion, argv.environmentName],
@@ -175,16 +188,25 @@ scriptName('ibmcloud-image')
               console.log('error', error);
               process.exit(1);
             }
-            console.log(stdout);
-            console.error(stderr);
+            if (argv.debug) {
+              console.log(stdout);
+              console.error(stderr);
+            }
           });
       },
     )
     .command(
       'cr',
       'run the container-registry plugin',
-      (argv: Argv<any>) => argv,
+      (argv: Argv<any>) => argv.option('debug', {
+        alias: 'v',
+        describe: 'Verbose logging',
+        type: 'boolean'
+      }),
       (argv: Arguments<any>) => {
+        if (argv.debug) {
+          console.log('arguments', argv);
+        }
         execFile(
           'ibmcloud',
           ['cr'],
