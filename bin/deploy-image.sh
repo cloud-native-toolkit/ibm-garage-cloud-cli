@@ -17,6 +17,10 @@ if [[ -z "${CLUSTER_NAME}" ]]; then
   exit 1
 fi
 
+if [[ -z "${TMP_DIR}" ]]; then
+  TMP_DIR="/tmp"
+fi
+
 IMAGE_NAME="$1"
 CHART_NAME="$1"
 IMAGE_VER="$2"
@@ -69,15 +73,15 @@ else
 fi
 echo "RELEASE_NAME: $RELEASE_NAME"
 
-ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME} -q > ./.images
+ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME} -q > ${TMP_DIR}/.images
 if [[ -n "${IMAGE_BUILD_NUMBER}" ]]; then
-  grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER}" ./.images -q
+  grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER}" ${TMP_DIR}/.images -q
   if [[ $? -eq 0 ]]; then
     IMAGE_VER = "${IMAGE_VER}-${IMAGE_BUILD_NUMBER}"
   fi
 fi
 
-grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}" ./.images -q
+grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}" ${TMP_DIR}/.images -q
 if [[ $? -ne 0 ]]; then
   echo "Image not found: ${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}"
   exit 1
