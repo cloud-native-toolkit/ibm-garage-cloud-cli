@@ -12,8 +12,23 @@ if [[ -z "${RESOURCE_GROUP}" ]]; then
   exit 1
 fi
 
+if [[ -z "${REGION}" ]]; then
+  echo "REGION is required"
+  exit 1
+fi
+
+if [[ -z "${REGISTRY_NAMESPACE}" ]]; then
+  echo "REGISTRY_NAMESPACE is required"
+  exit 1
+fi
+
 if [[ -z "${CLUSTER_NAME}" ]]; then
   echo "CLUSTER_NAME is required"
+  exit 1
+fi
+
+if [[ -z "${REGISTRY_URL}" ]]; then
+  echo "REGISTRY_URL is required"
   exit 1
 fi
 
@@ -45,7 +60,10 @@ if [[ -z "${CHART_ROOT}" ]]; then
   CHART_ROOT="."
 fi
 
-CLUSTER_NAMESPACE="${CLUSTER_NAME}-${ENVIRONMENT_NAME}"
+if [[ -z "${CLUSTER_NAMESPACE}" ]]; then
+  CLUSTER_NAMESPACE="${CLUSTER_NAME}-${ENVIRONMENT_NAME}"
+fi
+
 CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 
 ibmcloud -version
@@ -69,7 +87,7 @@ echo "DEFINE RELEASE by prefixing image (app) name with namespace if not 'defaul
 if [[ "${CLUSTER_NAMESPACE}" != "default" ]]; then
   RELEASE_NAME="${CLUSTER_NAMESPACE}-${IMAGE_NAME}"
 else
-  RELEASE_NAME=${IMAGE_NAME}
+  RELEASE_NAME="${IMAGE_NAME}"
 fi
 echo "RELEASE_NAME: $RELEASE_NAME"
 
@@ -146,14 +164,6 @@ if [[ ! -z "$NOT_READY" ]]; then
   PREVIOUS_RELEASE=$( helm history ${RELEASE_NAME} | grep SUPERSEDED | sort -r -n | awk '{print $1}' | head -n 1 )
   echo -e "Could rollback to previous release: ${PREVIOUS_RELEASE} using command:"
   echo -e "helm rollback ${RELEASE_NAME} ${PREVIOUS_RELEASE}"
-  # helm rollback ${RELEASE_NAME} ${PREVIOUS_RELEASE}
-  # echo -e "History for release:${RELEASE_NAME}"
-  # helm history ${RELEASE_NAME}
-  # echo "Deployed Services:"
-  # kubectl describe services ${RELEASE_NAME}-${CHART_NAME} --namespace ${CLUSTER_NAMESPACE}
-  # echo ""
-  # echo "Deployed Pods:"
-  # kubectl describe pods --selector app=${CHART_NAME} --namespace ${CLUSTER_NAMESPACE}
   exit 1
 fi
 
