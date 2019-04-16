@@ -51,9 +51,9 @@ CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 ibmcloud -version
 
 ibmcloud login -a https://cloud.ibm.com --apikey ${APIKEY} -g ${RESOURCE_GROUP} -r ${REGION}
-ibmcloud cs cluster-config --cluster ${CLUSTER_NAME} --export > ./.kubeconfig
+ibmcloud cs cluster-config --cluster ${CLUSTER_NAME} --export > ${TMP_DIR}/.kubeconfig
 
-source ./.kubeconfig
+source ${TMP_DIR}/.kubeconfig
 
 echo "KUBECONFIG=${KUBECONFIG}"
 
