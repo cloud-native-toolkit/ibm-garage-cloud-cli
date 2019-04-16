@@ -77,7 +77,7 @@ ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME} -q > ${TMP_DIR
 if [[ -n "${IMAGE_BUILD_NUMBER}" ]]; then
   grep "${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}-${IMAGE_BUILD_NUMBER}" ${TMP_DIR}/.images -q
   if [[ $? -eq 0 ]]; then
-    IMAGE_VER = "${IMAGE_VER}-${IMAGE_BUILD_NUMBER}"
+    IMAGE_VER="${IMAGE_VER}-${IMAGE_BUILD_NUMBER}"
   fi
 fi
 
