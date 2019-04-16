@@ -121,67 +121,14 @@ helm upgrade --install --debug --dry-run ${RELEASE_NAME} ${CHART_PATH} --set ima
 echo -e "Deploying into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
 helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_VER} --namespace ${CLUSTER_NAMESPACE}
 
-echo -e "CHECKING deployment status of release ${RELEASE_NAME} with image tag: ${IMAGE_VER}"
-echo ""
-for ITERATION in {1..30}
-do
-  DATA=$( kubectl get pods --namespace ${CLUSTER_NAMESPACE} -a -l release=${RELEASE_NAME} -o json )
-  NOT_READY=$( echo $DATA | jq '.items[].status.containerStatuses[] | select(.image=="'"${IMAGE_REPOSITORY}:${IMAGE_VER}"'") | select(.ready==false) ' )
-  if [[ -z "$NOT_READY" ]]; then
-    echo -e "All pods are ready:"
-    echo $DATA | jq '.items[].status.containerStatuses[] | select(.image=="'"${IMAGE_REPOSITORY}:${IMAGE_VER}"'") | select(.ready==true) '
-    break # deployment succeeded
-  fi
-  REASON=$(echo $DATA | jq '.items[].status.containerStatuses[] | select(.image=="'"${IMAGE_REPOSITORY}:${IMAGE_VER}"'") | .state.waiting.reason')
-  echo -e "${ITERATION} : Deployment still pending..."
-  echo -e "NOT_READY:${NOT_READY}"
-  echo -e "REASON: ${REASON}"
-  if [[ ${REASON} == *ErrImagePull* ]] || [[ ${REASON} == *ImagePullBackOff* ]]; then
-    echo "Detected ErrImagePull or ImagePullBackOff failure. "
-    echo "Please check proper authenticating to from cluster to image registry (e.g. image pull secret)"
-    break; # no need to wait longer, error is fatal
-  elif [[ ${REASON} == *CrashLoopBackOff* ]]; then
-    echo "Detected CrashLoopBackOff failure. "
-    echo "Application is unable to start, check the application startup logs"
-    break; # no need to wait longer, error is fatal
-  fi
-  sleep 5
-done
-
-if [[ ! -z "$NOT_READY" ]]; then
-  echo ""
-  echo "=========================================================="
-  echo "DEPLOYMENT FAILED"
-  echo "Deployed Services:"
-  kubectl describe services ${RELEASE_NAME}-${CHART_NAME} --namespace ${CLUSTER_NAMESPACE}
-  echo ""
-  echo "Deployed Pods:"
-  kubectl describe pods --selector app=${CHART_NAME} --namespace ${CLUSTER_NAMESPACE}
-  echo ""
-  echo "Application Logs"
-  kubectl logs --selector app=${CHART_NAME} --namespace ${CLUSTER_NAMESPACE}
-  echo "=========================================================="
-  PREVIOUS_RELEASE=$( helm history ${RELEASE_NAME} | grep SUPERSEDED | sort -r -n | awk '{print $1}' | head -n 1 )
-  echo -e "Could rollback to previous release: ${PREVIOUS_RELEASE} using command:"
-  echo -e "helm rollback ${RELEASE_NAME} ${PREVIOUS_RELEASE}"
-  exit 1
-fi
-
-echo ""
-echo "=========================================================="
-echo "DEPLOYMENT SUCCEEDED"
-echo ""
-echo -e "Status for release:${RELEASE_NAME}"
-helm status ${RELEASE_NAME}
+${SCRIPT_ROOT}/deploy-checkstatus.sh ${CLUSTER_NAMESPACE} ${IMAGE_NAME} ${IMAGE_REPOSITORY} ${IMAGE_VER}
 
 echo ""
 echo -e "History for release:${RELEASE_NAME}"
 helm history ${RELEASE_NAME}
 
-PIPELINE_IMAGE_URL="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_BUILD_NUMBER}"
-
 echo "=========================================================="
-IP_ADDR=$(ibmcloud cs workers --cluster ${CLUSTER_NAME} ${PIPELINE_KUBERNETES_CLUSTER_NAME} | grep normal | head -n 1 | awk '{ print $2 }')
+IP_ADDR=$(ibmcloud cs workers --cluster ${CLUSTER_NAME} | grep normal | head -n 1 | awk '{ print $2 }')
 echo "IP Address: ${IP_ADDR}"
 PORT=$(kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${RELEASE_NAME} | sed 's/[^:]*:\([0-9]*\).*/\1/g')
 echo -e "View the application health at: http://${IP_ADDR}:${PORT}/health"
