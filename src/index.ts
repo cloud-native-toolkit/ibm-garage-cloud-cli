@@ -3,38 +3,9 @@
 import * as path from 'path';
 import {Arguments, Argv, Options, scriptName} from 'yargs';
 import {execFile} from 'child_process';
-import ProcessEnv = NodeJS.ProcessEnv;
 
-class EnvironmentOptions {
-  APIKEY: string;
-  RESOURCE_GROUP: string;
-  CLUSTER_NAME: string;
-  REGISTRY_URL: string;
-  REGISTRY_NAMESPACE: string;
-  REGION: string;
-  CHART_ROOT: string;
-  IMAGE_BUILD_NUMBER: string;
-  IMAGE_NAME: string;
-  IMAGE_VERSION: string;
-  ENVIRONMENT_NAME: string;
-}
-
-class BaseOptions extends EnvironmentOptions {
-  imageName: string;
-  imageVersion: string;
-  debug: boolean;
-  quiet: boolean;
-}
-
-class BuildOptions extends BaseOptions {
-  buildNumber: string;
-}
-
-class DeployOptions extends BaseOptions {
-  environmentName: string;
-}
-
-type EnvironmentOptionKeys = keyof EnvironmentOptions;
+import {BaseOptions, BuildOptions, DeployOptions, EnvironmentOptions, EnvironmentOptionKeys} from './model';
+import {buildOptionWithEnvDefault, extractEnvironmentProperties} from './util/yargs-support';
 
 const ENV_PROPERTIES: Array<EnvironmentOptionKeys> = [
   'APIKEY',
@@ -46,23 +17,6 @@ const ENV_PROPERTIES: Array<EnvironmentOptionKeys> = [
   'CHART_ROOT',
   'IMAGE_BUILD_NUMBER'
 ];
-
-function initializeArgumentsFromEnvironment(argv: Arguments<EnvironmentOptions>) {
-  ENV_PROPERTIES
-    .filter(function (name) {
-      return !!process.env[name];
-    })
-    .forEach(function(name) {
-      argv[name] = process.env[name];
-    });
-}
-
-function buildOptionWithEnvDefault(key: string, options: Options): {[key: string]: Options} {
-  const result = {};
-  const defaultOption = process.env[key] || options.default;
-  result[key] = Object.assign({}, options, defaultOption ? {default: defaultOption} : {});
-  return result;
-}
 
 function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
   yargs
@@ -125,22 +79,8 @@ function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
   return yargs;
 }
 
-function extractEnvironmentProperties(argv: Arguments<EnvironmentOptions>): ProcessEnv {
-  return ENV_PROPERTIES
-    .reduce(
-      (result: ProcessEnv, name: EnvironmentOptionKeys) => {
-        if (argv[name]) {
-          result[name] = argv[name];
-        }
-        return result;
-      },
-      process.env,
-    );
-}
-
 scriptName('ibmcloud-image')
   .usage('$0 <cmd> [args]')
-//    .middleware(initializeArgumentsFromEnvironment, true)
     .command(
       'build [args]',
       'build the image and push it into the IBM Cloud registry',
@@ -152,7 +92,7 @@ scriptName('ibmcloud-image')
         execFile(
           path.join(__dirname, '../bin/build-image.sh'),
           [argv.imageName, argv.imageVersion],
-          {env: extractEnvironmentProperties(argv)},
+          {env: extractEnvironmentProperties(ENV_PROPERTIES, argv)},
           (error, stdout, stderr) => {
             if (!argv.quiet) {
               console.log(stdout);
@@ -193,7 +133,7 @@ scriptName('ibmcloud-image')
         execFile(
           path.join(__dirname, '../bin/deploy-image.sh'),
           [argv.imageName, argv.imageVersion, argv.environmentName],
-          {env: extractEnvironmentProperties(argv)},
+          {env: extractEnvironmentProperties(ENV_PROPERTIES, argv)},
           (error, stdout, stderr) => {
             if (!argv.quiet) {
               console.log(stdout);
@@ -221,7 +161,7 @@ scriptName('ibmcloud-image')
         execFile(
           'ibmcloud',
           ['cr'],
-          {env: extractEnvironmentProperties(argv)},
+          {env: extractEnvironmentProperties(ENV_PROPERTIES, argv)},
           (error, stdout, stderr) => {
             if (!argv.quiet) {
               console.log(stdout);
