@@ -129,7 +129,9 @@ function extractEnvironmentProperties(argv: Arguments<EnvironmentOptions>): Proc
   return ENV_PROPERTIES
     .reduce(
       (result: ProcessEnv, name: EnvironmentOptionKeys) => {
-        result[name] = argv[name];
+        if (argv[name]) {
+          result[name] = argv[name];
+        }
         return result;
       },
       process.env,
