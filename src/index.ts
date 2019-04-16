@@ -148,13 +148,13 @@ scriptName('ibmcloud-image')
           [argv.imageName, argv.imageVersion],
           {env: extractEnvironmentProperties(argv)},
           (error, stdout, stderr) => {
-            if (error) {
-              console.log('error', error);
-              process.exit(1);
-            }
             if (!argv.quiet) {
               console.log(stdout);
               console.error(stderr);
+            }
+            if (error) {
+              console.log('error', error);
+              process.exit(1);
             }
           });
         },
@@ -189,13 +189,13 @@ scriptName('ibmcloud-image')
           [argv.imageName, argv.imageVersion, argv.environmentName],
           {env: extractEnvironmentProperties(argv)},
           (error, stdout, stderr) => {
-            if (error) {
-              console.log('error', error);
-              process.exit(1);
-            }
             if (!argv.quiet) {
               console.log(stdout);
               console.error(stderr);
+            }
+            if (error) {
+              console.log('error', error);
+              process.exit(1);
             }
           });
       },
@@ -217,13 +217,13 @@ scriptName('ibmcloud-image')
           ['cr'],
           {env: extractEnvironmentProperties(argv)},
           (error, stdout, stderr) => {
-            if (error) {
-              console.log('error', error);
-              process.exit(1);
-            }
             if (!argv.quiet) {
               console.log(stdout);
               console.error(stderr);
+            }
+            if (error) {
+              console.log('error', error);
+              process.exit(1);
             }
           });
       }
