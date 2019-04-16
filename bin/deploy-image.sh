@@ -26,17 +26,17 @@ CHART_NAME="$1"
 IMAGE_VER="$2"
 ENVIRONMENT_NAME="$3"
 
-if [[ -z "${IMAGE_NAME}" ]]; then
+if [[ -z "${IMAGE_NAME}" ]] || [[ "${IMAGE_NAME}" = "undefined" ]]; then
   echo "Image name required as first arg"
   exit 1
 fi
 
-if [[ -z "${IMAGE_VER}" ]]; then
+if [[ -z "${IMAGE_VER}" ]] || [[ "${IMAGE_VER}" = "undefined" ]]; then
   echo "Image version required as second arg"
   exit 1
 fi
 
-if [[ -z "${ENVIRONMENT_NAME}" ]]; then
+if [[ -z "${ENVIRONMENT_NAME}" ]] || [[ "${ENVIRONMENT_NAME}" = "undefined" ]]; then
   echo "Environment name required as third arg"
   exit 1
 fi
