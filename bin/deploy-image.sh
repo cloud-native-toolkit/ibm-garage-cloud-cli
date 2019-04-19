@@ -107,7 +107,7 @@ fi
 
 ibmcloud ks cluster-pull-secret-apply --cluster ${CLUSTER_NAME}
 
-kubeclt get namespace ${CLUSTER_NAMESPACE}
+kubectl get namespace ${CLUSTER_NAMESPACE}
 if [[ $? -ne 0 ]]; then
   kubectl create namespace ${CLUSTER_NAMESPACE}
   ${SCRIPT_ROOT}/setup-namespace-secrets.sh ${CLUSTER_NAMESPACE}
