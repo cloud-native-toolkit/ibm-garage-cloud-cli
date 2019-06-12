@@ -109,6 +109,11 @@ scriptName('ibmcloud-image')
         describe: 'The root directory where the chart is located, e.g. {CHART_ROOT}/{CHART_NAME}. Can also be provided as an environment property',
         type: 'string',
       }))
+      .option(buildOptionWithEnvDefault('CHART_NAME', {
+        alias: 'chartName',
+        describe: 'The name of the helm chart. Defaults to the imageName if not provided',
+        type: 'string',
+      }))
       .option(buildOptionWithEnvDefault('ENVIRONMENT_NAME', {
         alias: ['environmentName', 'env'],
         required: true,

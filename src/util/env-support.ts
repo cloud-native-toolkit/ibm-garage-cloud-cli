@@ -33,5 +33,7 @@ export const DEPLOY_OPTION_ENV_PROPERTIES: {[key in keyof DeployOptions]: Enviro
     {
       cluster: 'CLUSTER_NAME',
       chartRoot: 'CHART_ROOT',
+      chartName: 'CHART_NAME',
       environmentName: 'ENVIRONMENT_NAME',
+      clusterNamespace: 'CLUSTER_NAMESPACE'
     });

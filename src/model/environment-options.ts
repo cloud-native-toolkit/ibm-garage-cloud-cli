@@ -6,6 +6,7 @@ export class EnvironmentOptions {
   REGISTRY_NAMESPACE: string;
   REGION: string;
   CHART_ROOT: string;
+  CHART_NAME: string;
   IMAGE_BUILD_NUMBER: string;
   IMAGE_NAME: string;
   IMAGE_VERSION: string;
