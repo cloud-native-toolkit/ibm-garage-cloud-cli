@@ -1,5 +1,6 @@
 import ProcessEnv = NodeJS.ProcessEnv;
-import {BuildOptions, DeployOptions, EnvironmentOptionKey} from "../model";
+import {BuildOptions, DeployOptions} from "../model";
+import {EnvironmentOptionKey} from '../model/environment-options';
 
 export function extractEnvironmentProperties<T>(propertyNames: {[key in keyof T]: EnvironmentOptionKey}, argv: T) {
   return Object.keys(propertyNames)

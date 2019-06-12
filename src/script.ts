@@ -2,22 +2,11 @@
 
 import {Arguments, Argv, scriptName} from 'yargs';
 
-import {BaseOptions, BuildOptions, DeployOptions, EnvironmentOptionKey} from './model';
+import {BaseOptions, BuildOptions, DeployOptions} from './model';
 import {buildOptionWithEnvDefault} from './util/yargs-support';
 
 import {buildImage, containerRegistry, deployImage} from './index';
 import {CommandLineOptions} from "./model/command-line-options";
-
-const ENV_PROPERTIES: Array<EnvironmentOptionKey> = [
-  'APIKEY',
-  'RESOURCE_GROUP',
-  'REGION',
-  'REGISTRY_NAMESPACE',
-  'REGISTRY_URL',
-  'CLUSTER_NAME',
-  'CHART_ROOT',
-  'IMAGE_BUILD_NUMBER'
-];
 
 function withBaseOptions<T extends BaseOptions>(yargs: Argv<T>): Argv<T> {
   yargs

@@ -1,7 +1,2 @@
-import {buildImage, deployImage, containerRegistry} from './commands';
-
-export {
-  buildImage,
-  deployImage,
-  containerRegistry,
-};
+export * from './commands';
+export * from './model';

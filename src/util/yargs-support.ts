@@ -1,6 +1,6 @@
 import {Options} from 'yargs';
 
-import {EnvironmentOptionKey} from '../model';
+import {EnvironmentOptionKey} from '../model/environment-options';
 
 export function buildOptionWithEnvDefault(key: EnvironmentOptionKey, options: Options): {[key: string]: Options} {
   const result = {};
