@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # set -x
 
-SCRIPT_ROOT=$(dirname $0 | xargs -I {} realpath {})
+realpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
+SCRIPT_ROOT=$(realpath $(dirname $0))
 
 if [[ -z "${APIKEY}" ]]; then
   echo "APIKEY is required"
@@ -62,7 +66,7 @@ fi
 echo -e "Existing images in registry"
 ibmcloud cr images --restrict "${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
 
-echo "=========================================================="
+echo -e "=========================================================================================="
 echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER}"
 set -x
 ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VER} .

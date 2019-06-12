@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
-SCRIPT_ROOT=$(dirname $0 | xargs -I {} realpath {})
+realpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
+SCRIPT_ROOT=$(realpath $(dirname $0))
 
 if [[ -z "${APIKEY}" ]]; then
   echo "APIKEY is required"

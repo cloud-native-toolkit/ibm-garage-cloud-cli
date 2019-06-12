@@ -1,13 +1,13 @@
 {
   "name": "@garage-catalyst/ibmcloud-image-cli",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
   "license": "MIT",
   "private": false,
   "bin": {
-    "ibmcloud-image": "dist/index.js"
+    "ibmcloud-image": "dist/script.js"
   },
   "jest": {
     "coveragePathIgnorePatterns": [
@@ -22,12 +22,12 @@
     "test": "jest",
     "tdd": "jest --watch",
     "build": "tsc",
-    "postbuild": "chmod +x dist/index.js",
+    "postbuild": "chmod +x dist/script.js",
     "prelink": "npm run build",
     "link": "npm link $npm_package_name",
     "unlink": "npm unlink $npm_package_name",
     "prepare": "npm run build",
-    "ibmcloud-image": "ts-node src"
+    "ibmcloud-image": "ts-node src/script.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.4.3",

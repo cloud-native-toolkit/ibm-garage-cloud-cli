@@ -1,8 +1,10 @@
-import {EnvironmentOptions} from './environment-options';
-
-export class BaseOptions extends EnvironmentOptions {
+export class BaseOptions {
+  apiKey: string;
+  resourceGroup: string;
+  region: string;
+  registry = "us.icr.io";
+  namespace = "default";
   imageName: string;
   imageVersion: string;
-  debug: boolean;
-  quiet: boolean;
+  buildNumber?: string;
 }

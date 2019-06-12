@@ -12,4 +12,4 @@ export class EnvironmentOptions {
   ENVIRONMENT_NAME: string;
 }
 
-export type EnvironmentOptionKeys = keyof EnvironmentOptions;
+export type EnvironmentOptionKey = keyof EnvironmentOptions;
