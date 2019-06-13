@@ -72,7 +72,7 @@ echo "CHECKING CHART (lint)"
 helm lint ${CHART_PATH}
 
 echo -e "Dry run into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-helm upgrade --debug --dry-run --install ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
+helm install --debug --dry-run --name ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
 
 echo -e "Deploying into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
+helm install --name ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
