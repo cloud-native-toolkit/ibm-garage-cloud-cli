@@ -9,11 +9,20 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
 
     const valuesFile = path.join(__dirname, '../../../tmp/register-pipeline-values.yaml');
 
-    await execFile.__promisify__(
-      path.join(__dirname, '../../../bin/generate-git-values.sh'),
-      [valuesFile],
-      {},
-    );
+    await new Promise((resolve, reject) => {
+        execFile(
+          path.join(__dirname, '../../../bin/generate-git-values.sh'),
+          [valuesFile],
+          {},
+          (error, stdout, stderr) => {
+              if (error) {
+                  reject(error);
+              }
+
+              resolve({stdout, stderr});
+          }
+        );
+    });
 
     const chartRoot = path.join(__dirname, '../../../chart');
     const chartName = 'register-pipeline';
