@@ -1,6 +1,5 @@
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {Arguments, Argv, CommandModule} from 'yargs';
-import {generateToken, GenerateTokenOptions} from '../generate-token';
 import {BuildOptions} from './build-options.model';
 import {CommandLineOptions} from '../../model';
 import {buildImage} from './build-image';
