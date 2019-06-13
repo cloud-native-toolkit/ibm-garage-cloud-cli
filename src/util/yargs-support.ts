@@ -142,7 +142,7 @@ export class DefaultOptionBuilder<T> {
   chartRoot(): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('CHART_ROOT', {
       alias: 'chartRoot',
-      required: true,
+      default: '.',
       describe: 'The root directory where the chart is located, e.g. {CHART_ROOT}/{CHART_NAME}. Can also be provided as an environment property',
       type: 'string',
     }));
