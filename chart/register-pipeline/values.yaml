@@ -1,0 +1,13 @@
+# Default values for jenkins-setup.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+git:
+  name: "{name}"
+  url: "{url}"
+  username: "{username}"
+  branch: "master"
+
+jenkins:
+  access_secret: "jenkins-access"
+  config_file: "jenkins-config-template.xml"

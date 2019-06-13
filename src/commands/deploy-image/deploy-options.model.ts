@@ -1,8 +1,9 @@
-import {BaseOptions} from './base-options';
+import {BaseOptions} from '../../model';
 
 export class DeployOptions extends BaseOptions {
   cluster: string;
   chartRoot: string;
   chartName?: string;
-  environmentName: string;
+  clusterNamespace: string;
+  valuesFile?: string;
 }

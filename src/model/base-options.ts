@@ -4,7 +4,7 @@ export class BaseOptions {
   region: string;
   registry?: string;
   namespace?: string;
-  imageName: string;
-  imageVersion: string;
+  imageName?: string;
+  imageVersion?: string;
   buildNumber?: string;
 }

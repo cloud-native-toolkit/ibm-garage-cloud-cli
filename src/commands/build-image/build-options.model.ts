@@ -1,4 +1,4 @@
-import {BaseOptions} from './base-options';
+import {BaseOptions} from '../../model';
 
 export class BuildOptions extends BaseOptions {
 }

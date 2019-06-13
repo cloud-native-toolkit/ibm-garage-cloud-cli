@@ -1,6 +1,7 @@
 import ProcessEnv = NodeJS.ProcessEnv;
-import {BuildOptions, DeployOptions} from "../model";
 import {EnvironmentOptionKey} from '../model/environment-options';
+import {BuildOptions} from '../commands/build-image';
+import {DeployOptions} from '../commands/deploy-image';
 
 export function extractEnvironmentProperties<T>(propertyNames: {[key in keyof T]: EnvironmentOptionKey}, argv: T) {
   return Object.keys(propertyNames)
@@ -34,6 +35,6 @@ export const DEPLOY_OPTION_ENV_PROPERTIES: {[key in keyof DeployOptions]: Enviro
       cluster: 'CLUSTER_NAME',
       chartRoot: 'CHART_ROOT',
       chartName: 'CHART_NAME',
-      environmentName: 'ENVIRONMENT_NAME',
-      clusterNamespace: 'CLUSTER_NAMESPACE'
+      clusterNamespace: 'CLUSTER_NAMESPACE',
+      valuesFile: 'VALUES_FILE'
     });

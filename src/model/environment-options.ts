@@ -10,7 +10,8 @@ export class EnvironmentOptions {
   IMAGE_BUILD_NUMBER: string;
   IMAGE_NAME: string;
   IMAGE_VERSION: string;
-  ENVIRONMENT_NAME: string;
+  CLUSTER_NAMESPACE: string;
+  VALUES_FILE: string;
 }
 
 export type EnvironmentOptionKey = keyof EnvironmentOptions;

@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ include "register-pipeline.secret-name" . }}-register-repo"
+  labels:
+    app.kubernetes.io/name: {{ include "register-pipeline.name" . }}
+    helm.sh/chart: {{ include "register-pipeline.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  template:
+    spec:
+      containers:
+        - name: "{{ .Release.Name }}-register-repo"
+          image: garagecatalyst/ibm-garage-cli-tools
+          command: ['./bin/reg-pipeline.sh']
+          env:
+            - name: JENKINS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jenkins.access_secret }}
+                  key: url
+            - name: USER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jenkins.access_secret }}
+                  key: username
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jenkins.access_secret }}
+                  key: api_token
+            - name: GIT_REPO
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: url
+            - name: GIT_CREDENTIALS
+              value: {{ include "register-pipeline.secret-name" . }}
+            - name: GIT_BRANCH
+              value: {{ .Values.git.branch }}
+            - name: CONFIG_FILE
+              value: {{ .Values.jenkins.config_file }}
+      restartPolicy: Never
+  backoffLimit: 4

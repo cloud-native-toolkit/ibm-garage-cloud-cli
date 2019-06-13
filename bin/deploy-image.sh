@@ -35,27 +35,30 @@ if [[ -z "${TMP_DIR}" ]]; then
   TMP_DIR="/tmp"
 fi
 
-IMAGE_NAME="$1"
+CLUSTER_NAMESPACE="$1"
+
+IMAGE_NAME="$2"
 if [[ -z "${CHART_NAME}" ]]; then
   CHART_NAME="${IMAGE_NAME}"
 fi
 
-IMAGE_VER="$2"
-CLUSTER_NAMESPACE="$3"
-
-if [[ -z "${IMAGE_NAME}" ]] || [[ "${IMAGE_NAME}" = "undefined" ]]; then
-  echo "Image name required as first arg"
-  exit 1
-fi
-
-if [[ -z "${IMAGE_VER}" ]] || [[ "${IMAGE_VER}" = "undefined" ]]; then
-  echo "Image version required as second arg"
-  exit 1
-fi
+IMAGE_VER="$3"
 
 if [[ -z "${CLUSTER_NAMESPACE}" ]] || [[ "${CLUSTER_NAMESPACE}" = "undefined" ]]; then
-  echo "Cluster namespace required as third arg"
+  echo "Cluster namespace required as first arg"
   exit 1
+fi
+
+if [[ -z "${VALUES_FILE}" ]]; then
+    if [[ -z "${IMAGE_NAME}" ]] || [[ "${IMAGE_NAME}" = "undefined" ]]; then
+      echo "Image name required as second arg"
+      exit 1
+    fi
+
+    if [[ -z "${IMAGE_VER}" ]] || [[ "${IMAGE_VER}" = "undefined" ]]; then
+      echo "Image version required as third arg"
+      exit 1
+    fi
 fi
 
 if [[ -z "${CHART_ROOT}" ]]; then
@@ -131,12 +134,21 @@ fi
 
 PIPELINE_IMAGE_URL="${IMAGE_REPOSITORY}:${IMAGE_VER}"
 
-# Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
-echo -e "Dry run into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-helm upgrade --install --debug --dry-run ${RELEASE_NAME} ${CHART_PATH} --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_VER},image.secretName="${CLUSTER_NAMESPACE}-us-icr-io" --namespace ${CLUSTER_NAMESPACE}
+if [[ -n "${VALUES_FILE}" ]]; then
+    echo -e "Dry run into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
+    helm upgrade --install --debug --dry-run ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
 
-echo -e "Deploying into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_VER},image.secretName="${CLUSTER_NAMESPACE}-us-icr-io" --namespace ${CLUSTER_NAMESPACE}
+    echo -e "Deploying into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
+    helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
+else
+    echo -e "Dry run into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
+    helm upgrade --install --debug --dry-run ${RELEASE_NAME} ${CHART_PATH} --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_VER},image.secretName="${CLUSTER_NAMESPACE}-us-icr-io" --namespace ${CLUSTER_NAMESPACE}
+
+    echo -e "Deploying into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
+    helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_VER},image.secretName="${CLUSTER_NAMESPACE}-us-icr-io" --namespace ${CLUSTER_NAMESPACE}
+fi
+
+# Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
 
 ${SCRIPT_ROOT}/deploy-checkstatus.sh ${CLUSTER_NAMESPACE} ${IMAGE_NAME} ${IMAGE_REPOSITORY} ${IMAGE_VER}
 
