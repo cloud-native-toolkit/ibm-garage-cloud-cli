@@ -18,6 +18,8 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
           },
           (error, stdout, stderr) => {
               if (error) {
+                  console.log(stdout);
+                  console.error(stderr);
                   reject(error);
               }
 
