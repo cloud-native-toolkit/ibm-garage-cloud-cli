@@ -10,7 +10,8 @@ export async function buildImage(argv: BuildOptions): Promise<{ stdout: string, 
       path.join(__dirname, '../../../bin/build-image.sh'),
       [argv.imageName, argv.imageVersion],
       {
-        env: extractEnvironmentProperties(BUILD_OPTION_ENV_PROPERTIES, argv)
+        env: extractEnvironmentProperties(BUILD_OPTION_ENV_PROPERTIES, argv),
+        cwd: process.cwd()
       },
       (error, stdout, stderr) => {
         if (error) {

@@ -13,7 +13,9 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
         execFile(
           path.join(__dirname, '../../../bin/generate-git-values.sh'),
           [valuesFile],
-          {},
+          {
+              cwd: process.cwd()
+          },
           (error, stdout, stderr) => {
               if (error) {
                   reject(error);
