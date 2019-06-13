@@ -18,8 +18,6 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
               cwd: process.cwd()
           },
           (error, stdout, stderr) => {
-              child.disconnect();
-
               if (error) {
                   reject(error);
               }
@@ -48,8 +46,6 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
               }
           },
           (error, stdout, stderr) => {
-              child.disconnect();
-
               if (error) {
                   reject(error);
               }
