@@ -7,8 +7,6 @@ realpath() {
 SCRIPT_DIR=$(dirname $0)
 CHART_DIR=$(realpath ${HOME}/chart)
 
-cd ${HOME}/host
-
 ### Input
 
 VALUES_FILE="$1"
