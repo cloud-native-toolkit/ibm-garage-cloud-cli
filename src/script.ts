@@ -4,15 +4,10 @@ import {scriptName} from 'yargs';
 
 import {defineBuildImageCommand} from './commands/build-image/define-command';
 import {defineDeployImageCommand} from './commands/deploy-image/define-command';
-import {defineGenerateTokenCommand} from './commands/generate-token/define-command';
 import {defineRegisterPipelineCommand} from './commands/register-pipeline/define-command';
 
 scriptName('igc')
   .usage('$0 <cmd> [args]')
-  .command(defineGenerateTokenCommand(
-    'gen-token',
-    'generate a Jenkins api token',
-  ))
   .command(defineRegisterPipelineCommand(
     'register',
     'register the pipeline in Jenkins for the repo',
