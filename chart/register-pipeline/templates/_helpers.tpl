@@ -31,6 +31,14 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{-define "register-pipeline.secret-name" -}}
+{{- define "register-pipeline.secret-name" -}}
 {{- .Values.git.name -}}
+{{- end -}}
+
+{{- define "register-pipeline.credentials-type" -}}
+{{- if .Values.git.privateKeyFile -}}
+"basicSSHUserPrivateKey"
+{{- else -}}
+"usernamePassword"
+{{- end -}}
 {{- end -}}

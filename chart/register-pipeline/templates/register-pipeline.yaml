@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{ include "register-pipeline.secret-name" . }}-register-repo"
+  name: "{{ include "register-pipeline.secret-name" . }}-register-repo-job"
   labels:
     app.kubernetes.io/name: {{ include "register-pipeline.name" . }}
     helm.sh/chart: {{ include "register-pipeline.chart" . }}
@@ -12,8 +12,9 @@ spec:
     spec:
       containers:
         - name: "{{ .Release.Name }}-register-repo"
-          image: garagecatalyst/ibm-garage-cli-tools
-          command: ['./bin/reg-pipeline.sh']
+          image: garagecatalyst/ibm-garage-cli-tools:latest
+          imagePullPolicy: Always
+          command: ['reg-pipeline.sh']
           env:
             - name: JENKINS_HOST
               valueFrom:

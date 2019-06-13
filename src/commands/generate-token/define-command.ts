@@ -1,12 +1,12 @@
 import {YargsCommandDefinition} from '../../util/yargs-support';
-import {Arguments, Argv} from 'yargs';
+import {Arguments, Argv, CommandModule} from 'yargs';
 import {generateToken, GenerateTokenOptions} from '../generate-token';
 
-export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(yargs: Argv<T>, command: string, description: string) => {
-  yargs.command(
+export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+  return {
     command,
-    description,
-    (yargs: Argv<any>) => {
+    describe,
+    builder: (yargs: Argv<any>) => {
       return yargs
         .options('url', {
           description: 'The url to the Jenkins server',
@@ -26,7 +26,7 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(yargs: Arg
           description: 'Output values as yaml'
         });
     },
-    async (argv: Arguments<GenerateTokenOptions>) => {
+    handler: async (argv: Arguments<GenerateTokenOptions>) => {
       const apiToken = await generateToken(argv);
 
       if (argv.yaml) {
@@ -40,7 +40,6 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(yargs: Arg
       } else {
         console.log(apiToken);
       }
-    });
-
-  return yargs;
+    }
+  };
 };

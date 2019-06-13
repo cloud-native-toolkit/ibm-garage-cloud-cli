@@ -1,8 +1,8 @@
 
 export class RegisterPipelineOptions {
   apiKey: string;
-  clusterNamespace: string;
   cluster: string;
+  namespace: string;
   resourceGroup: string;
   region: string;
 }

@@ -1,4 +1,4 @@
-import {Argv, Options} from 'yargs';
+import {Argv, CommandModule, Options} from 'yargs';
 
 import {BaseOptions, EnvironmentOptionKey} from '../model';
 
@@ -179,4 +179,4 @@ export class DefaultOptionBuilder<T> {
   }
 }
 
-export type YargsCommandDefinition = <T>(yargs: Argv<T>, command: string, description: string) => Argv<T>;
+export type YargsCommandDefinition = <T>(command: string, describe: string) => CommandModule<T>;

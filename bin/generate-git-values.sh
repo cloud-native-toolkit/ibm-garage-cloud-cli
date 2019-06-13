@@ -10,10 +10,12 @@ CHART_DIR=$(realpath ${HOME}/chart)
 ### Input
 
 VALUES_FILE="$1"
-if [[ -z "${NAMESPACE}" ]]; then
+if [[ -z "${VALUES_FILE}" ]]; then
     echo "Values file is required as the first argument"
     exit 1
 fi
+
+mkdir -p $(dirname ${VALUES_FILE})
 
 ### Logic
 
@@ -54,8 +56,13 @@ if [[ "${URL_TYPE}" == "SSH" ]]; then
     echo "  name: ${NAME}" >> ${VALUES_FILE}
     echo "  url: ${GIT_URL}" >> ${VALUES_FILE}
     echo "  username: ${GIT_USERNAME}" >> ${VALUES_FILE}
-    echo "  privateKeyFile: ${HOME}/.ssh/id_rsa" >> ${VALUES_FILE}
-    echo "  passphrase: ${SSH_PASSPHRASE}" >> ${VALUES_FILE}
+    if [[ -n "${SSH_PASSPHRASE}" ]]; then
+        echo "  passphrase: ${SSH_PASSPHRASE}" >> ${VALUES_FILE}
+    fi
+    echo "  privateKey: |" >> ${VALUES_FILE}
+    cat ${HOME}/.ssh/id_rsa | while read line; do
+        echo "    ${line}" >> ${VALUES_FILE}
+    done
 else
     echo -n "Please provide your password/personal access token: "
     read -s GIT_PASSWORD

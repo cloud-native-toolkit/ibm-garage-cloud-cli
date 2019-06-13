@@ -4,13 +4,13 @@ import {execFile} from 'child_process';
 import {DeployOptions} from './deploy-options.model';
 import {DEPLOY_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../util/env-support';
 
-export async function deployImage(argv: DeployOptions): Promise<{ stdout: string, stderr: string }> {
+export async function deployImage(options: DeployOptions): Promise<{ stdout: string, stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       path.join(__dirname, '../../../bin/deploy-image.sh'),
-      [argv.namespace, argv.imageName, argv.imageVersion],
+      [options.namespace, options.imageName, options.imageVersion],
       {
-        env: extractEnvironmentProperties(DEPLOY_OPTION_ENV_PROPERTIES, argv),
+        env: extractEnvironmentProperties(DEPLOY_OPTION_ENV_PROPERTIES, options),
         cwd: process.cwd()
       },
       (error, stdout, stderr) => {
@@ -21,5 +21,13 @@ export async function deployImage(argv: DeployOptions): Promise<{ stdout: string
         resolve({stdout, stderr});
       }
     );
+
+    child.stdout.on('data', function(data) {
+      console.log(data.toString());
+    });
+    child.stderr.on('data', function(data) {
+      console.error(data.toString());
+    });
+    process.stdin.pipe(child.stdin);
   });
 }

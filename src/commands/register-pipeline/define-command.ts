@@ -1,13 +1,13 @@
-import {Arguments, Argv} from 'yargs';
+import {Arguments, Argv, CommandModule} from 'yargs';
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {registerPipeline} from './register-pipeline';
 
-export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(yargs: Argv<T>, command: string, description: string): Argv<T> => {
-  yargs.command(
+export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+  return {
     command,
-    description,
-    (yargs: Argv<any>) => new DefaultOptionBuilder(yargs)
+    describe,
+    builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
       .apiKey()
       .resourceGroup()
       .region()
@@ -16,9 +16,8 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(yargs: 
       .debug()
       .quiet()
       .build(),
-    async (argv: Arguments<RegisterPipelineOptions>) => {
+    handler: async (argv: Arguments<RegisterPipelineOptions>) => {
       await registerPipeline(argv);
-    });
-
-  return yargs;
+    }
+  };
 };

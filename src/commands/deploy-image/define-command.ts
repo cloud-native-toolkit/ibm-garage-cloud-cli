@@ -1,21 +1,21 @@
-import {Arguments, Argv} from 'yargs';
+import {Arguments, Argv, CommandModule} from 'yargs';
 import {DeployOptions} from './deploy-options.model';
 import {deployImage} from './deploy-image';
 import {CommandLineOptions} from '../../model';
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 
-export const defineDeployImageCommand: YargsCommandDefinition = <T>(yargs: Argv<T>, command: string, description: string) => {
-  yargs  .command(
+export const defineDeployImageCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+  return {
     command,
-    description,
-    (argv: Argv<any>) => new DefaultOptionBuilder(argv)
+    describe,
+    builder: (argv: Argv<any>) => new DefaultOptionBuilder(argv)
       .baseOptions()
       .clusterName()
       .clusterNamespace()
       .chartRoot()
       .chartName()
       .build(),
-    async (argv: Arguments<DeployOptions & CommandLineOptions>) => {
+    handler: async (argv: Arguments<DeployOptions & CommandLineOptions>) => {
       if (argv.debug) {
         console.log('arguments', argv);
       }
@@ -32,7 +32,5 @@ export const defineDeployImageCommand: YargsCommandDefinition = <T>(yargs: Argv<
         process.exit(1);
       }
     },
-  );
-
-  return yargs;
+  };
 };

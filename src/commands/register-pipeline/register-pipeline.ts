@@ -1,47 +1,66 @@
 import * as path from 'path';
+import * as fs from 'fs';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {deployImage, DeployOptions} from '../deploy-image';
-import {execFile} from "child_process";
-import {BUILD_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../util/env-support';
+import {execFile} from 'child_process';
 
 export async function registerPipeline(options: RegisterPipelineOptions) {
 
-    const valuesFile = path.join(__dirname, '../../../tmp/register-pipeline-values.yaml');
+    const valuesFile = path.join(process.cwd(), '.tmp/register-pipeline-values.yaml');
+    const releaseName = process.cwd().replace(/.*\/(.*)/, "$1");
 
     await new Promise((resolve, reject) => {
-        execFile(
+        const child = execFile(
           path.join(__dirname, '../../../bin/generate-git-values.sh'),
           [valuesFile],
           {
               cwd: process.cwd()
           },
           (error, stdout, stderr) => {
+              child.disconnect();
+
               if (error) {
-                  console.log(stdout);
-                  console.error(stderr);
                   reject(error);
               }
 
               resolve({stdout, stderr});
           }
         );
+
+        child.stdout.pipe(process.stdout);
+        child.stderr.pipe(process.stderr);
+        process.stdin.pipe(child.stdin);
     });
 
-    const chartRoot = path.join(__dirname, '../../../chart');
-    const chartName = 'register-pipeline';
+    await new Promise((resolve, reject) => {
+        const child = execFile(
+          path.join(__dirname, '../../../bin/register-pipeline.sh'),
+          [options.namespace, releaseName, valuesFile],
+          {
+              cwd: process.cwd(),
+              env: {
+                  APIKEY: options.apiKey,
+                  RESOURCE_GROUP: options.resourceGroup,
+                  REGION: options.region,
+                  CLUSTER_NAME: options.cluster,
+                  HOME: process.env.HOME
+              }
+          },
+          (error, stdout, stderr) => {
+              child.disconnect();
 
-    const deployOptions: DeployOptions = {
-        apiKey: options.apiKey,
-        cluster: options.cluster,
-        resourceGroup: options.resourceGroup,
-        region: options.region,
-        namespace: options.clusterNamespace,
+              if (error) {
+                  reject(error);
+              }
 
-        chartRoot,
-        chartName,
-        valuesFile,
-    };
+              resolve({stdout, stderr});
+          },
+        );
 
-    await deployImage(deployOptions);
+        child.stdout.pipe(process.stdout);
+        child.stderr.pipe(process.stderr);
+    });
+
+    await fs.promises.unlink(valuesFile);
 }

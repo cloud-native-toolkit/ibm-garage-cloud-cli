@@ -6,7 +6,7 @@ import {BUILD_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../u
 
 export async function buildImage(argv: BuildOptions): Promise<{ stdout: string, stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       path.join(__dirname, '../../../bin/build-image.sh'),
       [argv.imageName, argv.imageVersion],
       {

@@ -1,16 +1,16 @@
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
-import {Arguments, Argv} from 'yargs';
+import {Arguments, Argv, CommandModule} from 'yargs';
 import {generateToken, GenerateTokenOptions} from '../generate-token';
 import {BuildOptions} from './build-options.model';
 import {CommandLineOptions} from '../../model';
 import {buildImage} from './build-image';
 
-export const defineBuildImageCommand: YargsCommandDefinition = <T>(yargs: Argv<T>, command: string, description: string) => {
-  yargs.command(
+export const defineBuildImageCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+  return {
     command,
-    description,
-    (argv: Argv<any>) => new DefaultOptionBuilder(argv).baseOptions().build(),
-    async (argv: Arguments<BuildOptions & CommandLineOptions>) => {
+    describe,
+    builder: (argv: Argv<any>) => new DefaultOptionBuilder(argv).baseOptions().build(),
+    handler: async (argv: Arguments<BuildOptions & CommandLineOptions>) => {
       if (argv.debug) {
         console.log('arguments', argv);
       }
@@ -27,7 +27,5 @@ export const defineBuildImageCommand: YargsCommandDefinition = <T>(yargs: Argv<T
         process.exit(1);
       }
     },
-  )
-
-  return yargs;
+  };
 };
