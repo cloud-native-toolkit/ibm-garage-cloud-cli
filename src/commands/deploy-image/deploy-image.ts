@@ -7,7 +7,7 @@ import {DEPLOY_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../
 export async function deployImage(argv: DeployOptions): Promise<{ stdout: string, stderr: string }> {
   return execFile.__promisify__(
     path.join(__dirname, '../../../bin/deploy-image.sh'),
-    [argv.clusterNamespace, argv.imageName, argv.imageVersion],
+    [argv.namespace, argv.imageName, argv.imageVersion],
     {
       env: extractEnvironmentProperties(DEPLOY_OPTION_ENV_PROPERTIES, argv)
     },

@@ -4,6 +4,6 @@ export class DeployOptions extends BaseOptions {
   cluster: string;
   chartRoot: string;
   chartName?: string;
-  clusterNamespace: string;
+  namespace: string;
   valuesFile?: string;
 }

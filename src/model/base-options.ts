@@ -3,7 +3,7 @@ export class BaseOptions {
   resourceGroup: string;
   region: string;
   registry?: string;
-  namespace?: string;
+  registryNamespace?: string;
   imageName?: string;
   imageVersion?: string;
   buildNumber?: string;

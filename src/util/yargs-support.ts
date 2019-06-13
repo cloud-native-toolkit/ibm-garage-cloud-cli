@@ -25,7 +25,7 @@ export class DefaultOptionBuilder<T> {
 
   resourceGroup(): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('RESOURCE_GROUP', {
-      alias: ['resourceGroup', 'rg'],
+      alias: ['resourceGroup', 'g'],
       describe: 'The IBM Cloud resource group for the login. Can also be provided as an environment property',
       required: true,
       type: 'string',
@@ -58,7 +58,7 @@ export class DefaultOptionBuilder<T> {
 
   namespace(): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('REGISTRY_NAMESPACE', {
-      alias: 'namespace',
+      alias: 'registryNamespace',
       describe: 'The namespace to use within the IBM Cloud image registry. The value defaults to "default" if not provided',
       type: 'string',
       default: 'default',
@@ -130,7 +130,7 @@ export class DefaultOptionBuilder<T> {
 
   clusterNamespace(): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('CLUSTER_NAMESPACE', {
-      alias: ['clusterNamespace', 'env'],
+      alias: ['namespace', 'n'],
       required: true,
       describe: 'The cluster namespace (env) into which the image will be deployed. Can also be provided as an environment property',
       type: 'string',

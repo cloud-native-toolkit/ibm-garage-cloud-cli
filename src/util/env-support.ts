@@ -21,7 +21,7 @@ export const BUILD_OPTION_ENV_PROPERTIES: {[key in keyof BuildOptions]: Environm
   resourceGroup: 'RESOURCE_GROUP',
   region: 'REGION',
   registry: 'REGISTRY_URL',
-  namespace: 'REGISTRY_NAMESPACE',
+  registryNamespace: 'REGISTRY_NAMESPACE',
   imageName: 'IMAGE_NAME',
   imageVersion: 'IMAGE_VERSION',
   buildNumber: 'IMAGE_BUILD_NUMBER',
@@ -35,6 +35,6 @@ export const DEPLOY_OPTION_ENV_PROPERTIES: {[key in keyof DeployOptions]: Enviro
       cluster: 'CLUSTER_NAME',
       chartRoot: 'CHART_ROOT',
       chartName: 'CHART_NAME',
-      clusterNamespace: 'CLUSTER_NAMESPACE',
+      namespace: 'CLUSTER_NAMESPACE',
       valuesFile: 'VALUES_FILE'
     });

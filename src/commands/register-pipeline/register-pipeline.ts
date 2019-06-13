@@ -23,7 +23,7 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
         cluster: options.cluster,
         resourceGroup: options.resourceGroup,
         region: options.region,
-        clusterNamespace: options.clusterNamespace,
+        namespace: options.clusterNamespace,
 
         chartRoot,
         chartName,
