@@ -21,5 +21,8 @@ export async function buildImage(argv: BuildOptions): Promise<{ stdout: string, 
         resolve({stdout, stderr});
       }
     );
+
+    child.stdout.pipe(process.stdout);
+    child.stderr.pipe(process.stderr);
   });
 }

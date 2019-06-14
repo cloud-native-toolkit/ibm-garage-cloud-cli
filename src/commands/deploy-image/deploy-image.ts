@@ -22,12 +22,7 @@ export async function deployImage(options: DeployOptions): Promise<{ stdout: str
       }
     );
 
-    child.stdout.on('data', function(data) {
-      console.log(data.toString());
-    });
-    child.stderr.on('data', function(data) {
-      console.error(data.toString());
-    });
-    process.stdin.pipe(child.stdin);
+    child.stdout.pipe(process.stdout);
+    child.stderr.pipe(process.stderr);
   });
 }
