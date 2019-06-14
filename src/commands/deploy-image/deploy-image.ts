@@ -8,7 +8,7 @@ export async function deployImage(options: DeployOptions): Promise<{ stdout: str
   return new Promise((resolve, reject) => {
     const child = execFile(
       path.join(__dirname, '../../../bin/deploy-image.sh'),
-      [options.namespace, options.imageName, options.imageVersion],
+      [options.imageName, options.imageVersion, options.namespace],
       {
         env: extractEnvironmentProperties(DEPLOY_OPTION_ENV_PROPERTIES, options),
         cwd: process.cwd()
