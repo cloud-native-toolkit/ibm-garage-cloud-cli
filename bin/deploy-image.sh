@@ -41,7 +41,9 @@ if [[ -z "${TMP_DIR}" ]]; then
 fi
 
 IMAGE_NAME="$1"
-CHART_NAME="$1"
+if [[ -z "${CHART_NAME}" ]]; then
+  CHART_NAME="$1"
+fi
 IMAGE_VER="$2"
 ENVIRONMENT_NAME="$3"
 
@@ -78,14 +80,6 @@ ibmcloud cs cluster-config --cluster ${CLUSTER_NAME} --export > ${TMP_DIR}/.kube
 source ${TMP_DIR}/.kubeconfig
 
 echo "KUBECONFIG=${KUBECONFIG}"
-
-echo "Configuring cluster namespace"
-if kubectl get namespace ${CLUSTER_NAMESPACE}; then
-  echo -e "Namespace ${CLUSTER_NAMESPACE} found."
-else
-  kubectl create namespace ${CLUSTER_NAMESPACE}
-  echo -e "Namespace ${CLUSTER_NAMESPACE} created."
-fi
 
 echo "DEFINE RELEASE by prefixing image (app) name with namespace if not 'default' as Helm needs unique release names across namespaces"
 if [[ "${CLUSTER_NAMESPACE}" != "default" ]]; then
