@@ -109,6 +109,8 @@ kubectl get namespace ${CLUSTER_NAMESPACE}
 if [[ $? -ne 0 ]]; then
   kubectl create namespace ${CLUSTER_NAMESPACE}
   ${SCRIPT_ROOT}/setup-namespace-secrets.sh ${CLUSTER_NAMESPACE}
+else
+  ${SCRIPT_ROOT}/setup-namespace-secrets.sh ${CLUSTER_NAMESPACE}
 fi
 
 echo "INITIALIZING helm with upgrade"
