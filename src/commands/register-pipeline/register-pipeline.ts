@@ -37,13 +37,16 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
           [options.namespace, releaseName, valuesFile],
           {
               cwd: process.cwd(),
-              env: {
+              env: Object.assign(
+                {},
+                process.env,
+                {
                   APIKEY: options.apiKey,
                   RESOURCE_GROUP: options.resourceGroup,
                   REGION: options.region,
                   CLUSTER_NAME: options.cluster,
-                  HOME: process.env.HOME
-              }
+                },
+              ),
           },
           (error, stdout, stderr) => {
               if (error) {

@@ -3,10 +3,10 @@ import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-sup
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {registerPipeline} from './register-pipeline';
 
-export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   return {
     command,
-    describe,
+    describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
       .apiKey()
       .resourceGroup()

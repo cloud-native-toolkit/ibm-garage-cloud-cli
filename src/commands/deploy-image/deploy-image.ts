@@ -10,7 +10,11 @@ export async function deployImage(options: DeployOptions): Promise<{ stdout: str
       path.join(__dirname, '../../../bin/deploy-image.sh'),
       [options.imageName, options.imageVersion, options.namespace],
       {
-        env: extractEnvironmentProperties(DEPLOY_OPTION_ENV_PROPERTIES, options),
+        env: Object.assign(
+          {},
+          process.env,
+          extractEnvironmentProperties(DEPLOY_OPTION_ENV_PROPERTIES, options),
+        ),
         cwd: process.cwd()
       },
       (error, stdout, stderr) => {

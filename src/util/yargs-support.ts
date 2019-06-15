@@ -9,14 +9,18 @@ export function buildOptionWithEnvDefault(key: EnvironmentOptionKey, options: Op
   return result;
 }
 
+export class BuilderOptions {
+  optional: boolean
+}
+
 export class DefaultOptionBuilder<T> {
   constructor(private yargs: Argv<T>) {}
 
-  apiKey(): DefaultOptionBuilder<T> {
+  apiKey(options: BuilderOptions = {optional: false}): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('APIKEY', {
       alias: 'apiKey',
       describe: 'ApiKey for IBM Cloud login. Can also be provided as an environment property',
-      required: true,
+      required: !options.optional,
       type: 'string',
     }));
 
@@ -179,4 +183,4 @@ export class DefaultOptionBuilder<T> {
   }
 }
 
-export type YargsCommandDefinition = <T>(command: string, describe: string) => CommandModule<T>;
+export type YargsCommandDefinition = <T>(command: string, describe?: string) => CommandModule<T>;

@@ -12,6 +12,8 @@ export class EnvironmentOptions {
   IMAGE_VERSION: string;
   CLUSTER_NAMESPACE: string;
   VALUES_FILE: string;
+  CLASSIC_USERNAME: string;
+  CLASSIC_API_KEY: string;
 }
 
 export type EnvironmentOptionKey = keyof EnvironmentOptions;

@@ -4,10 +4,10 @@ import {deployImage} from './deploy-image';
 import {CommandLineOptions} from '../../model';
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 
-export const defineDeployImageCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+export const defineDeployImageCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   return {
     command,
-    describe,
+    describe: 'deploy an image from the IBM Cloud registry into a kubernetes cluster',
     builder: (argv: Argv<any>) => new DefaultOptionBuilder(argv)
       .baseOptions()
       .clusterName()
