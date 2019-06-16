@@ -6,73 +6,34 @@ realpath() {
 
 SCRIPT_ROOT=$(realpath $(dirname $0))
 
-if [[ -z "${APIKEY}" ]]; then
-  echo "APIKEY is required"
-  exit 1
-fi
-
-if [[ -z "${RESOURCE_GROUP}" ]]; then
-  echo "RESOURCE_GROUP is required"
-  exit 1
-fi
-
-if [[ -z "${REGION}" ]]; then
-  echo "REGION is required"
-  exit 1
-fi
-
-if [[ -z "${CLUSTER_NAME}" ]]; then
-  echo "CLUSTER_NAME is required"
-  exit 1
-fi
-
-if [[ -z "${TMP_DIR}" ]]; then
-  TMP_DIR="/tmp"
-fi
-
-CLUSTER_NAMESPACE="$1"
-RELEASE_NAME="$2"
-VALUES_FILE="$3"
-
-if [[ -z "${CLUSTER_NAMESPACE}" ]] || [[ "${CLUSTER_NAMESPACE}" = "undefined" ]]; then
-  echo "Cluster namespace required as first arg"
-  exit 1
-fi
-
-if [[ -z "${RELEASE_NAME}" ]]; then
-  echo "Release name is required as third arg"
-  exit 1
-fi
-
-if [[ -z "${VALUES_FILE}" ]]; then
-  echo "Values file is required as third arg"
-  exit 1
-fi
-
 CHART_ROOT="${SCRIPT_ROOT}/../chart"
 CHART_NAME="register-pipeline"
-
 CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 
-ibmcloud -version
+if [[ -z "${KUBECONFIG}" ]]; then
+    echo "KUBECONFIG environment variable not found. It appears the kubernetes environment has not been initialized."
+    echo "To initialize the kubernetes:"
+    echo " 1) Navigate to https://cloud.ibm.com/kubernetes/clusters"
+    echo " 2) Select the kubernetes cluster"
+    echo " 3) Follow the instructions on the access tab"
+    echo ""
+    echo -n "Open the URL in the default browser? [Y/n]> "
+    read open_browser
 
-ibmcloud config --check-version=false
+    if [[ "$open_browser" == "n" ]]; then
+        exit 1
+    fi
+    open "https://cloud.ibm.com/kubernetes/clusters"
 
-ibmcloud login -a https://cloud.ibm.com --apikey ${APIKEY} -g ${RESOURCE_GROUP} -r ${REGION}
-ibmcloud ks cluster-config --cluster ${CLUSTER_NAME} --export > ${TMP_DIR}/.kubeconfig
+    exit
+fi
 
-source ${TMP_DIR}/.kubeconfig
-
-echo "KUBECONFIG=${KUBECONFIG}"
+if [[ -z "${CLUSTER_NAMESPACE}" ]]; then
+    CLUSTER_NAMESPACE="tools"
+fi
 
 echo "INITIALIZING helm with upgrade"
 helm init --upgrade
 
-echo "CHECKING CHART (lint)"
-helm lint ${CHART_PATH}
-
-echo -e "Dry run into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-helm install --debug --dry-run --name ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
-
-echo -e "Deploying into: ${CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-helm install --name ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}
+echo -e "Deploying into: ${CLUSTER_NAMESPACE}."
+helm upgrade --install --force ${RELEASE_NAME} ${CHART_PATH} --namespace ${CLUSTER_NAMESPACE} --values ${VALUES_FILE}

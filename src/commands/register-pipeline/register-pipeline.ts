@@ -41,10 +41,7 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
                 {},
                 process.env,
                 {
-                  APIKEY: options.apiKey,
-                  RESOURCE_GROUP: options.resourceGroup,
-                  REGION: options.region,
-                  CLUSTER_NAME: options.cluster,
+                  CLUSTER_NAMESPACE: options.namespace
                 },
               ),
           },

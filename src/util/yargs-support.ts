@@ -132,10 +132,10 @@ export class DefaultOptionBuilder<T> {
     return this;
   }
 
-  clusterNamespace(): DefaultOptionBuilder<T> {
+  clusterNamespace(options: BuilderOptions = {optional: false}): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('CLUSTER_NAMESPACE', {
       alias: ['namespace', 'n'],
-      required: true,
+      required: !options.optional,
       describe: 'The cluster namespace (env) into which the image will be deployed. Can also be provided as an environment property',
       type: 'string',
     }));
