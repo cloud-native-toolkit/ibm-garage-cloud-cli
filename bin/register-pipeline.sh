@@ -6,6 +6,10 @@ realpath() {
 
 SCRIPT_ROOT=$(realpath $(dirname $0))
 
+CLUSTER_NAMESPACE="$1"
+RELEASE_NAME="$2"
+VALUES_FILE="$3"
+
 CHART_ROOT="${SCRIPT_ROOT}/../chart"
 CHART_NAME="register-pipeline"
 CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
@@ -26,10 +30,6 @@ if [[ -z "${KUBECONFIG}" ]]; then
     open "https://cloud.ibm.com/kubernetes/clusters"
 
     exit
-fi
-
-if [[ -z "${CLUSTER_NAMESPACE}" ]]; then
-    CLUSTER_NAMESPACE="tools"
 fi
 
 echo "INITIALIZING helm with upgrade"

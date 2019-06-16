@@ -8,7 +8,7 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
     command,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
-      .clusterNamespace({optional: true})
+      .clusterNamespace({optional: true, default: 'tools'})
       .quiet()
       .build(),
     handler: async (argv: Arguments<RegisterPipelineOptions>) => {

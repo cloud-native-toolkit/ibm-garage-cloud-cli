@@ -10,7 +10,8 @@ export function buildOptionWithEnvDefault(key: EnvironmentOptionKey, options: Op
 }
 
 export class BuilderOptions {
-  optional: boolean
+  optional: boolean;
+  default?: any;
 }
 
 export class DefaultOptionBuilder<T> {
