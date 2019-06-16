@@ -14,7 +14,9 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
     handler: async (argv: Arguments<RegisterPipelineOptions>) => {
       try {
         await registerPipeline(argv);
-      } catch (err) {}
+      } catch (err) {
+        process.exit(1);
+      }
     }
   };
 };
