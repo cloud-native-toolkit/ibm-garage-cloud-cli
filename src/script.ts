@@ -8,7 +8,9 @@ import {defineRegisterPipelineCommand} from './commands/register-pipeline/define
 import {defineLaunchToolsCommand} from './commands/launch-tools/define-command';
 
 scriptName('igc')
-  .usage('$0 <cmd> [args]')
+  .usage('IBM Garage Cloud cli')
+  .usage('')
+  .usage('Usage: $0 <command> [args]')
   .command(defineRegisterPipelineCommand(
     'register',
   ))
