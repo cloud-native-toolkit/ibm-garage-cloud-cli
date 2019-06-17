@@ -11,6 +11,7 @@ export function buildOptionWithEnvDefault(key: EnvironmentOptionKey, options: Op
 
 export class BuilderOptions {
   optional: boolean;
+  describe?: string;
   default?: any;
 }
 
@@ -140,7 +141,7 @@ export class DefaultOptionBuilder<T> {
         {
           alias: ['namespace', 'n'],
           required: !options.optional,
-          describe: 'The cluster namespace (env) into which the image will be deployed. Can also be provided as an environment property',
+          describe: options.describe || 'The cluster namespace (env) into which the image will be deployed. Can also be provided as an environment property',
           type: 'string',
         },
         options.default ? {default: options.default} : {}
