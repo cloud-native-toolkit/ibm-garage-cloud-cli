@@ -40,13 +40,18 @@ export class DefaultOptionBuilder<T> {
     return this;
   }
 
-  region(): DefaultOptionBuilder<T> {
-    this.yargs.option(buildOptionWithEnvDefault('REGION', {
-      alias: ['region', 'r'],
-      describe: 'The IBM Cloud region for the login. The value defaults to "us-south" if not provided',
-      type: 'string',
-      default: 'us-south',
-    }));
+  region(options: BuilderOptions = {optional: true, default: 'us-south'}): DefaultOptionBuilder<T> {
+    this.yargs.option(buildOptionWithEnvDefault('REGION',
+      Object.assign(
+        {
+          alias: ['region', 'r'],
+          describe: options.describe || 'The IBM Cloud region for the login. The value defaults to "us-south" if not provided',
+          required: !options.optional,
+          type: 'string',
+        },
+        options.default ? {default: options.default} : {}
+        )
+    ));
 
     return this;
   }
