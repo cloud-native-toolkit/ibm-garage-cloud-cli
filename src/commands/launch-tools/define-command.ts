@@ -25,6 +25,7 @@ export const defineLaunchToolsCommand: YargsCommandDefinition = <T>(command: str
         await launchTools(argv);
       } catch (err) {
         console.log('Error', err);
+        process.exit(1);
       }
     }
   };

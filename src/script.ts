@@ -9,6 +9,7 @@ import {defineRegisterPipelineCommand} from './commands/register-pipeline/define
 import {defineLaunchToolsCommand} from './commands/launch-tools/define-command';
 import {defineGetVlanCommand} from './commands/vlan/define-command';
 import {defineJenkinsAuth} from './commands/jenkins-auth/define-command';
+import {defineCreateWebhookCommand} from './commands/create-webhook/define-command';
 
 scriptName('igc')
   .usage('IBM Garage Cloud cli')
@@ -22,6 +23,9 @@ scriptName('igc')
   ))
   .command(defineRegisterPipelineCommand(
     'register',
+  ))
+  .command(defineCreateWebhookCommand(
+    'git-webhook',
   ))
   .command(defineBuildImageCommand(
     'build',

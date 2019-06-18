@@ -30,46 +30,20 @@ URL_TYPE=$(echo "${GIT_URL}" | sed -e "s/^git@.*/SSH/")
 
 if [[ "${URL_TYPE}" == "SSH" ]]; then
     echo "We found you are using an ssh git url: ${GIT_URL}"
-    echo -n "Would you like to create the Git secret using your SSH key? [Y/n] "
-    read USE_SSH
-    if [[ "${USE_SSH}" == "n" ]] || [[ "${USE_SSH}" == "N" ]]; then
-        URL_TYPE="HTTP"
-        GIT_URL=$(echo "${GIT_URL}" | sed -e "s~git@\(.*\):\(.*\)~https://\1/\2~")
-    else
-         echo -n "Does your SSH key require a passphrase? [N/y] "
-         read USE_PASSPHRASE
-         if [[ "${USE_PASSPHRASE}" == "y" ]] || [[ "${USE_PASSPHRASE}" == "Y" ]]; then
-             echo -n "Please provide your passphrase: "
-             read -s SSH_PASSPHRASE
-             echo ""
-         fi
-    fi
+    echo -n "We will convert to an HTTP url"
+
+    URL_TYPE="HTTP"
+    GIT_URL=$(echo "${GIT_URL}" | sed -e "s~git@\(.*\):\(.*\)~https://\1/\2~")
 fi
 
 echo -n "Please provide username for ${GIT_URL}: "
 read GIT_USERNAME
 
-if [[ "${URL_TYPE}" == "SSH" ]]; then
-    echo "Getting private key from ~/.ssh/id_rsa"
+echo -n "Please provide your password/personal access token: "
+read -s GIT_PASSWORD
 
-    echo "git:" > ${VALUES_FILE}
-    echo "  name: ${NAME}" >> ${VALUES_FILE}
-    echo "  url: ${GIT_URL}" >> ${VALUES_FILE}
-    echo "  username: ${GIT_USERNAME}" >> ${VALUES_FILE}
-    if [[ -n "${SSH_PASSPHRASE}" ]]; then
-        echo "  passphrase: ${SSH_PASSPHRASE}" >> ${VALUES_FILE}
-    fi
-    echo "  privateKey: |" >> ${VALUES_FILE}
-    cat ${HOME}/.ssh/id_rsa | while read line; do
-        echo "    ${line}" >> ${VALUES_FILE}
-    done
-else
-    echo -n "Please provide your password/personal access token: "
-    read -s GIT_PASSWORD
-
-    echo "git:" > ${VALUES_FILE}
-    echo "  name: ${NAME}" >> ${VALUES_FILE}
-    echo "  url: ${GIT_URL}" >> ${VALUES_FILE}
-    echo "  username: ${GIT_USERNAME}" >> ${VALUES_FILE}
-    echo "  password: ${GIT_PASSWORD}" >> ${VALUES_FILE}
-fi
+echo "git:" > ${VALUES_FILE}
+echo "  name: ${NAME}" >> ${VALUES_FILE}
+echo "  url: ${GIT_URL}" >> ${VALUES_FILE}
+echo "  username: ${GIT_USERNAME}" >> ${VALUES_FILE}
+echo "  password: ${GIT_PASSWORD}" >> ${VALUES_FILE}

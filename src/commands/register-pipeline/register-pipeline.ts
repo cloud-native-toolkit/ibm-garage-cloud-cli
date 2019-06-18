@@ -1,18 +1,42 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {execFile} from 'child_process';
+import * as YAML from 'yaml';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {checkKubeconfig} from '../../util/kubernetes';
+import createWebhook from '../create-webhook/create-webhook';
 
-export async function registerPipeline(options: RegisterPipelineOptions) {
+class GitParams {
+  name: string;
+  url: string;
+  username: string;
+  password: string;
+}
+
+export async function registerPipeline(options: RegisterPipelineOptions, notifyStatus: (status: string) => void = () => {
+}) {
 
   await checkKubeconfig();
 
   const valuesFile = path.join(process.cwd(), '.tmp/register-pipeline-values.yaml');
-  const releaseName = process.cwd().replace(/.*\/(.*)/, '$1');
 
-  await new Promise((resolve, reject) => {
+  await generateGitValues(valuesFile);
+
+  notifyStatus('Registering pipeline');
+
+  const pipelineResult = await executeRegisterPipeline(options.namespace, valuesFile);
+
+  if (!options.skipWebhook) {
+    notifyStatus('Creating git webhook');
+    await createWebhook(await buildWebhookParams(valuesFile, pipelineResult));
+  }
+
+  await deleteFile(valuesFile);
+}
+
+async function generateGitValues(valuesFile: string): Promise<any> {
+  return new Promise((resolve, reject) => {
     const child = execFile(
       path.join(__dirname, '../../../bin/generate-git-values.sh'),
       [valuesFile],
@@ -24,7 +48,10 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
           reject(error);
         }
 
-        resolve({stdout, stderr});
+        process.stdin.removeAllListeners();
+        child.stdin.end();
+
+        resolve();
       }
     );
 
@@ -32,18 +59,23 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
     child.stderr.pipe(process.stderr);
     process.stdin.pipe(child.stdin);
   });
+}
 
-  await new Promise((resolve, reject) => {
+async function executeRegisterPipeline(namespace: string, valuesFile: string): Promise<{jenkinsUrl: string}> {
+
+  const releaseName = process.cwd().replace(/.*\/(.*)/, '$1');
+
+  return new Promise<{jenkinsUrl: string}>((resolve, reject) => {
     const child = execFile(
       path.join(__dirname, '../../../bin/register-pipeline.sh'),
-      [options.namespace, releaseName, valuesFile],
+      [namespace, releaseName, valuesFile],
       {
         cwd: process.cwd(),
         env: Object.assign(
           {},
           process.env,
           {
-            CLUSTER_NAMESPACE: options.namespace
+            CLUSTER_NAMESPACE: namespace
           },
         ),
       },
@@ -52,13 +84,68 @@ export async function registerPipeline(options: RegisterPipelineOptions) {
           reject(error);
         }
 
-        resolve({stdout, stderr});
+        resolve(extractJenkinsUrl(stdout.toString()));
       },
     );
-
-    child.stdout.pipe(process.stdout);
-    child.stderr.pipe(process.stderr);
   });
+}
 
-  await fs.promises.unlink(valuesFile);
+function extractJenkinsUrl(data: string): {jenkinsUrl: string} {
+  const jenkinsUrl = data
+    .replace(new RegExp('\n', 'g'), ' ')
+    .replace(new RegExp('.*JENKINS_URL='), '')
+    .trim();
+
+  return {jenkinsUrl};
+}
+
+async function buildWebhookParams(valuesFile: string, pipelineResult: {jenkinsUrl: string}) {
+
+  const webhookParams = await extractWebhookParams(valuesFile);
+
+  const params = Object.assign({}, webhookParams, pipelineResult);
+
+  return params;
+}
+
+async function extractWebhookParams(valuesFile: string): Promise<{gitUrl: string; gitUsername: string; gitToken: string;}> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(valuesFile, (err, data: Buffer) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      const yamlValues = YAML.parse(data.toString());
+      if (!yamlValues) {
+        reject(new Error('file cannot be parsed'));
+        return;
+      }
+
+      const gitValues: GitParams = yamlValues.git;
+
+      if (!gitValues) {
+        reject(new Error('webhook contents not found'));
+        return;
+      }
+
+      resolve({
+        gitUrl: gitValues.url,
+        gitUsername: gitValues.username,
+        gitToken: gitValues.password
+      })
+    });
+  });
+}
+
+async function deleteFile(filename: string) {
+  return new Promise((resolve, reject) => {
+    fs.unlink(filename, (err => {
+      if (err) {
+        reject(err);
+      }
+
+      resolve();
+    }));
+  });
 }

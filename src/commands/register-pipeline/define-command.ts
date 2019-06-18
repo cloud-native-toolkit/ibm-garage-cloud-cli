@@ -1,4 +1,6 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
+import ora from 'ora';
+
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {registerPipeline} from './register-pipeline';
@@ -14,12 +16,33 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
         default: 'tools',
       })
       .quiet()
-      .build(),
+      .build()
+      .option('skipWebhook', {
+        type: 'boolean',
+        describe: 'flag indicating that the webhook should not be created'
+      }),
     handler: async (argv: Arguments<RegisterPipelineOptions>) => {
+      let spinner;
+
+      function statusCallback(status: string) {
+        if (!spinner) {
+          spinner = ora(status).start();
+        } else {
+          spinner.text = status;
+        }
+      }
+
       try {
-        await registerPipeline(argv);
+        await registerPipeline(argv, statusCallback);
+
+        process.exit(0);
       } catch (err) {
+        console.log('Error registering pipeline', err);
         process.exit(1);
+      } finally {
+        if (spinner) {
+          spinner.stop();
+        }
       }
     }
   };

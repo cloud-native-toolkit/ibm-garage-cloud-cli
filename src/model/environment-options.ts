@@ -19,6 +19,9 @@ export class EnvironmentOptions {
   JENKINS_URL: string;
   JENKINS_USERNAME: string;
   JENKINS_PASSWORD: string;
+  USER_NAME: string;
+  API_TOKEN: string;
+  GIT_URL: string;
 }
 
 export type EnvironmentOptionKey = keyof EnvironmentOptions;
