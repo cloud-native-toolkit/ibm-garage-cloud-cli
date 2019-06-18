@@ -7,13 +7,7 @@ export const defineGetVlanCommand: YargsCommandDefinition = <T>(command: string)
   return {
     command,
     describe: 'print out the vlan values',
-    builder: (yargs: Argv<any>) => new DefaultOptionBuilder<GetVlanOptions>(yargs)
-      .region({
-        optional: true,
-        default: 'us-south',
-        describe: 'The IBM Cloud region where the cluster will be defined. The value defaults to "us-south"',
-      })
-      .build(),
+    builder: (yargs: Argv<any>) => yargs,
     handler: async (argv: Arguments<GetVlanOptions>) => {
       try {
         await getVlan(argv);
