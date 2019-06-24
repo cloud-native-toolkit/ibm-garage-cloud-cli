@@ -11,6 +11,11 @@ API_TOKEN="$1"
 if [[ -z "${CLUSTER_NAMESPACE}" ]]; then
     CLUSTER_NAMESPACE="tools"
 fi
+if [[ -z "${TMP_DIR}" ]]; then
+    TMP_DIR=".tmp"
+fi
+
+mkdir -p ${TMP_DIR}
 
 RELEASE_NAME="jenkins-access"
 
