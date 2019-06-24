@@ -2,7 +2,7 @@ import {execFile} from 'child_process';
 import * as path from "path";
 
 import {JENKINS_AUTH_ENV_PROPERTIES, JenkinsAuthOptions} from './config-jenkins-auth-options.model';
-import {generateToken, isAvailable as isGenTokenAvailable} from '../generate-token';
+import {generateToken, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
 import {BUILD_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../util/env-support';
 
 
@@ -11,10 +11,16 @@ export function isAvailable(): boolean {
 }
 
 export async function configJenkinsAuth(options: JenkinsAuthOptions) {
-    const apiToken = await generateToken(Object.assign(
-      {},
-      options,
-      {url: `http://${options.host}`}));
+  const genTokenOptions: GenerateTokenOptions = Object.assign(
+    {},
+    options,
+    {url: `http://${options.host}`});
+
+  if (options.debug) {
+    console.log('options: ', genTokenOptions);
+  }
+
+    const apiToken = await generateToken(genTokenOptions);
 
     return new Promise((resolve, reject) => {
         const child = execFile(

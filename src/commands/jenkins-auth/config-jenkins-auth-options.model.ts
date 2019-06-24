@@ -8,6 +8,7 @@ export class JenkinsAuthOptions {
   region: string;
   resourceGroup: string;
   cluster: string;
+  debug?: boolean;
 }
 
 export const JENKINS_AUTH_ENV_PROPERTIES: {[key in keyof JenkinsAuthOptions]: EnvironmentOptionKey} = {

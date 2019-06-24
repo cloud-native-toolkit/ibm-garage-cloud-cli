@@ -16,6 +16,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
         .region()
         .resourceGroup()
         .clusterName()
+        .debug()
         .build()
         .options(buildOptionWithEnvDefault('JENKINS_HOST', {
           description: 'The url to the Jenkins server',
