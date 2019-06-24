@@ -128,11 +128,11 @@ export class DefaultOptionBuilder<T> {
     return this;
   }
 
-  clusterName(): DefaultOptionBuilder<T> {
+  clusterName(options: BuilderOptions = {optional: false}): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('CLUSTER_NAME', {
       alias: 'cluster',
-      required: true,
-      describe: 'The cluster into which the image will be deployed. Can also be provided as an environment property',
+      required: !options.optional,
+      describe: options.describe || 'The cluster into which the image will be deployed. Can also be provided as an environment property',
       type: 'string',
     }));
 
@@ -196,4 +196,4 @@ export class DefaultOptionBuilder<T> {
   }
 }
 
-export type YargsCommandDefinition = <T>(command: string, describe?: string) => CommandModule<T>;
+export type YargsCommandDefinition = <T>(command: string, describe?: string) => CommandModule<T> | undefined;

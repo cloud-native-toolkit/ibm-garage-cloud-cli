@@ -1,6 +1,6 @@
 {
   "name": "@garage-catalyst/ibm-garage-cloud-cli",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -42,6 +42,7 @@
     "@types/node": "^11.13.2",
     "@types/opn": "^5.5.0",
     "@types/ora": "^3.2.0",
+    "@types/phantom": "^3.2.5",
     "@types/yargs": "^13.0.0",
     "babel-jest": "^24.7.1",
     "jest": "^24.7.1",
@@ -49,6 +50,9 @@
     "ts-jest": "^24.0.2",
     "ts-node": "^8.0.3",
     "typescript": "^3.4.3"
+  },
+  "optionalDependencies": {
+    "phantom": "^6.2.0"
   },
   "dependencies": {
     "dockerode": "^2.5.8",

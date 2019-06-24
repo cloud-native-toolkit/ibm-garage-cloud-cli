@@ -14,6 +14,9 @@ export class EnvironmentOptions {
   VALUES_FILE: string;
   CLASSIC_USERNAME: string;
   CLASSIC_API_KEY: string;
+  JENKINS_HOST: string;
+  JENKINS_USERNAME: string;
+  JENKINS_PASSWORD: string;
 }
 
 export type EnvironmentOptionKey = keyof EnvironmentOptions;
