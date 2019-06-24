@@ -1,6 +1,8 @@
 import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {Arguments, Argv, CommandModule} from 'yargs';
-import {generateToken, GenerateTokenOptions, isAvailable} from '../generate-token';
+import {isAvailable} from '../generate-token';
+import {configJenkinsAuth} from './config-jenkins-auth';
+import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 
 export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   if (!isAvailable()) {
@@ -34,20 +36,8 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
           alias: ['password', 'p'],
         }));
     },
-    handler: async (argv: Arguments<GenerateTokenOptions>) => {
-      const apiToken = await generateToken(argv);
-
-      if (argv.yaml) {
-        const yamlBase = typeof argv.yaml === 'string' ? argv.yaml : 'jenkins';
-
-        console.log(`${yamlBase}:`);
-        console.log(`    url: "${argv.url}"`);
-        console.log(`    username: "${argv.username}"`);
-        console.log(`    password: "${argv.password}"`);
-        console.log(`    api_token: "${apiToken}"`);
-      } else {
-        console.log(apiToken);
-      }
+    handler: async (argv: Arguments<JenkinsAuthOptions>) => {
+      await configJenkinsAuth(argv);
     }
   };
 };
