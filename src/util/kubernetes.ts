@@ -1,5 +1,5 @@
 import * as readline from "readline";
-import * as opn from 'opn';
+import * as opn from 'open';
 
 export async function checkKubeconfig() {
   return new Promise((resolve, reject) => {

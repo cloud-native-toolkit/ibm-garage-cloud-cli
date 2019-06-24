@@ -1,7 +1,7 @@
 import {EnvironmentOptionKey} from '../../model';
 
 export class JenkinsAuthOptions {
-  url: string;
+  host: string;
   username: string;
   password: string;
   apiKey: string;
@@ -15,7 +15,7 @@ export const JENKINS_AUTH_ENV_PROPERTIES: {[key in keyof JenkinsAuthOptions]: En
   resourceGroup: 'RESOURCE_GROUP',
   region: 'REGION',
   cluster: 'CLUSTER_NAME',
-  url: 'JENKINS_HOST',
+  host: 'JENKINS_HOST',
   username: 'JENKINS_USERNAME',
   password: 'JENKINS_PASSWORD'
 };

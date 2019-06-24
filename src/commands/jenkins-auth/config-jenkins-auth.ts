@@ -11,7 +11,10 @@ export function isAvailable(): boolean {
 }
 
 export async function configJenkinsAuth(options: JenkinsAuthOptions) {
-    const apiToken = await generateToken(Object.assign({}, options, {yaml: true}));
+    const apiToken = await generateToken(Object.assign(
+      {},
+      options,
+      {url: `http://${options.host}`}));
 
     return new Promise((resolve, reject) => {
         const child = execFile(
