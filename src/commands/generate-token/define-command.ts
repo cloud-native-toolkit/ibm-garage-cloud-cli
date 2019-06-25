@@ -1,6 +1,7 @@
-import {buildOptionWithEnvDefault, YargsCommandDefinition} from '../../util/yargs-support';
+import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {Arguments, Argv, CommandModule} from 'yargs';
 import {generateToken, GenerateTokenOptions, isAvailable} from '../generate-token';
+import {CommandLineOptions} from '../../model';
 
 export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   if (!isAvailable()) {
@@ -11,7 +12,9 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
     command,
     describe: 'generate a Jenkins api token',
     builder: (yargs: Argv<any>) => {
-      return yargs
+      return new DefaultOptionBuilder(yargs)
+        .debug()
+        .build()
         .options(buildOptionWithEnvDefault('JENKINS_HOST', {
           description: 'The host to the Jenkins server',
           alias: 'host',
@@ -35,19 +38,27 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
           type: 'boolean'
         });
     },
-    handler: async (argv: Arguments<GenerateTokenOptions>) => {
-      const apiToken = await generateToken(argv);
+    handler: async (argv: Arguments<GenerateTokenOptions & CommandLineOptions>) => {
+      if (argv.debug) {
+        console.log('options', argv);
+      }
 
-      if (argv.yaml) {
-        const yamlBase = typeof argv.yaml === 'string' ? argv.yaml : 'jenkins';
+      try {
+        const apiToken = await generateToken(argv);
 
-        console.log(`${yamlBase}:`);
-        console.log(`    url: "${argv.url}"`);
-        console.log(`    username: "${argv.username}"`);
-        console.log(`    password: "${argv.password}"`);
-        console.log(`    api_token: "${apiToken}"`);
-      } else {
-        console.log(apiToken);
+        if (argv.yaml) {
+          const yamlBase = typeof argv.yaml === 'string' ? argv.yaml : 'jenkins';
+
+          console.log(`${yamlBase}:`);
+          console.log(`    url: "${argv.url}"`);
+          console.log(`    username: "${argv.username}"`);
+          console.log(`    password: "${argv.password}"`);
+          console.log(`    api_token: "${apiToken}"`);
+        } else {
+          console.log(apiToken);
+        }
+      } catch (err) {
+        console.log('Error generating token', err);
       }
     }
   };

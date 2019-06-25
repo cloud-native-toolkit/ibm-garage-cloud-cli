@@ -30,7 +30,7 @@ export async function generateToken(options: GenerateTokenOptions) {
 
     const status = await page.open(url);
 
-    await timeout(1000);
+    await timeout(4000);
 
     const auth = await page.evaluate(function(user, pwd) {
         document.querySelector<HTMLInputElement>('input[name=j_username]').value = user;
