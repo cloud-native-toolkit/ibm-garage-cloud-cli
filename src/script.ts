@@ -17,6 +17,9 @@ scriptName('igc')
   .command(defineJenkinsAuth(
     'jenkins-auth',
   ))
+  .command(defineGenerateTokenCommand(
+    'gen-token'
+  ))
   .command(defineRegisterPipelineCommand(
     'register',
   ))

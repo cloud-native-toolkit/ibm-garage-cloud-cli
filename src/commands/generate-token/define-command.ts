@@ -13,8 +13,11 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
     builder: (yargs: Argv<any>) => {
       return yargs
         .options(buildOptionWithEnvDefault('JENKINS_HOST', {
+          description: 'The host to the Jenkins server',
+          alias: 'host',
+        }))
+        .options(buildOptionWithEnvDefault('JENKINS_URL', {
           description: 'The url to the Jenkins server',
-          required: true,
           alias: 'url',
         }))
         .options(buildOptionWithEnvDefault('JENKINS_USERNAME', {

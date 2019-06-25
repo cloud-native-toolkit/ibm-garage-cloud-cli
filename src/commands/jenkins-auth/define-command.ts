@@ -40,7 +40,11 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
         }));
     },
     handler: async (argv: Arguments<JenkinsAuthOptions>) => {
-      await configJenkinsAuth(argv);
+      try {
+        await configJenkinsAuth(argv);
+      } catch (err) {
+        console.log('Error configuring Jenkins authentication', err);
+      }
     }
   };
 };
