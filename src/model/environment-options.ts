@@ -15,6 +15,7 @@ export class EnvironmentOptions {
   CLASSIC_USERNAME: string;
   CLASSIC_API_KEY: string;
   JENKINS_HOST: string;
+  JENKINS_URL: string;
   JENKINS_USERNAME: string;
   JENKINS_PASSWORD: string;
 }

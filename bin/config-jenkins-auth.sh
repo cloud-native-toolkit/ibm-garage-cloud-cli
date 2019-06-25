@@ -38,7 +38,7 @@ helm upgrade --install --force ${RELEASE_NAME} ${CHART_PATH} \
     --namespace ${CLUSTER_NAMESPACE} \
     --set jenkins.username="${JENKINS_USERNAME}" \
     --set jenkins.password="${JENKINS_PASSWORD}" \
-    --set jenkins.url="${JENKINS_HOST}" \
+    --set jenkins.url="${JENKINS_URL}" \
     --set jenkins.api_token="${API_TOKEN}"
 
 echo -e "Deploying into: ${CLUSTER_NAMESPACE}."
@@ -46,5 +46,5 @@ helm upgrade --install --force ${RELEASE_NAME} ${CHART_PATH} \
     --namespace ${CLUSTER_NAMESPACE} \
     --set jenkins.username="${JENKINS_USERNAME}" \
     --set jenkins.password="${JENKINS_PASSWORD}" \
-    --set jenkins.url="${JENKINS_HOST}" \
+    --set jenkins.url="${JENKINS_URL}" \
     --set jenkins.api_token="${API_TOKEN}"
