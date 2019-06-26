@@ -38,7 +38,7 @@ export async function generateToken(commandOptions: GenerateTokenOptions): Promi
 async function buildDriver() {
   return launch({
     executablePath: chromium.path,
-    args: ['--no-sandbox', , '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 }
 
