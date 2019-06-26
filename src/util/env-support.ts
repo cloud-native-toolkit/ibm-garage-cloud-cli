@@ -44,4 +44,4 @@ export const DEPLOY_OPTION_ENV_PROPERTIES: {[key in keyof DeployOptions]: Enviro
       chartName: 'CHART_NAME',
       namespace: 'CLUSTER_NAMESPACE',
       valuesFile: 'VALUES_FILE'
-    });
+    }) as {[key in keyof DeployOptions]: EnvironmentOptionKey};

@@ -1,6 +1,6 @@
 {
   "name": "@garage-catalyst/ibm-garage-cloud-cli",
-  "version": "0.0.65",
+  "version": "0.0.66",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -40,8 +40,7 @@
     "@types/dockerode": "^2.5.19",
     "@types/jest": "^24.0.11",
     "@types/node": "^11.13.2",
-    "@types/opn": "^5.5.0",
-    "@types/ora": "^3.2.0",
+    "@types/open": "^6.1.0",
     "@types/puppeteer": "^1.12.4",
     "@types/puppeteer-core": "^1.9.0",
     "@types/yargs": "^13.0.0",
@@ -52,14 +51,12 @@
     "ts-node": "^8.0.3",
     "typescript": "^3.4.3"
   },
-  "optionalDependencies": {},
   "dependencies": {
-    "chromium": "^2.1.0",
     "dockerode": "^2.5.8",
     "open": "^6.3.0",
     "ora": "^3.4.0",
-    "puppeteer-core": "^1.18.0",
-    "tslib": "^1.9.3",
+    "puppeteer": "^1.18.0",
+    "tslib": "^1.10.0",
     "yargs": "^13.2.2"
   }
 }

@@ -1,5 +1,4 @@
-import {Browser, JSHandle, launch, Page} from 'puppeteer-core';
-import * as chromium from 'chromium';
+import {Browser, JSHandle, launch, Page} from 'puppeteer';
 
 import {GenerateTokenOptions} from './generate-token-options.model';
 
@@ -37,7 +36,6 @@ export async function generateToken(commandOptions: GenerateTokenOptions): Promi
 
 async function buildDriver() {
   return launch({
-    executablePath: chromium.path,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 }
