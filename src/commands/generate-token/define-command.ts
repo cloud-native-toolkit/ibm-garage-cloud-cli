@@ -39,20 +39,27 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
         });
     },
     handler: async (argv: Arguments<GenerateTokenOptions & CommandLineOptions>) => {
-      if (argv.debug) {
-        console.log('options', argv);
+
+      const options = Object.assign(
+        {},
+        argv,
+        {url: argv.url || `https://${argv.host}`},
+      );
+
+      if (options.debug) {
+        console.log('options', options);
       }
 
       try {
-        const apiToken = await generateToken(argv);
+        const apiToken = await generateToken(options);
 
         if (argv.yaml) {
           const yamlBase = typeof argv.yaml === 'string' ? argv.yaml : 'jenkins';
 
           console.log(`${yamlBase}:`);
-          console.log(`    url: "${argv.url}"`);
-          console.log(`    username: "${argv.username}"`);
-          console.log(`    password: "${argv.password}"`);
+          console.log(`    url: "${options.url}"`);
+          console.log(`    username: "${options.username}"`);
+          console.log(`    password: "${options.password}"`);
           console.log(`    api_token: "${apiToken}"`);
         } else {
           console.log(apiToken);

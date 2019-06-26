@@ -1,92 +1,96 @@
-const webdriver = require('selenium-webdriver');
-const chrome = require('selenium-webdriver/chrome');
-const chromium = require('chromium');
-require('chromedriver');
+import {Browser, JSHandle, launch, Page} from 'puppeteer-core';
+import * as chromium from 'chromium';
 
 import {GenerateTokenOptions} from './generate-token-options.model';
 
 function timeout(timer) {
-    return new Promise(function (resolve, reject) {
-        setTimeout(function () {
-            resolve();
-        }, timer);
-    });
+  return new Promise(function (resolve, reject) {
+    setTimeout(function () {
+      resolve();
+    }, timer);
+  });
 }
 
 export function isAvailable(): boolean {
-    return true;
+  return true;
 }
 
 export async function generateToken(commandOptions: GenerateTokenOptions): Promise<string> {
 
-    const url = `${commandOptions.url}/user/${commandOptions.username}/configure`;
+  const loginUrl = `${commandOptions.url}/login`;
+  const url = `${commandOptions.url}/user/${commandOptions.username}/configure`;
 
-    const driver = await buildDriver();
+  const browser: Browser = await buildDriver();
 
-    await driver.get(url);
+  try {
+    const page: Page = await browser.newPage();
 
-    await timeout(1000);
-
-    await driver.executeScript((user: string, pwd: string) => {
-        document.querySelector<HTMLInputElement>('input[name=j_username]').value = user;
-        document.querySelector<HTMLInputElement>('input[name=j_password]').value = pwd;
-        document.querySelector<HTMLInputElement>('input.submit-button').click();
-
-        return user + ':' + pwd;
-    }, commandOptions.username, commandOptions.password);
+    await login(page, loginUrl, commandOptions.username, commandOptions.password);
 
     await timeout(2000);
 
-    const buttonClicked = await driver.executeScript(() => {
-        const button = document.getElementById('yui-gen2-button');
-        if (button) {
-            button.click();
-        }
-
-        return !!button;
-    });
-
-    if (!buttonClicked) {
-        const content = await driver.getPageSource();
-        console.log('content ', content);
-        await driver.quit();
-
-        throw new Error('Unable to login');
-    }
-
-    await timeout(500);
-
-    await driver.executeScript(() => {
-        document.querySelector<HTMLInputElement>('input[name=tokenName]').value = 'pipeline-token';
-        document.querySelector<HTMLButtonElement>('.token-save button').click();
-    });
-
-    await timeout(1000);
-
-    const tokenValue: string = await driver.executeScript(() => {
-        const tokenElement = document.querySelector('.new-token-value');
-        return tokenElement.innerHTML;
-    });
-
-    await driver.quit();
-
-    return tokenValue;
+    return await genToken(page, url);
+  } finally {
+    await browser.close();
+  }
 }
 
 async function buildDriver() {
+  return launch({
+    executablePath: chromium.path
+  });
+}
 
-    const service = new chrome.ServiceBuilder(chromium.path).build();
-    chrome.setDefaultService(service);
+async function login(page: Page, loginUrl: string, username: string, password: string) {
+  await page.goto(loginUrl);
 
-    const options = new chrome.Options()
-      .setChromeBinaryPath(chromium.path)
-      .addArguments('--headless')
-      .addArguments('--disable-gpu')
-      .addArguments('--window-size=1280,960')
-      .headless();
+  await timeout(1000);
 
-    return await new webdriver.Builder()
-      .forBrowser('chrome')
-      .setChromeOptions(options)
-      .build();
+  await page.evaluateHandle((user: string, pwd: string) => {
+    document.querySelector<HTMLInputElement>('input[name=j_username]').value = user;
+    document.querySelector<HTMLInputElement>('input[name=j_password]').value = pwd;
+    document.querySelector<HTMLInputElement>('input.submit-button').click();
+
+    return user + ':' + pwd;
+  }, username, password);
+}
+
+async function genToken(page: Page, url: string): Promise<string> {
+
+  await page.goto(url);
+
+  await timeout(2000);
+
+  const buttonHandle: JSHandle = await page.evaluateHandle(() => {
+    const button = document.getElementById('yui-gen2-button');
+    if (button) {
+      button.click();
+    }
+
+    return !!button;
+  });
+
+  const buttonClicked: boolean = await buttonHandle.jsonValue();
+  if (!buttonClicked) {
+    const content = await page.browserContext();
+    console.log('content ', content);
+
+    throw new Error('Unable to login');
+  }
+
+  await timeout(500);
+
+  await page.evaluateHandle(() => {
+    document.querySelector<HTMLInputElement>('input[name=tokenName]').value = 'pipeline-token';
+    document.querySelector<HTMLButtonElement>('.token-save button').click();
+  });
+
+  await timeout(1000);
+
+  const tokenHandle: JSHandle = await page.evaluateHandle(() => {
+    const tokenElement = document.querySelector('.new-token-value');
+    return tokenElement.innerHTML;
+  });
+
+  return (await tokenHandle.jsonValue()) as string;
 }
