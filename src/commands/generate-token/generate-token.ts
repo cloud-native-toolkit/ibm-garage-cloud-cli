@@ -1,9 +1,7 @@
-let phantom;
-try {
-    phantom = require('phantom');
-} catch (err) {
-
-}
+const webdriver = require('selenium-webdriver');
+const chrome = require('selenium-webdriver/chrome');
+const chromium = require('chromium');
+require('chromedriver');
 
 import {GenerateTokenOptions} from './generate-token-options.model';
 
@@ -16,33 +14,30 @@ function timeout(timer) {
 }
 
 export function isAvailable(): boolean {
-    return !!phantom;
+    return true;
 }
 
-export async function generateToken(options: GenerateTokenOptions) {
-    if (!phantom) {
-        throw new Error('dependency on "phantom" not met');
-    }
-    const url = `${options.url}/user/${options.username}/configure`;
+export async function generateToken(commandOptions: GenerateTokenOptions): Promise<string> {
 
-    const instance = await phantom.create(['--ignore-ssl-errors=yes']);
-    const page = await instance.createPage();
+    const url = `${commandOptions.url}/user/${commandOptions.username}/configure`;
 
-    const status = await page.open(url);
+    const driver = await buildDriver();
 
-    await timeout(4000);
+    await driver.get(url);
 
-    const auth = await page.evaluate(function(user, pwd) {
+    await timeout(1000);
+
+    await driver.executeScript((user: string, pwd: string) => {
         document.querySelector<HTMLInputElement>('input[name=j_username]').value = user;
         document.querySelector<HTMLInputElement>('input[name=j_password]').value = pwd;
         document.querySelector<HTMLInputElement>('input.submit-button').click();
 
         return user + ':' + pwd;
-    }, options.username, options.password);
+    }, commandOptions.username, commandOptions.password);
 
     await timeout(2000);
 
-    const buttonClicked = await page.evaluate(function() {
+    const buttonClicked = await driver.executeScript(() => {
         const button = document.getElementById('yui-gen2-button');
         if (button) {
             button.click();
@@ -52,28 +47,46 @@ export async function generateToken(options: GenerateTokenOptions) {
     });
 
     if (!buttonClicked) {
-        const content = await page.property('content');
+        const content = await driver.getPageSource();
         console.log('content ', content);
-        await instance.exit();
+        await driver.quit();
 
         throw new Error('Unable to login');
     }
 
     await timeout(500);
 
-    await page.evaluate(function () {
+    await driver.executeScript(() => {
         document.querySelector<HTMLInputElement>('input[name=tokenName]').value = 'pipeline-token';
         document.querySelector<HTMLButtonElement>('.token-save button').click();
     });
 
     await timeout(1000);
 
-    const tokenValue = await page.evaluate(function() {
+    const tokenValue: string = await driver.executeScript(() => {
         const tokenElement = document.querySelector('.new-token-value');
         return tokenElement.innerHTML;
     });
 
-    await instance.exit();
+    await driver.quit();
 
     return tokenValue;
+}
+
+async function buildDriver() {
+
+    const service = new chrome.ServiceBuilder(chromium.path).build();
+    chrome.setDefaultService(service);
+
+    const options = new chrome.Options()
+      .setChromeBinaryPath(chromium.path)
+      .addArguments('--headless')
+      .addArguments('--disable-gpu')
+      .addArguments('--window-size=1280,960')
+      .headless();
+
+    return await new webdriver.Builder()
+      .forBrowser('chrome')
+      .setChromeOptions(options)
+      .build();
 }
