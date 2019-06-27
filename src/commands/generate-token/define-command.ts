@@ -74,6 +74,7 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
         }
       } catch (err) {
         console.log('Error generating token', err);
+        process.exit(1);
       } finally {
         spinner.stop();
       }

@@ -52,6 +52,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
         await configJenkinsAuth(argv, statusCallback);
       } catch (err) {
         console.log('Error configuring Jenkins authentication', err);
+        process.exit(1);
       } finally {
         spinner.stop();
       }
