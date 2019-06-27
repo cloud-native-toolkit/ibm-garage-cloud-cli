@@ -1,5 +1,7 @@
-import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import ora from 'ora';
 import {Arguments, Argv, CommandModule} from 'yargs';
+
+import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {generateToken, GenerateTokenOptions, isAvailable} from '../generate-token';
 import {CommandLineOptions} from '../../model';
 
@@ -50,8 +52,14 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
         console.log('options', options);
       }
 
+      const spinner = ora('Generating Jenkins api token').start();
+
+      function statusCallback(status: string) {
+        spinner.text = status;
+      }
+
       try {
-        const apiToken = await generateToken(options);
+        const apiToken = await generateToken(options, statusCallback);
 
         if (argv.yaml) {
           const yamlBase = typeof argv.yaml === 'string' ? argv.yaml : 'jenkins';
@@ -66,6 +74,8 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
         }
       } catch (err) {
         console.log('Error generating token', err);
+      } finally {
+        spinner.stop();
       }
     }
   };

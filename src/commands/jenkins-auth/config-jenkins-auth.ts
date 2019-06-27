@@ -1,16 +1,18 @@
 import {execFile} from 'child_process';
-import * as path from "path";
+import * as path from 'path';
 
 import {JENKINS_AUTH_ENV_PROPERTIES, JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {generateToken, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
 import {BUILD_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../util/env-support';
+import {GetVlanOptions} from '../vlan';
 
 
 export function isAvailable(): boolean {
-    return isGenTokenAvailable();
+  return isGenTokenAvailable();
 }
 
-export async function configJenkinsAuth(options: JenkinsAuthOptions) {
+export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = () => {
+}) {
   const genTokenOptions: GenerateTokenOptions = Object.assign(
     {},
     options,
@@ -20,30 +22,34 @@ export async function configJenkinsAuth(options: JenkinsAuthOptions) {
     console.log('options: ', genTokenOptions);
   }
 
-    const apiToken = await generateToken(genTokenOptions);
+  notifyStatus('Generating Jenkins api token');
 
-    return new Promise((resolve, reject) => {
-        const child = execFile(
-          path.join(__dirname, '../../../bin/config-jenkins-auth.sh'),
-          [apiToken],
-          {
-              env: Object.assign(
-                {},
-                process.env,
-                extractEnvironmentProperties(JENKINS_AUTH_ENV_PROPERTIES, options),
-              ),
-              cwd: process.cwd()
-          },
-          (error, stdout, stderr) => {
-              if (error) {
-                  reject(error);
-              }
+  const apiToken = await generateToken(genTokenOptions, notifyStatus);
 
-              resolve({stdout, stderr});
-          }
-        );
+  notifyStatus(`Installing helm chart using apiToken: ${apiToken}`);
 
-        child.stdout.pipe(process.stdout);
-        child.stderr.pipe(process.stderr);
-    });
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      path.join(__dirname, '../../../bin/config-jenkins-auth.sh'),
+      [apiToken],
+      {
+        env: Object.assign(
+          {},
+          process.env,
+          extractEnvironmentProperties(JENKINS_AUTH_ENV_PROPERTIES, options),
+        ),
+        cwd: process.cwd()
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+        }
+
+        resolve({stdout, stderr});
+      }
+    );
+
+    child.stdout.pipe(process.stdout);
+    child.stderr.pipe(process.stderr);
+  });
 }

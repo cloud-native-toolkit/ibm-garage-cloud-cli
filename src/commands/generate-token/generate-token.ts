@@ -1,6 +1,7 @@
 import {Browser, JSHandle, launch, Page} from 'puppeteer';
 
 import {GenerateTokenOptions} from './generate-token-options.model';
+import {JenkinsAuthOptions} from '../jenkins-auth';
 
 function timeout(timer) {
   return new Promise(function (resolve, reject) {
@@ -14,7 +15,8 @@ export function isAvailable(): boolean {
   return true;
 }
 
-export async function generateToken(commandOptions: GenerateTokenOptions): Promise<string> {
+export async function generateToken(commandOptions: GenerateTokenOptions, notifyStatus: (status: string) => void = () => {
+}): Promise<string> {
 
   const loginUrl = `${commandOptions.url}/login`;
   const url = `${commandOptions.url}/user/${commandOptions.username}/configure`;
@@ -24,9 +26,13 @@ export async function generateToken(commandOptions: GenerateTokenOptions): Promi
   try {
     const page: Page = await browser.newPage();
 
+    notifyStatus(`Logging into Jenkins: ${loginUrl}`);
+
     await login(page, loginUrl, commandOptions.username, commandOptions.password);
 
     await timeout(2000);
+
+    notifyStatus(`Generating token`);
 
     return await genToken(page, url);
   } finally {
@@ -41,9 +47,15 @@ async function buildDriver() {
 }
 
 async function login(page: Page, loginUrl: string, username: string, password: string) {
-  await page.goto(loginUrl);
+  try {
+    await page.goto(loginUrl);
+  } catch (err) {
+    await timeout(3000);
 
-  await timeout(1000);
+    await page.goto(loginUrl);
+  }
+
+  await timeout(2000);
 
   await page.evaluateHandle((user: string, pwd: string) => {
     document.querySelector<HTMLInputElement>('input[name=j_username]').value = user;
