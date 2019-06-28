@@ -23,9 +23,13 @@ CHART_ROOT="${SCRIPT_ROOT}/../chart"
 CHART_NAME="jenkins-access"
 CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 
-ibmcloud config --check-version=false
-ibmcloud login -a https://cloud.ibm.com --apikey ${APIKEY} -g ${RESOURCE_GROUP} -r ${REGION}
-ibmcloud cs cluster-config --cluster ${CLUSTER_NAME} --export > ${TMP_DIR}/.kubeconfig
+if [[ -z "${KUBECONFIG}" ]]; then
+    echo "KUBECONFIG not found. Attempting ibmcloud login"
+
+    ibmcloud config --check-version=false
+    ibmcloud login -a https://cloud.ibm.com --apikey ${APIKEY} -g ${RESOURCE_GROUP} -r ${REGION}
+    ibmcloud cs cluster-config --cluster ${CLUSTER_NAME} --export > ${TMP_DIR}/.kubeconfig
+fi
 
 source ${TMP_DIR}/.kubeconfig
 

@@ -1,4 +1,5 @@
 export class EnvironmentOptions {
+  KUBECONFIG: string;
   APIKEY: string;
   RESOURCE_GROUP: string;
   CLUSTER_NAME: string;

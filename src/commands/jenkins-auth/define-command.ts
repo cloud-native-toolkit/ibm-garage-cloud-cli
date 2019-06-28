@@ -11,15 +11,18 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
     return;
   }
 
+  const kubeConfigSet = !!process.env.KUBECONFIG;
+
   return {
     command,
     describe: 'generate a Jenkins api token and register it as kubernetes secret',
     builder: (yargs: Argv<any>) => {
       return new DefaultOptionBuilder(yargs)
-        .apiKey()
-        .region()
-        .resourceGroup()
-        .clusterName()
+        .kubeConfig()
+        .apiKey({optional: kubeConfigSet})
+        .region({optional: kubeConfigSet})
+        .resourceGroup({optional: kubeConfigSet})
+        .clusterName({optional: kubeConfigSet})
         .debug()
         .build()
         .options(buildOptionWithEnvDefault('JENKINS_HOST', {

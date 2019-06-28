@@ -5,14 +5,16 @@ export class JenkinsAuthOptions {
   url?: string;
   username: string;
   password: string;
-  apiKey: string;
-  region: string;
-  resourceGroup: string;
-  cluster: string;
+  kubeConfig?: string;
+  apiKey?: string;
+  region?: string;
+  resourceGroup?: string;
+  cluster?: string;
   debug?: boolean;
 }
 
 export const JENKINS_AUTH_ENV_PROPERTIES: {[key in keyof JenkinsAuthOptions]: EnvironmentOptionKey} = {
+  kubeConfig: 'KUBECONFIG',
   apiKey: 'APIKEY',
   resourceGroup: 'RESOURCE_GROUP',
   region: 'REGION',

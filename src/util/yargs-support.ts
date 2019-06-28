@@ -18,6 +18,17 @@ export class BuilderOptions {
 export class DefaultOptionBuilder<T> {
   constructor(private yargs: Argv<T>) {}
 
+  kubeConfig(options: BuilderOptions = {optional: true}): DefaultOptionBuilder<T> {
+    this.yargs.option(buildOptionWithEnvDefault('KUBECONFIG', {
+      alias: 'kubeConfig',
+      describe: 'KUBECONFIG environment property',
+      required: !options.optional,
+      type: 'string',
+    }));
+
+    return this;
+  }
+
   apiKey(options: BuilderOptions = {optional: false}): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('APIKEY', {
       alias: 'apiKey',
@@ -29,11 +40,11 @@ export class DefaultOptionBuilder<T> {
     return this;
   }
 
-  resourceGroup(): DefaultOptionBuilder<T> {
+  resourceGroup(options: BuilderOptions = {optional: true}): DefaultOptionBuilder<T> {
     this.yargs.option(buildOptionWithEnvDefault('RESOURCE_GROUP', {
       alias: ['resourceGroup', 'g'],
       describe: 'The IBM Cloud resource group for the login. Can also be provided as an environment property',
-      required: true,
+      required: !options.optional,
       type: 'string',
     }));
 
