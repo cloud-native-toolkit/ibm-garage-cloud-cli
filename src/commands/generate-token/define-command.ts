@@ -45,7 +45,7 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(command: s
       const options = Object.assign(
         {},
         argv,
-        {url: argv.url || `https://${argv.host}`},
+        {url: argv.url || `http://${argv.host}`},
       );
 
       if (options.debug) {

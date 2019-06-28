@@ -16,7 +16,7 @@ export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatu
   const genTokenOptions: GenerateTokenOptions = Object.assign(
     {},
     options,
-    {url: options.url || `https://${options.host}`});
+    {url: options.url || `http://${options.host}`});
 
   if (options.debug) {
     console.log('options: ', genTokenOptions);
