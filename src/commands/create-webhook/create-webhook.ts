@@ -49,23 +49,12 @@ interface GitAuthResponse {
 
 export default async function createWebhook(options: CreateWebhookOptions): Promise<string> {
 
-  const pushGitHook: GitHookData = {
-    name: 'web',
-    events: [GitEvents.push],
-    active: true,
-    config: {
-      url: `${options.jenkinsUrl}/github-webhook/`,
-      content_type: 'json',
-      insecure_ssl: GitHookUrlVerification.performed,
-    }
-  };
-
   const response: superagent.Response = await superagent
     .post(buildGitUrl(options))
     .set('Authorization', `token ${options.gitToken}`)
     .set('User-Agent', `${options.gitUsername} via ibm-garage-cloud cli`)
     .accept('application/vnd.github.v3+json')
-    .send(pushGitHook);
+    .send(buildWebhookData(options.jenkinsUrl));
 
   if (response.status !== 200 && response.status !== 201) {
     throw new Error('Error creating webhook: ' + response.status + ', ' + response.body);
@@ -86,7 +75,7 @@ function parseGitSlug(gitUrl: string): {owner: string; repo: string;} {
   const results: string[] = new RegExp('https{0,1}:\/\/[^\/]+\/([^\/]+)\/([^\/]+)').exec(gitUrl);
 
   if (!results || results.length < 3) {
-    throw new Error('Invalid url');
+    throw new Error(`Invalid url: ${gitUrl}`);
   }
 
   return {owner: results[1], repo: results[2].replace('.git', '')};
@@ -97,4 +86,18 @@ function gitApiUrl(gitUrl: string) {
     ? 'https://api.github.com'
     : `${gitUrl}/api/v3`;
   return apiUrl;
+}
+
+function buildWebhookData(jenkinsUrl) {
+  const pushGitHook: GitHookData = {
+    name: 'web',
+    events: [GitEvents.push],
+    active: true,
+    config: {
+      url: `${jenkinsUrl}/github-webhook/`,
+      content_type: 'json',
+      insecure_ssl: GitHookUrlVerification.performed,
+    }
+  };
+  return pushGitHook;
 }

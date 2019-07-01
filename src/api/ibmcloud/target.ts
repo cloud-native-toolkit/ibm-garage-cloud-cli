@@ -1,4 +1,5 @@
 import {exec} from 'child_process';
+import {execPromise, ExecResult} from '../../util/child_process';
 
 export class IBMCloudAccount {
   guid: string;
@@ -32,17 +33,10 @@ export class IBMCloudTarget {
 }
 
 export async function getTarget(): Promise<IBMCloudTarget> {
-  return new Promise((resolve, reject) => {
-    exec(
+  return execPromise(
       'ibmcloud target --output json',
       {
         env: process.env
-      }, (error: Error, stdout: string | Buffer, stderr: string | Buffer) => {
-        if (error) {
-          reject(error);
-        }
-
-        resolve(JSON.parse(stdout.toString()));
-      });
-  });
+      },
+  ).then(({stdout}: ExecResult) => JSON.parse(stdout.toString()))
 }

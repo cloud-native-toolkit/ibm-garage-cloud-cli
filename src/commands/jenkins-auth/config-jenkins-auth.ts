@@ -1,22 +1,22 @@
-import {execFile} from 'child_process';
-import * as path from 'path';
+import {Client1_13 as Client} from 'kubernetes-client';
 
-import {JENKINS_AUTH_ENV_PROPERTIES, JenkinsAuthOptions} from './config-jenkins-auth-options.model';
+import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {generateToken, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
-import {BUILD_OPTION_ENV_PROPERTIES, extractEnvironmentProperties} from '../../util/env-support';
-import {GetVlanOptions} from '../vlan';
-
 
 export function isAvailable(): boolean {
   return isGenTokenAvailable();
 }
 
-export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = () => {
-}) {
+const noopNotifyStatus: (status: string) => void = () => {};
+
+export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
+  const url = options.url || `http://${options.host}`;
+
   const genTokenOptions: GenerateTokenOptions = Object.assign(
     {},
     options,
-    {url: options.url || `http://${options.host}`});
+    {url},
+  );
 
   if (options.debug) {
     console.log('options: ', genTokenOptions);
@@ -26,30 +26,34 @@ export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatu
 
   const apiToken = await generateToken(genTokenOptions, notifyStatus);
 
-  notifyStatus(`Installing helm chart using apiToken: ${apiToken}`);
+  notifyStatus(`Generating jenkins-access secret using apiToken: ${apiToken}`);
 
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      path.join(__dirname, '../../../bin/config-jenkins-auth.sh'),
-      [apiToken],
-      {
-        env: Object.assign(
-          {},
-          process.env,
-          extractEnvironmentProperties(JENKINS_AUTH_ENV_PROPERTIES, options),
-        ),
-        cwd: process.cwd()
+  return generateJenkinsAuthSecret(options.host, url, options.username, options.password, apiToken);
+}
+
+export async function generateJenkinsAuthSecret(host: string, url: string, username: string, password: string, api_token: string) {
+  const client = new Client({ version: '1.13' });
+
+  const result = await client.api.v1.namespaces('tools').secrets.post({
+    body: {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: 'jenkins-access',
+        annotations: {
+          description: 'secret providing jenkins credentials, used to interact with Jenkins apis',
+        },
       },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        }
-
-        resolve({stdout, stderr});
-      }
-    );
-
-    child.stdout.pipe(process.stdout);
-    child.stderr.pipe(process.stderr);
+      type: 'Opaque',
+      stringData: {
+        username,
+        password,
+        api_token,
+        url,
+        host,
+      },
+    }
   });
+
+  return result.body;
 }

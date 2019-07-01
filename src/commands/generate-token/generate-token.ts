@@ -1,7 +1,6 @@
 import {Browser, JSHandle, launch, Page} from 'puppeteer';
 
 import {GenerateTokenOptions} from './generate-token-options.model';
-import {JenkinsAuthOptions} from '../jenkins-auth';
 
 function timeout(timer) {
   return new Promise(function (resolve, reject) {

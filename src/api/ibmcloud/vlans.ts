@@ -1,5 +1,7 @@
-import {exec} from "child_process";
 import {splitLines} from '../../util/string-util';
+import * as cp from '../../util/child_process';
+
+let execPromise = cp.execPromise;
 
 export class IBMCloudVlan {
   type: 'public' | 'private';
@@ -8,22 +10,15 @@ export class IBMCloudVlan {
 }
 
 export async function getVlans(zone: string): Promise<IBMCloudVlan[]> {
-  return new Promise((resolve, reject) => {
-    exec(
+  return execPromise(
       `ibmcloud ks vlans --zone ${zone}`,
       {
         env: process.env
-      }, (error: Error, stdout: string | Buffer, stderr: string | Buffer) => {
-        if (error) {
-          reject(error);
-        }
-
-        resolve(parseVlan(stdout.toString()));
-      });
-  });
+      },
+    ).then((result: cp.ExecResult) => parseVlan(result.stdout.toString()));
 }
 
-export function parseVlan(vlanText: string): IBMCloudVlan[] {
+function parseVlan(vlanText: string): IBMCloudVlan[] {
   const rows = splitLines(vlanText);
 
   return rows
@@ -31,7 +26,7 @@ export function parseVlan(vlanText: string): IBMCloudVlan[] {
     .map(parseVlanRow);
 }
 
-export function parseVlanRow(vlanText: string): IBMCloudVlan {
+function parseVlanRow(vlanText: string): IBMCloudVlan {
   const vlanRegex = new RegExp('^[0-9]+   [a-zA-Z0-9 _-]+   ([0-9]+) +(private|public) +([a-zA-Z0-9.]+) .*', 'g');
 
   const result = vlanRegex.exec(vlanText);

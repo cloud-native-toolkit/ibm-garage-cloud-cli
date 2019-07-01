@@ -1,4 +1,4 @@
-const splitLines = require('../../dist/util/string-util').splitLines;
+import {splitLines} from './string-util';
 
 describe('string-util', () => {
   test('canary verifies test infrastructure', () => {

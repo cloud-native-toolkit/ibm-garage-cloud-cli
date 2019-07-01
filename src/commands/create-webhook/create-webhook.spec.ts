@@ -1,6 +1,6 @@
-const rewire = require('rewire');
+import rewire = require('rewire');
 
-const createWebhook = rewire('../../../dist/commands/create-webhook/create-webhook');
+const createWebhook = rewire('./create-webhook');
 
 const gitApiUrl = createWebhook.__get__('gitApiUrl');
 const buildGitUrl = createWebhook.__get__('buildGitUrl');
@@ -54,7 +54,7 @@ describe('create-webhook', () => {
       const url = `bogus-url`;
 
       test('throw error', () => {
-        expect(() => parseGitSlug(url)).toThrow(new Error('Invalid url'));
+        expect(() => parseGitSlug(url)).toThrowError(`Invalid url: ${url}`);
       });
     });
 

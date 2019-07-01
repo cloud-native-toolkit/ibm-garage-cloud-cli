@@ -1,17 +1,31 @@
-import * as path from 'path';
 import * as fs from 'fs';
-import {execFile} from 'child_process';
-import * as YAML from 'yaml';
+import * as path from 'path';
+
+import * as superagent from 'superagent';
+import * as inquirer from 'inquirer';
+import {Client1_13 as Client} from 'kubernetes-client';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import createWebhook from '../create-webhook/create-webhook';
+import {CreateWebhookOptions} from '../create-webhook';
+import {execPromise, ExecResult} from '../../util/child_process';
+
+let prompt = inquirer.prompt;
 
 class GitParams {
   name: string;
   url: string;
   username: string;
   password: string;
+  branch: string;
+}
+
+interface JenkinsAccessParams {
+  host: string;
+  url: string;
+  username: string;
+  api_token: string;
 }
 
 export async function registerPipeline(options: RegisterPipelineOptions, notifyStatus: (status: string) => void = () => {
@@ -19,133 +33,232 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
 
   await checkKubeconfig();
 
-  const valuesFile = path.join(process.cwd(), '.tmp/register-pipeline-values.yaml');
+  const gitParams = await getGitParameters(options.workingDir);
 
-  await generateGitValues(valuesFile);
+  notifyStatus('Creating git secret');
+
+  await createGitSecret(gitParams, options.namespace);
 
   notifyStatus('Registering pipeline');
 
-  const pipelineResult = await executeRegisterPipeline(options.namespace, valuesFile);
+  const pipelineResult = await executeRegisterPipeline(options, gitParams);
 
   if (!options.skipWebhook) {
     notifyStatus('Creating git webhook');
-    await createWebhook(await buildWebhookParams(valuesFile, pipelineResult));
+    await createWebhook(buildCreateWebhookOptions(gitParams, pipelineResult));
+  }
+}
+
+/*
+########## Start: Git Parameters ##########
+*/
+
+async function getGitParameters(workingDir?: string): Promise<GitParams> {
+
+  const parsedGitUrl = parseGitUrl(await getRemoteGitUrl(workingDir));
+
+  const questions: inquirer.Questions<{username: string; password: string}> = [{
+    type: 'input',
+    name: 'username',
+    message: `Please provide username for ${parsedGitUrl.url}:`,
+  }, {
+    type: 'password',
+    name: 'password',
+    message: 'Please provide your password/personal access token:'
+  }];
+
+  const answers = await prompt(questions);
+
+  return {
+    url: parsedGitUrl.url,
+    name: `${parsedGitUrl.org}.${parsedGitUrl.repo}`,
+    username: answers.username,
+    password: answers.password,
+    branch: 'master',
+  };
+}
+
+const GIT_URL_PATTERNS = {
+  'http': 'https{0,1}://.*/(.*)/(.*).git',
+  'git@': 'git@.*:(.*)/(.*).git'
+};
+
+function parseGitUrl(url: string): {url: string; org: string; repo: string} {
+  const pattern = GIT_URL_PATTERNS[url.substring(0, 4)];
+
+  if (!pattern) {
+    throw new Error('invalid git url');
   }
 
-  await deleteFile(valuesFile);
+  const results = new RegExp(pattern, 'gi')
+    .exec(url.endsWith('.git') ? url : `${url}.git`);
+
+  if (!results || results.length < 3) {
+    throw new Error('invalid git url');
+  }
+
+  const org = results[1];
+  const repo = results[2];
+
+  return {
+    url,
+    org,
+    repo
+  };
 }
 
-async function generateGitValues(valuesFile: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      path.join(__dirname, '../../../bin/generate-git-values.sh'),
-      [valuesFile],
-      {
-        cwd: process.cwd()
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        }
-
-        process.stdin.removeAllListeners();
-        child.stdin.end();
-
-        resolve();
-      }
-    );
-
-    child.stdout.pipe(process.stdout);
-    child.stderr.pipe(process.stderr);
-    process.stdin.pipe(child.stdin);
-  });
+async function getRemoteGitUrl(workingDir: string = process.cwd()): Promise<string> {
+  return execPromise(
+    'git remote get-url origin',
+    {
+      cwd: workingDir
+    },
+  ).then(({stdout}: ExecResult) => stdout.toString().trim());
 }
 
-async function executeRegisterPipeline(namespace: string, valuesFile: string): Promise<{jenkinsUrl: string}> {
+/*
+********** End: Git Parameters **********
+*/
 
-  const releaseName = process.cwd().replace(/.*\/(.*)/, '$1');
+async function createGitSecret(gitParams: GitParams, namespace: string = 'tools') {
+  const client = new Client({ version: '1.13' });
 
-  return new Promise<{jenkinsUrl: string}>((resolve, reject) => {
-    const child = execFile(
-      path.join(__dirname, '../../../bin/register-pipeline.sh'),
-      [namespace, releaseName, valuesFile],
-      {
-        cwd: process.cwd(),
-        env: Object.assign(
-          {},
-          process.env,
-          {
-            CLUSTER_NAMESPACE: namespace
+  const existingSecret = await client.api.v1.namespaces(namespace).secrets(gitParams.name).get();
+
+  if (existingSecret) {
+    const result = await client.api.v1.namespaces(namespace).secrets(gitParams.name).put({
+      body: {
+        apiVersion: 'v1',
+        kind: 'Secret',
+        metadata: {
+          name: gitParams.name,
+          labels: {
+            'jenkins.io/credentials-type': 'usernamePassword'
           },
-        ),
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        }
+          annotations: {
+            description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
+            'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
+          },
+        },
+        type: 'Opaque',
+        stringData: gitParams,
+      }
+    });
 
-        resolve(extractJenkinsUrl(stdout.toString()));
-      },
-    );
-  });
+    return result.body;
+  } else {
+    const result = await client.api.v1.namespaces(namespace).secrets.post({
+      body: {
+        apiVersion: 'v1',
+        kind: 'Secret',
+        metadata: {
+          name: gitParams.name,
+          labels: {
+            'jenkins.io/credentials-type': 'usernamePassword'
+          },
+          annotations: {
+            description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
+            'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
+          },
+        },
+        type: 'Opaque',
+        stringData: gitParams,
+      }
+    });
+
+    return result.body;
+  }
 }
 
-function extractJenkinsUrl(data: string): {jenkinsUrl: string} {
-  const jenkinsUrl = data
-    .replace(new RegExp('\n', 'g'), ' ')
-    .replace(new RegExp('.*JENKINS_URL='), '')
-    .trim();
+/*
+########## Start: Execute Register Pipeline ##########
+*/
+async function executeRegisterPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
 
-  return {jenkinsUrl};
+  const jenkinsAccess = await pullJenkinsAccessSecrets(options.namespace || 'tools');
+
+  const jobName = gitParams.branch !== 'master'
+    ? `${gitParams.name}_${gitParams.branch}`
+    : gitParams.name;
+
+  try {
+    const response: superagent.Response = await superagent
+      .post(`${jenkinsAccess.url}/createItem?name=${jobName}`)
+      .auth(jenkinsAccess.username, jenkinsAccess.api_token)
+      .set(await generateJenkinsCrumbHeader(jenkinsAccess))
+      .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`)
+      .set('Content-Type', 'text/xml')
+      .send(await buildJenkinsJobConfig(gitParams));
+
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error(`Unable to create Jenkins job: ${response.text}`);
+    }
+
+    return {jenkinsUrl: jenkinsAccess.url};
+  } catch (err) {
+    throw new Error(err.response.headers['x-error']);
+  }
 }
 
-async function buildWebhookParams(valuesFile: string, pipelineResult: {jenkinsUrl: string}) {
+async function pullJenkinsAccessSecrets(namespace: string = 'tools'): Promise<JenkinsAccessParams> {
+  const client = new Client({ version: '1.13' });
 
-  const webhookParams = await extractWebhookParams(valuesFile);
+  const result = await client.api.v1.namespaces(namespace).secrets('jenkins-access').get();
 
-  const params = Object.assign({}, webhookParams, pipelineResult);
+  const values = result.body.data;
 
-  return params;
+  return Object.keys(values).reduce((decodedResults, currentKey) => {
+    decodedResults[currentKey] = new Buffer(values[currentKey], 'base64')
+      .toString('ascii');
+
+    return decodedResults;
+  }, {host: '', url: '', username: '', api_token: ''});
 }
 
-async function extractWebhookParams(valuesFile: string): Promise<{gitUrl: string; gitUsername: string; gitToken: string;}> {
-  return new Promise((resolve, reject) => {
-    fs.readFile(valuesFile, (err, data: Buffer) => {
+async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessParams): Promise<{'Jenkins-Crumb': string}> {
+
+  const response: superagent.Response = await superagent
+    .get(`${jenkinsAccess.url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)`)
+    .auth(jenkinsAccess.username, jenkinsAccess.api_token)
+    .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`);
+
+  if (response.status !== 200 && response.status !== 201) {
+    throw new Error(`Unable to generate Jenkins crumb: ${response.text}`);
+  }
+
+  return {
+    'Jenkins-Crumb': response.text.replace(`${'Jenkins-Crumb'}:`, '')
+  };
+}
+
+async function buildJenkinsJobConfig(gitParams: GitParams): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    fs.readFile(path.join(__dirname, '../../../etc/jenkins-config-template.xml'), (err, data: Buffer) => {
       if (err) {
         reject(err);
         return;
       }
 
-      const yamlValues = YAML.parse(data.toString());
-      if (!yamlValues) {
-        reject(new Error('file cannot be parsed'));
-        return;
-      }
-
-      const gitValues: GitParams = yamlValues.git;
-
-      if (!gitValues) {
-        reject(new Error('webhook contents not found'));
-        return;
-      }
-
-      resolve({
-        gitUrl: gitValues.url,
-        gitUsername: gitValues.username,
-        gitToken: gitValues.password
-      })
+      resolve(data.toString()
+        .replace('{{GIT_REPO}}', gitParams.url)
+        .replace('{{GIT_CREDENTIALS}}', gitParams.name)
+        .replace('{{GIT_BRANCH}}', gitParams.branch));
     });
   });
 }
 
-async function deleteFile(filename: string) {
-  return new Promise((resolve, reject) => {
-    fs.unlink(filename, (err => {
-      if (err) {
-        reject(err);
-      }
+/*
+********** End: Execute Register Pipeline **********
+*/
 
-      resolve();
-    }));
-  });
+function buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string}): CreateWebhookOptions {
+
+  return Object.assign(
+    {
+      gitUrl: gitParams.url,
+      gitUsername: gitParams.username,
+      gitToken: gitParams.password
+    },
+    pipelineResult,
+  );
 }

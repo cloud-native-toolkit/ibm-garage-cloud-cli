@@ -1,3 +1,0 @@
-Created secret {{ include "register-pipeline.fullname" . }} in namespace {{ .Release.Namespace }}
-
-

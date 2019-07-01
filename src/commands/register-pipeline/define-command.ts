@@ -10,6 +10,7 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
     command,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
+      .kubeConfig({optional: false})
       .clusterNamespace({
         optional: true,
         describe: 'The cluster namespace where Jenkins is running',
@@ -35,14 +36,18 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       try {
         await registerPipeline(argv, statusCallback);
 
-        process.exit(0);
-      } catch (err) {
-        console.log('Error registering pipeline', err);
-        process.exit(1);
-      } finally {
         if (spinner) {
           spinner.stop();
         }
+
+        process.exit(0);
+      } catch (err) {
+        if (spinner) {
+          spinner.stop();
+        }
+
+        console.log('Error registering pipeline:', err.message);
+        process.exit(1);
       }
     }
   };
