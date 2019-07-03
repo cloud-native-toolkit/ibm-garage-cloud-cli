@@ -1,4 +1,8 @@
 
-export function splitLines(lines: string): string[] {
-  return lines.match(/[^\r\n]+/g);
+export function splitLines(lines?: string): string[] {
+  if (lines === undefined || lines === null) {
+    return [];
+  }
+
+  return lines.match(/[^\r\n]+/g) || [lines];
 }
