@@ -222,19 +222,19 @@ async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): P
 }
 
 async function buildJenkinsJobConfig(gitParams: GitParams): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<string | Buffer>((resolve, reject) => {
     fs.readFile(path.join(__dirname, '../../../etc/jenkins-config-template.xml'), (err, data: Buffer) => {
       if (err) {
         reject(err);
         return;
       }
 
-      resolve(data.toString()
-        .replace('{{GIT_REPO}}', gitParams.url)
-        .replace('{{GIT_CREDENTIALS}}', gitParams.name)
-        .replace('{{GIT_BRANCH}}', gitParams.branch));
+      resolve(data);
     });
-  });
+  }).then(data => data.toString()
+    .replace(new RegExp('{{GIT_REPO}}', 'g'), gitParams.url)
+    .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), gitParams.name)
+    .replace(new RegExp('{{GIT_BRANCH}}', 'g'), gitParams.branch));
 }
 
 /*

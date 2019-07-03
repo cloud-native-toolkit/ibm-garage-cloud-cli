@@ -8,6 +8,8 @@ const getRemoteGitUrl = registerPipeline.__get__('getRemoteGitUrl');
 const parseGitUrl = registerPipeline.__get__('parseGitUrl');
 const getGitParameters = registerPipeline.__get__('getGitParameters');
 const generateJenkinsCrumbHeader = registerPipeline.__get__('generateJenkinsCrumbHeader');
+const buildJenkinsJobConfig = registerPipeline.__get__('buildJenkinsJobConfig');
+const buildCreateWebhookOptions = registerPipeline.__get__('buildCreateWebhookOptions');
 
 describe('register-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -176,7 +178,7 @@ describe('register-pipeline', () => {
     });
   });
 
-  describe('generateJenkinsCrumb', () => {
+  describe('generateJenkinsCrumbHeader', () => {
     const jenkinsAccess = {
       url: 'http://jenkins.showcase-dev-cluster.us-south.containers.appdomain.cloud',
       api_token: '119556f5a6c94679aac3fd246f42bbf9d9',
@@ -188,6 +190,70 @@ describe('register-pipeline', () => {
       const crumb = await generateJenkinsCrumbHeader(jenkinsAccess);
 
       expect(crumb['Jenkins-Crumb']).not.toBeUndefined();
+    });
+  });
+
+  describe('buildJenkinsJobConfig()', () => {
+    describe('when git params provided', () => {
+      const gitParams = {
+        name: 'name',
+        url: 'chdkktdoogyyd943djd',
+        username: 'username',
+        password: 'password',
+        branch: 'master'
+      };
+
+      test('replace {{GIT_REPO}} with gitParams.url', async () => {
+
+        const result = await buildJenkinsJobConfig(gitParams);
+
+        expect(result).not.toContain('{{GIT_REPO}}');
+        expect(result).toContain(gitParams.url);
+      });
+
+      test('replace {{GIT_CREDENTIALS}} with gitParams.name', async () => {
+
+        const result = await buildJenkinsJobConfig(gitParams);
+
+        expect(result).not.toContain('{{GIT_CREDENTIALS}}');
+        expect(result).toContain(gitParams.name);
+      });
+
+      test('replace {{GIT_BRANCH}} with gitParams.branch', async () => {
+
+        const result = await buildJenkinsJobConfig(gitParams);
+
+        expect(result).not.toContain('{{GIT_BRANCH}}');
+        expect(result).toContain(gitParams.branch);
+      });
+
+      test('replace all {{xxx}} references with values', async () => {
+
+        const result = await buildJenkinsJobConfig(gitParams);
+
+        expect(result).not.toMatch(/{{.*}}/);
+      });
+    })
+  });
+
+  describe('buildCreateWebhookOptions()', () => {
+    test('map GitParams to CreateWebhookOptions', () => {
+      const gitParams = {
+        url: 'url',
+        username: 'username',
+        password: 'password'
+      };
+
+      const pipelineResult = {
+        jenkinsUrl: 'jenkinsUrl'
+      };
+
+      const result = buildCreateWebhookOptions(gitParams, pipelineResult);
+
+      expect(result.gitUrl).toEqual(gitParams.url);
+      expect(result.gitUsername).toEqual(gitParams.username);
+      expect(result.gitToken).toEqual(gitParams.password);
+      expect(result.jenkinsUrl).toEqual(pipelineResult.jenkinsUrl);
     });
   });
 });
