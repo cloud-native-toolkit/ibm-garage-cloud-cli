@@ -3,7 +3,6 @@ import * as path from 'path';
 
 import * as superagent from 'superagent';
 import * as inquirer from 'inquirer';
-import {Client1_13 as Client} from 'kubernetes-client';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {checkKubeconfig} from '../../util/kubernetes';
@@ -77,29 +76,30 @@ async function getGitParameters(options: RegisterPipelineOptions = {}): Promise<
 }
 
 const GIT_URL_PATTERNS = {
-  'http': 'https{0,1}://.*/(.*)/(.*).git',
-  'git@': 'git@.*:(.*)/(.*).git'
+  'http': 'https{0,1}://(.*)/(.*)/(.*).git',
+  'git@': 'git@(.*):(.*)/(.*).git'
 };
 
 function parseGitUrl(url: string): {url: string; org: string; repo: string} {
   const pattern = GIT_URL_PATTERNS[url.substring(0, 4)];
 
   if (!pattern) {
-    throw new Error('invalid git url');
+    throw new Error(`invalid git url: ${url}`);
   }
 
   const results = new RegExp(pattern, 'gi')
     .exec(url.endsWith('.git') ? url : `${url}.git`);
 
-  if (!results || results.length < 3) {
-    throw new Error('invalid git url');
+  if (!results || results.length < 4) {
+    throw new Error(`invalid git url: ${url}`);
   }
 
-  const org = results[1];
-  const repo = results[2];
+  const host = results[1];
+  const org = results[2];
+  const repo = results[3];
 
   return {
-    url,
+    url: `https://${host}/${org}/${repo}.git`,
     org,
     repo
   };

@@ -64,21 +64,37 @@ describe('register-pipeline', () => {
     describe('when https github url without .git extension', () => {
       const org = 'org';
       const repo = 'repo';
-      const url = `https://github.com/${org}/${repo}`;
+      const host = 'github.com';
+      const url = `https://${host}/${org}/${repo}.git`;
+      const originalUrl = `https://github.com/${org}/${repo}`;
 
       test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(url)).toEqual({url, org, repo});
+        expect(parseGitUrl(originalUrl)).toEqual({url, org, repo});
       })
     });
 
     describe('when ssh github url', () => {
       const org = 'org';
       const repo = 'repo';
-      const url = `git@github.com:${org}/${repo}.git`;
+      const host = 'github.com';
+      const url = `https://${host}/${org}/${repo}.git`;
+      const sshUrl = `git@${host}:${org}/${repo}.git`;
 
       test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(url)).toEqual({url, org, repo});
+        expect(parseGitUrl(sshUrl)).toEqual({url, org, repo});
       })
+    });
+
+    describe('when long ssh github url', () => {
+      const org = 'ibm-garage-cloud';
+      const repo = 'template-watson-banking-chatbot';
+      const host = 'github.com';
+      const url = `https://${host}/${org}/${repo}.git`;
+      const originalUrl = `git@${host}:${org}/${repo}.git`;
+
+      test('should return {url, org, repo}', () => {
+        expect(parseGitUrl(originalUrl)).toEqual({org, repo, url});
+      });
     });
 
     describe('when invalid text for url', () => {
