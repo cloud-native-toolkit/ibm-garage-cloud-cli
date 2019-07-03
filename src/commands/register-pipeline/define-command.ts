@@ -4,6 +4,7 @@ import ora from 'ora';
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {registerPipeline} from './register-pipeline';
+import {CommandLineOptions} from '../../model';
 
 export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   return {
@@ -17,12 +18,21 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
         default: 'tools',
       })
       .quiet()
+      .debug()
       .build()
       .option('skipWebhook', {
         type: 'boolean',
         describe: 'flag indicating that the webhook should not be created'
+      })
+      .option('gitUsername', {
+        alias: 'u',
+        description: 'username used to access the git repository'
+      })
+      .option('gitPat', {
+        alias: 'p',
+        description: 'the token used to authenticate the user'
       }),
-    handler: async (argv: Arguments<RegisterPipelineOptions>) => {
+    handler: async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions>) => {
       let spinner;
 
       function statusCallback(status: string) {
@@ -47,6 +57,9 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
         }
 
         console.log('Error registering pipeline:', err.message);
+        if (argv.debug) {
+          console.log('Error registering pipeline:', err);
+        }
         process.exit(1);
       }
     }

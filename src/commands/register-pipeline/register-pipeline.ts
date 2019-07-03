@@ -10,6 +10,8 @@ import {checkKubeconfig} from '../../util/kubernetes';
 import createWebhook from '../create-webhook/create-webhook';
 import {CreateWebhookOptions} from '../create-webhook';
 import {execPromise, ExecResult} from '../../util/child_process';
+import {buildKubeClient, getSecretData} from '../../api/kubectl/secrets';
+import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
 
 let prompt = inquirer.prompt;
 
@@ -21,19 +23,13 @@ class GitParams {
   branch: string;
 }
 
-interface JenkinsAccessParams {
-  host: string;
-  url: string;
-  username: string;
-  api_token: string;
-}
+const noopNotifyStatus: (status: string) => void = () => {};
 
-export async function registerPipeline(options: RegisterPipelineOptions, notifyStatus: (status: string) => void = () => {
-}) {
+export async function registerPipeline(options: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
   await checkKubeconfig();
 
-  const gitParams = await getGitParameters(options.workingDir);
+  const gitParams = await getGitParameters(options);
 
   notifyStatus('Creating git secret');
 
@@ -53,18 +49,20 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
 ########## Start: Git Parameters ##########
 */
 
-async function getGitParameters(workingDir?: string): Promise<GitParams> {
+async function getGitParameters(options: RegisterPipelineOptions = {}): Promise<GitParams> {
 
-  const parsedGitUrl = parseGitUrl(await getRemoteGitUrl(workingDir));
+  const parsedGitUrl = parseGitUrl(await getRemoteGitUrl(options.workingDir));
 
   const questions: inquirer.Questions<{username: string; password: string}> = [{
     type: 'input',
     name: 'username',
     message: `Please provide username for ${parsedGitUrl.url}:`,
+    default: options.gitUsername,
   }, {
     type: 'password',
     name: 'password',
-    message: 'Please provide your password/personal access token:'
+    message: `Please provide your password/personal access token:`,
+    default: options.gitPat,
   }];
 
   const answers = await prompt(questions);
@@ -121,12 +119,12 @@ async function getRemoteGitUrl(workingDir: string = process.cwd()): Promise<stri
 */
 
 async function createGitSecret(gitParams: GitParams, namespace: string = 'tools') {
-  const client = new Client({ version: '1.13' });
+  const client = buildKubeClient();
 
-  const existingSecret = await client.api.v1.namespaces(namespace).secrets(gitParams.name).get();
+  try {
+    await client.api.v1.namespaces(namespace).secret(gitParams.name).get();
 
-  if (existingSecret) {
-    const result = await client.api.v1.namespaces(namespace).secrets(gitParams.name).put({
+    const result = await client.api.v1.namespaces(namespace).secret(gitParams.name).put({
       body: {
         apiVersion: 'v1',
         kind: 'Secret',
@@ -146,7 +144,7 @@ async function createGitSecret(gitParams: GitParams, namespace: string = 'tools'
     });
 
     return result.body;
-  } else {
+  } catch (err) {
     const result = await client.api.v1.namespaces(namespace).secrets.post({
       body: {
         apiVersion: 'v1',
@@ -196,26 +194,18 @@ async function executeRegisterPipeline(options: RegisterPipelineOptions, gitPara
 
     return {jenkinsUrl: jenkinsAccess.url};
   } catch (err) {
-    throw new Error(err.response.headers['x-error']);
+    // const newErr = new Error(err.response.headers['x-error']);
+    // newErr.stack = err.stack;
+    // throw newErr;
+    throw err;
   }
 }
 
-async function pullJenkinsAccessSecrets(namespace: string = 'tools'): Promise<JenkinsAccessParams> {
-  const client = new Client({ version: '1.13' });
-
-  const result = await client.api.v1.namespaces(namespace).secrets('jenkins-access').get();
-
-  const values = result.body.data;
-
-  return Object.keys(values).reduce((decodedResults, currentKey) => {
-    decodedResults[currentKey] = new Buffer(values[currentKey], 'base64')
-      .toString('ascii');
-
-    return decodedResults;
-  }, {host: '', url: '', username: '', api_token: ''});
+async function pullJenkinsAccessSecrets(namespace: string = 'tools'): Promise<JenkinsAccessSecret> {
+  return await getSecretData<JenkinsAccessSecret>('jenkins-access', namespace);
 }
 
-async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessParams): Promise<{'Jenkins-Crumb': string}> {
+async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): Promise<{'Jenkins-Crumb': string}> {
 
   const response: superagent.Response = await superagent
     .get(`${jenkinsAccess.url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)`)

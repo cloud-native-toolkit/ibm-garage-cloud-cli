@@ -10,6 +10,7 @@ import {defineLaunchToolsCommand} from './commands/launch-tools/define-command';
 import {defineGetVlanCommand} from './commands/vlan/define-command';
 import {defineJenkinsAuth} from './commands/jenkins-auth/define-command';
 import {defineCreateWebhookCommand} from './commands/create-webhook/define-command';
+import {defineCredentialsCommand} from './commands/credentials/define-command';
 
 scriptName('igc')
   .usage('IBM Garage Cloud cli')
@@ -38,6 +39,9 @@ scriptName('igc')
   ))
   .command(defineGetVlanCommand(
     'vlan',
+  ))
+  .command(defineCredentialsCommand(
+    'credentials',
   ))
   .demandCommand()
   .help()
