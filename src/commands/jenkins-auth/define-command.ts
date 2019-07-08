@@ -23,6 +23,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
         .region({optional: kubeConfigSet})
         .resourceGroup({optional: kubeConfigSet})
         .clusterName({optional: kubeConfigSet})
+        .clusterNamespace({optional: true})
         .debug()
         .build()
         .options(buildOptionWithEnvDefault('JENKINS_HOST', {
@@ -40,7 +41,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
         }))
         .options(buildOptionWithEnvDefault('JENKINS_PASSWORD', {
           description: 'The password of the user',
-          required: true,
+          required: false,
           alias: ['password', 'p'],
         }))
         .options('jenkinsApiToken', {

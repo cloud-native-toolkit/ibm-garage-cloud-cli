@@ -1,9 +1,12 @@
 import {Client1_13 as Client} from 'kubernetes-client';
 
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
-import {generateToken as genToken, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
+import {generateToken as generateTokenFn, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
+import {getSecretData as getSecretDataFn} from '../../api/kubectl/secrets';
 
-let generateToken = genToken;
+// Unfortunately this is required to allow rewire to replace the values
+let generateToken = generateTokenFn;
+let getSecretData = getSecretDataFn;
 
 export function isAvailable(): boolean {
   return isGenTokenAvailable();
@@ -16,17 +19,23 @@ export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatu
     console.log('options: ', options);
   }
 
+  const password = options.password || await retrieveJenkinsPassword(options.namespace);
+
   const url = options.url || `http://${options.host}`;
 
-  const apiToken = options.jenkinsApiToken || await generateToken(Object.assign(
-      {},
-      options,
-      {url},
-    ), notifyStatus);
+  const apiToken = options.jenkinsApiToken
+    || await generateToken(
+      Object.assign(
+        {},
+        options,
+        {url, password},
+      ),
+      notifyStatus,
+    );
 
   notifyStatus(`Generating jenkins-access secret using apiToken: ${apiToken}`);
 
-  return generateJenkinsAuthSecret(options.host, url, options.username, options.password, apiToken);
+  return generateJenkinsAuthSecret(options.host, url, options.username, password, apiToken);
 }
 
 export async function generateJenkinsAuthSecret(host: string, url: string, username: string, password: string, api_token: string) {
@@ -54,4 +63,15 @@ export async function generateJenkinsAuthSecret(host: string, url: string, usern
   });
 
   return result.body;
+}
+
+interface JenkinsSecret {
+  'jenkins-admin-password': string;
+  'jenkins-admin-user': string;
+}
+
+async function retrieveJenkinsPassword(namespace: string = 'tools'): Promise<string> {
+  const jenkinsSecret: JenkinsSecret = await getSecretData('jenkins', namespace);
+
+  return jenkinsSecret['jenkins-admin-password'];
 }

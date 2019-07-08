@@ -1,6 +1,6 @@
 {
   "name": "@garage-catalyst/ibm-garage-cloud-cli",
-  "version": "0.0.81",
+  "version": "0.0.82",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "pretest": "npm run build",
-    "test": "jest",
+    "test": "jest --verbose",
     "tdd": "jest --watch",
     "build": "tsc -d",
     "postbuild": "chmod +x dist/script.js",

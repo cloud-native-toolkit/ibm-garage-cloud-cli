@@ -1,16 +1,13 @@
 import {EnvironmentOptionKey} from '../../model';
+import {IbmCloudCluster} from '../../model/ibm-cloud-cluster';
 
-export class JenkinsAuthOptions {
+export class JenkinsAuthOptions extends IbmCloudCluster {
   host?: string;
   url?: string;
   username: string;
   password: string;
-  kubeConfig?: string;
-  apiKey?: string;
   jenkinsApiToken?: string;
-  region?: string;
-  resourceGroup?: string;
-  cluster?: string;
+  namespace?: string;
   debug?: boolean;
 }
 
