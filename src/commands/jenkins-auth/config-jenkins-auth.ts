@@ -1,7 +1,9 @@
 import {Client1_13 as Client} from 'kubernetes-client';
 
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
-import {generateToken, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
+import {generateToken as genToken, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
+
+let generateToken = genToken;
 
 export function isAvailable(): boolean {
   return isGenTokenAvailable();
@@ -10,21 +12,17 @@ export function isAvailable(): boolean {
 const noopNotifyStatus: (status: string) => void = () => {};
 
 export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
-  const url = options.url || `http://${options.host}`;
-
-  const genTokenOptions: GenerateTokenOptions = Object.assign(
-    {},
-    options,
-    {url},
-  );
-
   if (options.debug) {
-    console.log('options: ', genTokenOptions);
+    console.log('options: ', options);
   }
 
-  notifyStatus('Generating Jenkins api token');
+  const url = options.url || `http://${options.host}`;
 
-  const apiToken = await generateToken(genTokenOptions, notifyStatus);
+  const apiToken = options.jenkinsApiToken || await generateToken(Object.assign(
+      {},
+      options,
+      {url},
+    ), notifyStatus);
 
   notifyStatus(`Generating jenkins-access secret using apiToken: ${apiToken}`);
 

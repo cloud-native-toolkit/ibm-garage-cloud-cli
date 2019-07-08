@@ -42,7 +42,11 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(command: string): C
           description: 'The password of the user',
           required: true,
           alias: ['password', 'p'],
-        }));
+        }))
+        .options('jenkinsApiToken', {
+          description: 'The Jenkins API Token. If not provided one will be generated',
+          required: false
+        });
     },
     handler: async (argv: Arguments<JenkinsAuthOptions>) => {
       const spinner = ora('Configuring Jenkins auth').start();

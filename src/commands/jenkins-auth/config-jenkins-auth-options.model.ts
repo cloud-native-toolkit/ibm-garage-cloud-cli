@@ -7,6 +7,7 @@ export class JenkinsAuthOptions {
   password: string;
   kubeConfig?: string;
   apiKey?: string;
+  jenkinsApiToken?: string;
   region?: string;
   resourceGroup?: string;
   cluster?: string;
