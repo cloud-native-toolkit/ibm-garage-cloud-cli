@@ -1,5 +1,6 @@
 import rewire = require('rewire');
 import {encode as base64encode} from '../../util/base64';
+import {buildMockKubeClient} from './testHelper';
 
 const secrets = rewire('./secrets');
 
@@ -11,33 +12,16 @@ describe('secrets', () => {
   });
 
   describe('given getSecretData()', () => {
-    let mock_buildKubeClient;
     let unset_buildKubeClient;
 
-    let mock_namespace;
-    let mock_secrets;
+    let mock_client;
     let mock_get;
 
     beforeEach(() => {
-      mock_buildKubeClient = jest.fn();
-      unset_buildKubeClient = secrets.__set__('buildKubeClient', mock_buildKubeClient);
+      mock_client = buildMockKubeClient();
+      mock_get = mock_client.api.v1.namespace().secrets().get;
 
-      mock_namespace = jest.fn();
-      mock_secrets = jest.fn();
-      mock_get = jest.fn();
-
-      const mock_client = {
-        api: {
-          v1: {
-            namespace: mock_namespace,
-            namespaces: mock_namespace
-          }
-        }
-      };
-
-      mock_buildKubeClient.mockReturnValue(mock_client);
-      mock_namespace.mockReturnValue({secrets: mock_secrets, secret: mock_secrets});
-      mock_secrets.mockReturnValue({get: mock_get});
+      unset_buildKubeClient = secrets.__set__('buildKubeClient', () => mock_client);
     });
 
     afterEach(() => {
@@ -66,8 +50,8 @@ describe('secrets', () => {
         const result = await getSecretData(secretName, namespace);
 
         expect(result).toEqual({url, username, password, api_token});
-        expect(mock_namespace.mock.calls[0][0]).toEqual(namespace);
-        expect(mock_secrets.mock.calls[0][0]).toEqual(secretName);
+        expect(mock_client._state.namespace).toEqual(namespace);
+        expect(mock_client._state.secret).toEqual(secretName);
       });
     });
 
@@ -87,8 +71,8 @@ describe('secrets', () => {
 
             expect(err.message).toEqual(`secrets "${secretName}" not found`);
 
-            expect(mock_namespace.mock.calls[0][0]).toEqual(namespace);
-            expect(mock_secrets.mock.calls[0][0]).toEqual(secretName);
+            expect(mock_client._state.namespace).toEqual(namespace);
+            expect(mock_client._state.secret).toEqual(secretName);
           });
       });
     });

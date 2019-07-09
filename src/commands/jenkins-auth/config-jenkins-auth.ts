@@ -2,14 +2,32 @@ import {Client1_13 as Client} from 'kubernetes-client';
 
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {generateToken as generateTokenFn, GenerateTokenOptions, isAvailable as isGenTokenAvailable} from '../generate-token';
-import {getSecretData as getSecretDataFn} from '../../api/kubectl/secrets';
+import * as secrets from '../../api/kubectl/secrets';
+import * as ingress from '../../api/kubectl/ingress';
+import * as kubeClient from '../../api/kubectl/client';
 
 // Unfortunately this is required to allow rewire to replace the values
 let generateToken = generateTokenFn;
-let getSecretData = getSecretDataFn;
+let getSecretData = secrets.getSecretData;
+let getIngressHosts = ingress.getIngressHosts;
+let buildKubeClient = kubeClient.buildKubeClient;
 
 export function isAvailable(): boolean {
   return isGenTokenAvailable();
+}
+
+interface JenkinsSecret {
+  'jenkins-admin-password': string;
+  'jenkins-admin-user': string;
+}
+
+interface GenerateAuthSecret {
+  host: string;
+  url: string;
+  username: string;
+  password: string;
+  apiToken: string;
+  namespace?: string;
 }
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -19,29 +37,61 @@ export async function configJenkinsAuth(options: JenkinsAuthOptions, notifyStatu
     console.log('options: ', options);
   }
 
-  const password = options.password || await retrieveJenkinsPassword(options.namespace);
+  const {username, password} = await retrieveJenkinsCredentials(options, notifyStatus);
 
-  const url = options.url || `http://${options.host}`;
+  const {host, url} = await retrieveJenkinsUrl(options, notifyStatus);
 
-  const apiToken = options.jenkinsApiToken
-    || await generateToken(
-      Object.assign(
-        {},
-        options,
-        {url, password},
-      ),
-      notifyStatus,
-    );
+  const apiToken = await retrieveJenkinsApiToken(
+    {url, username, password},
+    notifyStatus,
+  );
+
+  return generateJenkinsAuthSecret(
+    {host, url, username, password, apiToken},
+    notifyStatus,
+  );
+}
+
+async function retrieveJenkinsCredentials({username, password, namespace = 'tools'}: {username?: string; password?: string; namespace?: string} = {}, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<{username: string; password: string}> {
+
+  if (username && password) {
+    return {username, password};
+  }
+
+  notifyStatus(`Retrieving Jenkins admin password`);
+
+  const jenkinsSecret: JenkinsSecret = await getSecretData('jenkins', namespace);
+
+  return {
+    username: jenkinsSecret['jenkins-admin-user'],
+    password: jenkinsSecret['jenkins-admin-password']
+  };
+}
+
+async function retrieveJenkinsUrl({url, host, namespace = 'tools'}: {url?: string, host?: string, namespace?: string} = {}, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<{host: string; url: string}> {
+  notifyStatus(`Retrieving Jenkins url`);
+
+  if (!host) {
+    host = (await getIngressHosts(namespace, 'jenkins'))[0];
+  }
+
+  return {host, url: url || `http://${host}`};
+}
+
+async function retrieveJenkinsApiToken(options: GenerateTokenOptions & {jenkinsApiToken?: string}, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+
+  notifyStatus(`Generating Jenkins api token: ${options.url}`);
+
+  return options.jenkinsApiToken || await generateToken(options, notifyStatus);
+}
+
+export async function generateJenkinsAuthSecret({host, url, username, password, apiToken, namespace = 'tools'}: GenerateAuthSecret, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
   notifyStatus(`Generating jenkins-access secret using apiToken: ${apiToken}`);
 
-  return generateJenkinsAuthSecret(options.host, url, options.username, password, apiToken);
-}
+  const client = buildKubeClient();
 
-export async function generateJenkinsAuthSecret(host: string, url: string, username: string, password: string, api_token: string) {
-  const client = new Client({ version: '1.13' });
-
-  const result = await client.api.v1.namespaces('tools').secrets.post({
+  const result = await client.api.v1.namespaces(namespace).secrets.post({
     body: {
       apiVersion: 'v1',
       kind: 'Secret',
@@ -55,7 +105,7 @@ export async function generateJenkinsAuthSecret(host: string, url: string, usern
       stringData: {
         username,
         password,
-        api_token,
+        api_token: apiToken,
         url,
         host,
       },
@@ -63,15 +113,4 @@ export async function generateJenkinsAuthSecret(host: string, url: string, usern
   });
 
   return result.body;
-}
-
-interface JenkinsSecret {
-  'jenkins-admin-password': string;
-  'jenkins-admin-user': string;
-}
-
-async function retrieveJenkinsPassword(namespace: string = 'tools'): Promise<string> {
-  const jenkinsSecret: JenkinsSecret = await getSecretData('jenkins', namespace);
-
-  return jenkinsSecret['jenkins-admin-password'];
 }

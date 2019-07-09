@@ -1,6 +1,6 @@
 import * as secrets from '../../api/kubectl/secrets';
-import {buildKubeClient} from '../../api/kubectl/secrets';
 import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
+import {buildKubeClient} from '../../api/kubectl/client';
 
 let getSecretData = secrets.getSecretData;
 

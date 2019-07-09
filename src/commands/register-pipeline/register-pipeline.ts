@@ -8,9 +8,10 @@ import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import createWebhook from '../create-webhook/create-webhook';
 import {CreateWebhookOptions} from '../create-webhook';
+import {getSecretData} from '../../api/kubectl/secrets';
 import {execPromise, ExecResult} from '../../util/child_process';
-import {buildKubeClient, getSecretData} from '../../api/kubectl/secrets';
 import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
+import {buildKubeClient} from '../../api/kubectl/client';
 
 let prompt = inquirer.prompt;
 
