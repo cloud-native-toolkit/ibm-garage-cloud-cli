@@ -19,7 +19,13 @@ export const defineLaunchToolsCommand: YargsCommandDefinition = <T>(command: str
         alias: ['classicApiKey', 'p'],
         describe: 'The api key for classic infrastructure. Can be provided as an environment variable',
         type: 'string',
-      })),
+      }))
+      .options('imageTag', {
+        alias: ['t'],
+        default: 'latest',
+        describe: 'The imageTag (version) of the image that should be used',
+        type: 'string',
+      }),
     handler: async (argv: Arguments<LaunchToolsOptions>) => {
       try {
         await launchTools(argv);

@@ -28,7 +28,7 @@ export const BUILD_OPTION_ENV_PROPERTIES: {[key in keyof BuildOptions]: Environm
   buildNumber: 'IMAGE_BUILD_NUMBER',
 };
 
-export const LAUNCH_TOOLS_OPTION_ENV_PROPERTIES: {[key in keyof LaunchToolsOptions]: EnvironmentOptionKey} = {
+export const LAUNCH_TOOLS_OPTION_ENV_PROPERTIES: {[key in keyof LaunchToolsOptions]?: EnvironmentOptionKey} = {
   apiKey: 'APIKEY',
   classicUsername: 'CLASSIC_USERNAME',
   classicApiKey: 'CLASSIC_API_KEY'

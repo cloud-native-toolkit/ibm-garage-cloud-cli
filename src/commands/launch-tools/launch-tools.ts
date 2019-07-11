@@ -60,8 +60,10 @@ export async function launchTools(options: LaunchToolsOptions) {
     env.push(`SL_API_KEY=${options.classicApiKey}`);
   }
 
+  const image = `garagecatalyst/ibm-garage-cli-tools:${options.imageTag}`;
+  console.log(`Launching image: ${image}`)
   const container: Docker.Container = await docker.createContainer({
-    Image: 'garagecatalyst/ibm-garage-cli-tools:latest',
+    Image: image,
     AttachStdin: true,
     AttachStdout: true,
     AttachStderr: true,
@@ -76,9 +78,9 @@ export async function launchTools(options: LaunchToolsOptions) {
 
   await container.start();
 
-  if (fs.existsSync(path.join(process.cwd(), 'src/workspace'))) {
+  if (fs.existsSync(path.join(process.cwd(), 'terraform/workspace'))) {
     await container.exec({
-      WorkingDir: '/home/devops/host/src/workspace',
+      WorkingDir: '/home/devops/host/terraform/workspace',
       Cmd: ['terraform', 'init'],
     });
   }
