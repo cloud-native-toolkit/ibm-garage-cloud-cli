@@ -8,7 +8,6 @@ export async function getSecretData<T>(secretName: string, namespace: string): P
   const client = buildKubeClient();
 
   const result = await client.api.v1.namespace(namespace).secrets(secretName).get();
-  const result1 = await client.apis.extension.v1beta1.namespace(namespace).ingress(secretName).get();
 
   const values = result.body.data;
 
@@ -17,4 +16,20 @@ export async function getSecretData<T>(secretName: string, namespace: string): P
 
     return decodedResults;
   }, {} as T);
+}
+
+export async function createSecret<T>(namespace: string, secretName: string, secretBody: any) {
+  const client = buildKubeClient();
+
+  try {
+    await client.api.v1.namespaces(namespace).secrets(secretName).get();
+
+    const result = await client.api.v1.namespaces(namespace).secrets(secretName).put(secretBody);
+
+    return result.body;
+  } catch (err) {
+    const result = await client.api.v1.namespaces(namespace).secrets.post(secretBody);
+
+    return result.body;
+  }
 }

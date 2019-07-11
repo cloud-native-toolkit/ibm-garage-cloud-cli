@@ -31,6 +31,9 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       .option('gitPat', {
         alias: 'p',
         description: 'the token used to authenticate the user'
+      })
+      .option('values', {
+        description: 'optional file with additional values to add to the secret'
       }),
     handler: async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions>) => {
       let spinner;

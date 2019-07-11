@@ -1,19 +1,23 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import * as superagent from 'superagent';
+import {parse} from 'dot-properties';
 import * as inquirer from 'inquirer';
+import * as superagent from 'superagent';
+import * as YAML from 'js-yaml';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import createWebhook from '../create-webhook/create-webhook';
 import {CreateWebhookOptions} from '../create-webhook';
-import {getSecretData} from '../../api/kubectl/secrets';
+import {createSecret, getSecretData} from '../../api/kubectl/secrets';
 import {execPromise, ExecResult} from '../../util/child_process';
 import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
 import {buildKubeClient} from '../../api/kubectl/client';
 
+// set these variables here so they can be replaced by rewire
 let prompt = inquirer.prompt;
+let readFile = fs.readFile;
 
 class GitParams {
   name: string;
@@ -33,7 +37,7 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
 
   notifyStatus('Creating git secret');
 
-  await createGitSecret(gitParams, options.namespace);
+  await createGitSecret(gitParams, options.namespace, readValuesFile(options.values));
 
   notifyStatus('Registering pipeline');
 
@@ -119,54 +123,47 @@ async function getRemoteGitUrl(workingDir: string = process.cwd()): Promise<stri
 ********** End: Git Parameters **********
 */
 
-async function createGitSecret(gitParams: GitParams, namespace: string = 'tools') {
-  const client = buildKubeClient();
+async function readValuesFile(valuesFileName?: string): Promise<any> {
+  if (!valuesFileName) {
+    return {}
+  }
 
   try {
-    await client.api.v1.namespaces(namespace).secret(gitParams.name).get();
+    const data: Buffer = await readFilePromise(valuesFileName);
 
-    const result = await client.api.v1.namespaces(namespace).secret(gitParams.name).put({
-      body: {
-        apiVersion: 'v1',
-        kind: 'Secret',
-        metadata: {
-          name: gitParams.name,
-          labels: {
-            'jenkins.io/credentials-type': 'usernamePassword'
-          },
-          annotations: {
-            description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
-            'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
-          },
+    try {
+      return JSON.parse(data.toString());
+    } catch (err) {
+      return parse(data);
+    }
+  } catch (err) {}
+
+  return {};
+}
+
+async function createGitSecret(gitParams: GitParams, namespace: string = 'tools', additionalParams: any = {}) {
+  return createSecret(namespace, gitParams.name, buildGitSecretBody(gitParams, additionalParams));
+}
+
+function buildGitSecretBody(gitParams: GitParams, additionalParams: any) {
+  return {
+    body: {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: gitParams.name,
+        labels: {
+          'jenkins.io/credentials-type': 'usernamePassword'
         },
-        type: 'Opaque',
-        stringData: gitParams,
-      }
-    });
-
-    return result.body;
-  } catch (err) {
-    const result = await client.api.v1.namespaces(namespace).secrets.post({
-      body: {
-        apiVersion: 'v1',
-        kind: 'Secret',
-        metadata: {
-          name: gitParams.name,
-          labels: {
-            'jenkins.io/credentials-type': 'usernamePassword'
-          },
-          annotations: {
-            description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
-            'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
-          },
+        annotations: {
+          description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
+          'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
         },
-        type: 'Opaque',
-        stringData: gitParams,
-      }
-    });
-
-    return result.body;
-  }
+      },
+      type: 'Opaque',
+      stringData: Object.assign({}, additionalParams, gitParams),
+    }
+  };
 }
 
 /*
@@ -223,19 +220,12 @@ async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): P
 }
 
 async function buildJenkinsJobConfig(gitParams: GitParams): Promise<string> {
-  return new Promise<string | Buffer>((resolve, reject) => {
-    fs.readFile(path.join(__dirname, '../../../etc/jenkins-config-template.xml'), (err, data: Buffer) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+  const data: Buffer = await readFilePromise(path.join(__dirname, '../../../etc/jenkins-config-template.xml'));
 
-      resolve(data);
-    });
-  }).then(data => data.toString()
-    .replace(new RegExp('{{GIT_REPO}}', 'g'), gitParams.url)
-    .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), gitParams.name)
-    .replace(new RegExp('{{GIT_BRANCH}}', 'g'), gitParams.branch));
+  return data.toString()
+      .replace(new RegExp('{{GIT_REPO}}', 'g'), gitParams.url)
+      .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), gitParams.name)
+      .replace(new RegExp('{{GIT_BRANCH}}', 'g'), gitParams.branch);
 }
 
 /*
@@ -252,4 +242,17 @@ function buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkin
     },
     pipelineResult,
   );
+}
+
+async function readFilePromise(filename: string): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    readFile(filename, (err, data: Buffer) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      resolve(data);
+    });
+  });
 }

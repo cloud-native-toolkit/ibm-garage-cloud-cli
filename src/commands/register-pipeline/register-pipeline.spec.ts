@@ -2,14 +2,15 @@ import * as path from 'path';
 import * as fs from 'fs';
 import rewire = require('rewire');
 
-const registerPipeline = rewire('./register-pipeline');
+const module = rewire('./register-pipeline');
 
-const getRemoteGitUrl = registerPipeline.__get__('getRemoteGitUrl');
-const parseGitUrl = registerPipeline.__get__('parseGitUrl');
-const getGitParameters = registerPipeline.__get__('getGitParameters');
-const generateJenkinsCrumbHeader = registerPipeline.__get__('generateJenkinsCrumbHeader');
-const buildJenkinsJobConfig = registerPipeline.__get__('buildJenkinsJobConfig');
-const buildCreateWebhookOptions = registerPipeline.__get__('buildCreateWebhookOptions');
+const getRemoteGitUrl = module.__get__('getRemoteGitUrl');
+const parseGitUrl = module.__get__('parseGitUrl');
+const readValuesFile = module.__get__('readValuesFile');
+const getGitParameters = module.__get__('getGitParameters');
+const generateJenkinsCrumbHeader = module.__get__('generateJenkinsCrumbHeader');
+const buildJenkinsJobConfig = module.__get__('buildJenkinsJobConfig');
+const buildCreateWebhookOptions = module.__get__('buildCreateWebhookOptions');
 
 describe('register-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -38,6 +39,75 @@ describe('register-pipeline', () => {
         return getRemoteGitUrl(path.join(process.cwd(), '..'))
           .then(() => fail('should throw Error'))
           .catch(err => expect(err.message).toContain('not a git repository'));
+      });
+    });
+  });
+
+  describe('readValuesFile()', () => {
+    let mock_readFilePromise;
+    let unset_readFilePromise;
+
+    beforeEach(() => {
+      mock_readFilePromise = jest.fn();
+      unset_readFilePromise = module.__set__('readFilePromise', mock_readFilePromise);
+    });
+
+    afterEach(() => {
+      unset_readFilePromise();
+    });
+
+    describe('when valuesFileName is undefined', () => {
+      test('return empty object', async () => {
+        expect(await readValuesFile()).toEqual({});
+      });
+    });
+
+    describe('when valuesFileName contains properties (key=value)', () => {
+      test('parse properties and return object', async () => {
+        const expectedResult = {key: 'value'};
+        const fileName = '/test/file/path';
+
+        mock_readFilePromise.mockResolvedValue('key=value');
+
+        const actualResult = await readValuesFile(fileName);
+
+        expect(actualResult).toEqual(expectedResult);
+      });
+    });
+
+    describe('when valuesFileName contains json', () => {
+      test('parse json and return object', async () => {
+        const expectedResult = {key: 'value'};
+        const fileName = '/test/file/path';
+
+        mock_readFilePromise.mockResolvedValue(JSON.stringify(expectedResult));
+
+        const actualResult = await readValuesFile(fileName);
+
+        expect(actualResult).toEqual(expectedResult);
+      });
+    });
+
+    describe('when valuesFileName contains yaml', () => {
+      test('parse yaml and return object', async () => {
+        const expectedResult = {key: 'value'};
+        const fileName = '/test/file/path';
+
+        mock_readFilePromise.mockResolvedValue("key: value");
+
+        const actualResult = await readValuesFile(fileName);
+
+        expect(actualResult).toEqual(expectedResult);
+      });
+    });
+
+    describe('when file not found', () => {
+      test('return empty object', async () => {
+        const fileName = '/file/path';
+
+        mock_readFilePromise.mockRejectedValue(new Error('file not found'));
+
+        expect(await readValuesFile(fileName)).toEqual({});
       });
     });
   });
@@ -131,9 +201,9 @@ describe('register-pipeline', () => {
       mock_parseGitUrl = jest.fn();
       mock_prompt = jest.fn();
 
-      unset_getRemoteGitUrl = registerPipeline.__set__('getRemoteGitUrl', mock_getRemoteGitUrl);
-      unset_parseGitUrl = registerPipeline.__set__('parseGitUrl', mock_parseGitUrl);
-      unset_prompt = registerPipeline.__set__('prompt', mock_prompt);
+      unset_getRemoteGitUrl = module.__set__('getRemoteGitUrl', mock_getRemoteGitUrl);
+      unset_parseGitUrl = module.__set__('parseGitUrl', mock_parseGitUrl);
+      unset_prompt = module.__set__('prompt', mock_prompt);
     });
 
     afterEach(() => {

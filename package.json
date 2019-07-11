@@ -1,6 +1,6 @@
 {
   "name": "@garage-catalyst/ibm-garage-cloud-cli",
-  "version": "0.0.83",
+  "version": "0.0.84",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "dockerode": "^2.5.8",
+    "dot-properties": "^0.3.1",
     "inquirer": "^6.4.1",
     "json2yaml": "^1.1.0",
     "kubernetes-client": "^8.3.0",

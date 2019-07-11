@@ -5,4 +5,5 @@ export class RegisterPipelineOptions {
   workingDir?: string;
   gitUsername?: string;
   gitPat?: string;
+  values?: string;
 }
