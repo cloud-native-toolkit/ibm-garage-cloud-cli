@@ -250,16 +250,70 @@ describe('register-pipeline', () => {
 
   describe('generateJenkinsCrumbHeader', () => {
     const jenkinsAccess = {
-      url: 'http://jenkins.showcase-dev-cluster.us-south.containers.appdomain.cloud',
-      api_token: '119556f5a6c94679aac3fd246f42bbf9d9',
-      username: 'admin',
-      password: 'pcd0n2etCU',
+      url: 'jenkins url',
+      api_token: 'api token',
+      username: 'jenkins admin',
+      password: 'jenkins password',
     };
 
-    test('should return Jenkins-Crumb', async () => {
-      const crumb = await generateJenkinsCrumbHeader(jenkinsAccess);
+    let mock_get;
+    let unset_get;
 
-      expect(crumb['Jenkins-Crumb']).not.toBeUndefined();
+    let mock_auth;
+    let mock_set;
+
+    beforeEach(() => {
+      mock_get = jest.fn();
+      mock_auth = jest.fn();
+      mock_set = jest.fn();
+
+      unset_get = module.__set__('get', mock_get);
+
+      mock_get.mockReturnValue({auth: mock_auth});
+      mock_auth.mockReturnValue({set: mock_set});
+    });
+
+    afterEach(() => {
+      unset_get();
+    });
+
+    describe('when successful', () => {
+      test('should return Jenkins-Crumb', async () => {
+        const expectedResult = 'crumb';
+
+        mock_set.mockResolvedValue({
+          status: 200,
+          text: `Jenkins-Crumb:${expectedResult}`
+        });
+
+        const actualResult = await generateJenkinsCrumbHeader(jenkinsAccess);
+
+        expect(actualResult['Jenkins-Crumb']).toEqual(expectedResult);
+        expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
+        expect(mock_auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
+        expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
+      });
+    });
+
+    describe('when not successful', () => {
+      test('should throw error', async () => {
+        const expectedResult = 'error text';
+
+        mock_set.mockResolvedValue({
+          status: 400,
+          text: expectedResult
+        });
+
+        return generateJenkinsCrumbHeader(jenkinsAccess)
+          .then(() => fail('should throw error'))
+          .catch(err => {
+            expect(err.message).toEqual(`Unable to generate Jenkins crumb: ${expectedResult}`);
+
+            expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
+            expect(mock_auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
+            expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
+          });
+      });
     });
   });
 

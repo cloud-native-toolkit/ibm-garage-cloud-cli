@@ -18,6 +18,8 @@ import {buildKubeClient} from '../../api/kubectl/client';
 // set these variables here so they can be replaced by rewire
 let prompt = inquirer.prompt;
 let readFile = fs.readFile;
+let post = superagent.post;
+let get = superagent.get;
 
 class GitParams {
   name: string;
@@ -37,7 +39,7 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
 
   notifyStatus('Creating git secret');
 
-  await createGitSecret(gitParams, options.namespace, readValuesFile(options.values));
+  await createGitSecret(gitParams, options.namespace, await readValuesFile(options.values));
 
   notifyStatus('Registering pipeline');
 
@@ -142,6 +144,8 @@ async function readValuesFile(valuesFileName?: string): Promise<any> {
 }
 
 async function createGitSecret(gitParams: GitParams, namespace: string = 'tools', additionalParams: any = {}) {
+  console.log('creating git secret', namespace, gitParams.name, gitParams, additionalParams);
+
   return createSecret(namespace, gitParams.name, buildGitSecretBody(gitParams, additionalParams));
 }
 
@@ -178,8 +182,8 @@ async function executeRegisterPipeline(options: RegisterPipelineOptions, gitPara
     : gitParams.name;
 
   try {
-    const response: superagent.Response = await superagent
-      .post(`${jenkinsAccess.url}/createItem?name=${jobName}`)
+    const response: superagent.Response = await
+      post(`${jenkinsAccess.url}/createItem?name=${jobName}`)
       .auth(jenkinsAccess.username, jenkinsAccess.api_token)
       .set(await generateJenkinsCrumbHeader(jenkinsAccess))
       .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`)
@@ -205,8 +209,8 @@ async function pullJenkinsAccessSecrets(namespace: string = 'tools'): Promise<Je
 
 async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): Promise<{'Jenkins-Crumb': string}> {
 
-  const response: superagent.Response = await superagent
-    .get(`${jenkinsAccess.url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)`)
+  const response: superagent.Response = await
+    get(`${jenkinsAccess.url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)`)
     .auth(jenkinsAccess.username, jenkinsAccess.api_token)
     .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`);
 
@@ -215,7 +219,7 @@ async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): P
   }
 
   return {
-    'Jenkins-Crumb': response.text.replace(`${'Jenkins-Crumb'}:`, '')
+    'Jenkins-Crumb': response.text.replace('Jenkins-Crumb:', '')
   };
 }
 
