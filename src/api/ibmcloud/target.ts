@@ -32,7 +32,7 @@ export class IBMCloudTarget {
   user: IBMCloudUser;
 }
 
-export async function getTarget(): Promise<IBMCloudTarget> {
+export async function getIBMCloudTargetInfo(): Promise<IBMCloudTarget> {
   return execPromise(
       'ibmcloud target --output json',
       {
