@@ -7,7 +7,8 @@ export function buildMockKubeClient() {
     api: withPluralKeyNames({
       v1: withPluralKeyNames({
         namespace: buildNodeFunction('namespace', {
-          secret: buildNodeFunction('secret', {get: jest.fn()}, {post: jest.fn()})
+          secret: buildNodeFunction('secret', {get: jest.fn()}, {post: jest.fn()}),
+          pod: buildNodeFunction('secret', {get: jest.fn()}, {post: jest.fn()})
         }),
       }),
       extension: {
