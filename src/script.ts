@@ -11,9 +11,10 @@ import {defineGetVlanCommand} from './commands/vlan/define-command';
 import {defineJenkinsAuth} from './commands/jenkins-auth/define-command';
 import {defineCreateWebhookCommand} from './commands/create-webhook/define-command';
 import {defineCredentialsCommand} from './commands/credentials/define-command';
+import {defineIngressCommand} from './commands/ingress/define-command';
 
 scriptName('igc')
-  .usage('IBM Garage Cloud cli')
+  .usage('IBM Garage Cloud CLI')
   .usage('')
   .usage('Usage: $0 <command> [args]')
   .command(defineJenkinsAuth(
@@ -42,6 +43,9 @@ scriptName('igc')
   ))
   .command(defineCredentialsCommand(
     'credentials',
+  ))
+  .command(defineIngressCommand(
+    'ingress',
   ))
   .demandCommand()
   .help()

@@ -38,7 +38,7 @@ describe('register-pipeline', () => {
       test('should throw error', () => {
         return getRemoteGitUrl(path.join(process.cwd(), '..'))
           .then(() => fail('should throw Error'))
-          .catch(err => expect(err.message).toContain('not a git repository'));
+          .catch(err => expect(err.message.toLowerCase()).toContain('not a git repository'));
       });
     });
   });

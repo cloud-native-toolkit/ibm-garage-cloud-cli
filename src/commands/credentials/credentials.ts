@@ -5,6 +5,7 @@ import * as ingress from '../../api/kubectl/ingress';
 
 let getSecretData = secrets.getSecretData;
 let getIngressHosts = ingress.getIngressHosts;
+let getAllIngressHosts = ingress.getAllIngressHosts;
 let buildKubeClient = kubeClient.buildKubeClient;
 
 export interface ComponentCredentials {
@@ -108,7 +109,6 @@ async function getArgoCdCredentials(namespace: string = 'tools'): Promise<Compon
 async function getArgoCdUrl(namespace: string = 'tools'): Promise<ComponentUrl> {
   try {
     const host = (await getIngressHosts(namespace, 'argocd-server-http'))[0];
-
     return {url: `http://${host}`};
   } catch (err) {
     return {};
