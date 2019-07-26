@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import rewire = require('rewire');
+import {GitParams} from './register-pipeline';
 
 const module = rewire('./register-pipeline');
 
@@ -8,6 +9,7 @@ const getRemoteGitUrl = module.__get__('getRemoteGitUrl');
 const parseGitUrl = module.__get__('parseGitUrl');
 const readValuesFile = module.__get__('readValuesFile');
 const getGitParameters = module.__get__('getGitParameters');
+const buildGitSecretBody = module.__get__('buildGitSecretBody');
 const generateJenkinsCrumbHeader = module.__get__('generateJenkinsCrumbHeader');
 const buildJenkinsJobConfig = module.__get__('buildJenkinsJobConfig');
 const buildCreateWebhookOptions = module.__get__('buildCreateWebhookOptions');
@@ -183,6 +185,48 @@ describe('register-pipeline', () => {
           parseGitUrl('https://bogus');
         }).toThrowError('invalid git url');
       })
+    });
+  });
+
+  describe('buildGitSecretBody', () => {
+    const name = 'name';
+    const urlBase = 'https://github.com/org';
+    const url = `${urlBase}/repo.git`;
+    const username = 'username';
+    const password = 'password';
+    const branch = 'branch';
+
+    const gitParams: GitParams = {
+      name,
+      url,
+      username,
+      password,
+      branch
+    };
+
+    test('body.metadata.name=gitParams.name', () => {
+      const secret = buildGitSecretBody(gitParams);
+
+      expect(secret.body.metadata.name).toEqual(name);
+    });
+
+    test('should have source-secret-match-uri annotation', () => {
+      const secret = buildGitSecretBody(gitParams);
+
+      expect(secret.body.metadata.annotations['build.openshift.io/source-secret-match-uri-1'])
+        .toEqual(urlBase + '/*');
+    });
+
+    test('should have type=kubernetes.io/basic-auth', () => {
+      const secret = buildGitSecretBody(gitParams);
+
+      expect(secret.body.type).toEqual('kubernetes.io/basic-auth');
+    });
+
+    test('should have type=kubernetes.io/basic-auth', () => {
+      const secret = buildGitSecretBody(gitParams);
+
+      expect(secret.body.stringData).toEqual(gitParams);
     });
   });
 

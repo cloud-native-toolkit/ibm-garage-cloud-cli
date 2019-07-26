@@ -21,7 +21,7 @@ let readFile = fs.readFile;
 let post = superagent.post;
 let get = superagent.get;
 
-class GitParams {
+export class GitParams {
   name: string;
   url: string;
   username: string;
@@ -35,7 +35,7 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
 
   await checkKubeconfig();
 
-  const gitParams = await getGitParameters(options);
+  const gitParams: GitParams = await getGitParameters(options);
 
   notifyStatus('Creating git secret');
 
@@ -154,7 +154,7 @@ async function createGitSecret(gitParams: GitParams, namespace: string = 'tools'
   return createSecret(namespace, gitParams.name, buildGitSecretBody(gitParams, additionalParams));
 }
 
-function buildGitSecretBody(gitParams: GitParams, additionalParams: any) {
+function buildGitSecretBody(gitParams: GitParams, additionalParams: any = {}) {
   return {
     body: {
       apiVersion: 'v1',
@@ -167,9 +167,10 @@ function buildGitSecretBody(gitParams: GitParams, additionalParams: any) {
         annotations: {
           description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
           'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
+          'build.openshift.io/source-secret-match-uri-1': `${gitParams.url.replace(new RegExp('/[^/]*$'), '/*')}`
         },
       },
-      type: 'Opaque',
+      type: 'kubernetes.io/basic-auth',
       stringData: Object.assign({}, additionalParams, gitParams),
     }
   };
