@@ -224,9 +224,11 @@ describe('register-pipeline', () => {
 
       const username = 'username';
       const password = 'password';
+      const branch = 'branch';
       const answers = {
         username,
         password,
+        branch
       };
 
       beforeEach(() => {
@@ -235,11 +237,11 @@ describe('register-pipeline', () => {
         mock_prompt.mockReturnValue(answers);
       });
 
-      test('should prompt for username and password', async () => {
+      test('should prompt for username, password, and branch', async () => {
         const value = await getGitParameters();
 
         const questions = mock_prompt.mock.calls[0][0];
-        expect(questions.map(q => q.name)).toEqual(['username', 'password']);
+        expect(questions.map(q => q.name)).toEqual(['username', 'password', 'branch']);
       });
 
       test('should return url and name from git url', async () => {
@@ -249,6 +251,18 @@ describe('register-pipeline', () => {
         expect(value.name).toEqual(`${org}.${repo}`);
         expect(value.username).toEqual(username);
         expect(value.password).toEqual(password);
+
+        expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
+      });
+
+      test('should return url and name from git url', async () => {
+        const value = await getGitParameters();
+
+        expect(value.url).toEqual(url);
+        expect(value.name).toEqual(`${org}.${repo}`);
+        expect(value.username).toEqual(username);
+        expect(value.password).toEqual(password);
+        expect(value.branch).toEqual(branch);
 
         expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
       });

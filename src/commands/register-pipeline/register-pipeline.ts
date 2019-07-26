@@ -59,16 +59,21 @@ async function getGitParameters(options: RegisterPipelineOptions = {}): Promise<
 
   const parsedGitUrl = parseGitUrl(await getRemoteGitUrl(options.workingDir));
 
-  const questions: inquirer.Questions<{username: string; password: string}> = [{
+  const questions: inquirer.Questions<{username: string; password: string; branch: string}> = [{
     type: 'input',
     name: 'username',
-    message: `Please provide username for ${parsedGitUrl.url}:`,
+    message: `Please provide the username for ${parsedGitUrl.url}:`,
     default: options.gitUsername,
   }, {
     type: 'password',
     name: 'password',
     message: `Please provide your password/personal access token:`,
     default: options.gitPat,
+  }, {
+    type: 'input',
+    name: 'branch',
+    message: `Please provide the branch the pipeline should use:`,
+    default: 'master',
   }];
 
   const answers = await prompt(questions);
@@ -78,7 +83,7 @@ async function getGitParameters(options: RegisterPipelineOptions = {}): Promise<
     name: `${parsedGitUrl.org}.${parsedGitUrl.repo}`,
     username: answers.username,
     password: answers.password,
-    branch: 'master',
+    branch: answers.branch,
   };
 }
 
