@@ -235,6 +235,13 @@ describe('register-pipeline', () => {
         mock_prompt.mockReturnValue(answers);
       });
 
+      test('should prompt for username and password', async () => {
+        const value = await getGitParameters();
+
+        const questions = mock_prompt.mock.calls[0][0];
+        expect(questions.map(q => q.name)).toEqual(['username', 'password']);
+      });
+
       test('should return url and name from git url', async () => {
         const value = await getGitParameters();
 
