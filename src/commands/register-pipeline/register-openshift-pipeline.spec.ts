@@ -4,6 +4,7 @@ import {GitParams} from './create-git-secret';
 const module = rewire('./register-openshift-pipeline');
 
 const registerPipeline = module.__get__('registerPipeline');
+const parseRouteOutput = module.__get__('parseRouteOutput');
 
 describe('register-openshift-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -27,8 +28,8 @@ describe('register-openshift-pipeline', () => {
     let mock_spawnPromise;
     let unset_spawnPromise;
 
-    let mock_getIngressHosts;
-    let unset_getIngressHosts;
+    let mock_getRouteHosts;
+    let unset_getRouteHosts;
 
     var mock_deleteFile;
     var unset_deleteFile;
@@ -47,8 +48,8 @@ describe('register-openshift-pipeline', () => {
       mock_deleteFile = jest.fn();
       unset_deleteFile = module.__set__('deleteFile', mock_deleteFile) as () => void;
 
-      mock_getIngressHosts = jest.fn();
-      unset_getIngressHosts = module.__set__('getIngressHosts', mock_getIngressHosts) as () => void;
+      mock_getRouteHosts = jest.fn();
+      unset_getRouteHosts = module.__set__('getRouteHosts', mock_getRouteHosts) as () => void;
     });
 
     afterEach(() => {
@@ -56,7 +57,7 @@ describe('register-openshift-pipeline', () => {
       unset_writeFile();
       unset_spawnPromise();
       unset_deleteFile();
-      unset_getIngressHosts();
+      unset_getRouteHosts();
     });
 
     test('should write the buildConfig to a temp file', async () => {
@@ -78,7 +79,7 @@ describe('register-openshift-pipeline', () => {
       mock_deleteFile.mockResolvedValue({});
 
       const jenkinsUrl = 'test';
-      mock_getIngressHosts.mockResolvedValue([jenkinsUrl]);
+      mock_getRouteHosts.mockResolvedValue([jenkinsUrl]);
 
       const namespace = 'namespace';
       const result = await registerPipeline({namespace}, gitParams);
@@ -96,6 +97,22 @@ describe('register-openshift-pipeline', () => {
       expect(mock_spawnPromise.mock.calls[1][1][0]).toEqual('create');
 
       expect(mock_deleteFile.mock.calls.length).toEqual(1);
+    });
+  });
+
+  describe('parseRouteOutput()', () => {
+    describe('when routeText has json data', () => {
+      test('return json values', () => {
+        const expectedResult = {test: {more: 'value'}};
+
+        expect(parseRouteOutput(JSON.stringify(expectedResult))).toEqual(expectedResult);
+      });
+    });
+    describe('when routeText has non-json data before json values', () => {
+      const expectedResult = {test: {more: 'value'}};
+
+      expect(parseRouteOutput('test' + JSON.stringify(expectedResult))).toEqual(expectedResult);
+
     });
   });
 });

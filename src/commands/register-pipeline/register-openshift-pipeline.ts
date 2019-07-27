@@ -100,7 +100,13 @@ async function getRouteHosts(namespace: string, name: string): Promise<string> {
       env: process.env
     });
 
-  const route: {spec: {host: string}} = JSON.parse(routeText);
+  const route: {spec: {host: string}} = parseRouteOutput(routeText);
 
   return route.spec.host;
+}
+
+function parseRouteOutput(routeText: string): {spec: {host: string}} {
+  const route: {spec: {host: string}} = JSON.parse(routeText.replace(new RegExp('^.*?{'), '{'));
+
+  return route;
 }

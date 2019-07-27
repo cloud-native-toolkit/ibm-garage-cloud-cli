@@ -18,7 +18,7 @@ describe('register-pipeline', () => {
 
     beforeEach(() => {
       mock_readFilePromise = jest.fn();
-      unset_readFilePromise = module.__set__('readFile', mock_readFilePromise);
+      unset_readFilePromise = module.__set__('readFilePromise', mock_readFilePromise);
     });
 
     afterEach(() => {
