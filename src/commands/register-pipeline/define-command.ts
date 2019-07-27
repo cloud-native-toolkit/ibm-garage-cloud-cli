@@ -11,7 +11,6 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
     command,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
-      .kubeConfig({optional: false})
       .clusterNamespace({
         optional: true,
         describe: 'The cluster namespace where Jenkins is running',

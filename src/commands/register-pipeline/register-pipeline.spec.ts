@@ -1,48 +1,15 @@
-import * as path from 'path';
-import * as fs from 'fs';
 import rewire = require('rewire');
-import {GitParams} from './register-pipeline';
 
 const module = rewire('./register-pipeline');
 
-const getRemoteGitUrl = module.__get__('getRemoteGitUrl');
-const parseGitUrl = module.__get__('parseGitUrl');
 const readValuesFile = module.__get__('readValuesFile');
-const getGitParameters = module.__get__('getGitParameters');
-const buildGitSecretBody = module.__get__('buildGitSecretBody');
-const generateJenkinsCrumbHeader = module.__get__('generateJenkinsCrumbHeader');
-const buildJenkinsJobConfig = module.__get__('buildJenkinsJobConfig');
+const executeRegisterPipeline = module.__get__('executeRegisterPipeline');
+const getClusterType = module.__get__('getClusterType');
 const buildCreateWebhookOptions = module.__get__('buildCreateWebhookOptions');
 
 describe('register-pipeline', () => {
   test('canary verifies test infrastructure', () => {
     expect(true).toEqual(true);
-  });
-
-  describe('getRemoteGitUrl()', () => {
-    describe('when path provided', () => {
-      test('should return url for provided directory', async () => {
-        const result = await getRemoteGitUrl(process.cwd());
-
-        expect(result).toEqual('git@github.ibm.com:garage-catalyst/ibmcloud-garage-cli.git');
-      });
-    });
-
-    describe('when no path provided', () => {
-      test('should return url for current directory', async () => {
-        const result = await getRemoteGitUrl();
-
-        expect(result).toEqual('git@github.ibm.com:garage-catalyst/ibmcloud-garage-cli.git');
-      });
-    });
-
-    describe('when not in repo directory', () => {
-      test('should throw error', () => {
-        return getRemoteGitUrl(path.join(process.cwd(), '..'))
-          .then(() => fail('should throw Error'))
-          .catch(err => expect(err.message.toLowerCase()).toContain('not a git repository'));
-      });
-    });
   });
 
   describe('readValuesFile()', () => {
@@ -51,7 +18,7 @@ describe('register-pipeline', () => {
 
     beforeEach(() => {
       mock_readFilePromise = jest.fn();
-      unset_readFilePromise = module.__set__('readFilePromise', mock_readFilePromise);
+      unset_readFilePromise = module.__set__('readFile', mock_readFilePromise);
     });
 
     afterEach(() => {
@@ -114,315 +81,122 @@ describe('register-pipeline', () => {
     });
   });
 
-  describe('parseGitUrl', () => {
-    describe('when https github url', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const url = `https://github.com/${org}/${repo}.git`;
+  describe('executeRegisterPipeline()', () => {
+    let mock_getClusterType;
+    let unset_getClusterType;
 
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(url)).toEqual({url, org, repo});
-      })
-    });
+    let mock_executeRegisterIksPipeline;
+    let unset_executeRegisterIksPipeline;
 
-    describe('when https ibm GHE url', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const url = `https://github.ibm.com/${org}/${repo}.git`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(url)).toEqual({url, org, repo});
-      })
-    });
-
-    describe('when https github url without .git extension', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const host = 'github.com';
-      const url = `https://${host}/${org}/${repo}.git`;
-      const originalUrl = `https://github.com/${org}/${repo}`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(originalUrl)).toEqual({url, org, repo});
-      })
-    });
-
-    describe('when ssh github url', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const host = 'github.com';
-      const url = `https://${host}/${org}/${repo}.git`;
-      const sshUrl = `git@${host}:${org}/${repo}.git`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(sshUrl)).toEqual({url, org, repo});
-      })
-    });
-
-    describe('when long ssh github url', () => {
-      const org = 'ibm-garage-cloud';
-      const repo = 'template-watson-banking-chatbot';
-      const host = 'github.com';
-      const url = `https://${host}/${org}/${repo}.git`;
-      const originalUrl = `git@${host}:${org}/${repo}.git`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(originalUrl)).toEqual({org, repo, url});
-      });
-    });
-
-    describe('when invalid text for url', () => {
-      test('should throw error', () => {
-        expect(() => {
-          parseGitUrl('invalid');
-        }).toThrowError('invalid git url');
-      })
-    });
-
-    describe('when invalid url', () => {
-      test('should throw error', () => {
-        expect(() => {
-          parseGitUrl('https://bogus');
-        }).toThrowError('invalid git url');
-      })
-    });
-  });
-
-  describe('buildGitSecretBody', () => {
-    const name = 'name';
-    const urlBase = 'https://github.com/org';
-    const url = `${urlBase}/repo.git`;
-    const username = 'username';
-    const password = 'password';
-    const branch = 'branch';
-
-    const gitParams: GitParams = {
-      name,
-      url,
-      username,
-      password,
-      branch
-    };
-
-    test('body.metadata.name=gitParams.name', () => {
-      const secret = buildGitSecretBody(gitParams);
-
-      expect(secret.body.metadata.name).toEqual(name);
-    });
-
-    test('should have source-secret-match-uri annotation', () => {
-      const secret = buildGitSecretBody(gitParams);
-
-      expect(secret.body.metadata.annotations['build.openshift.io/source-secret-match-uri-1'])
-        .toEqual(urlBase + '/*');
-    });
-
-    test('should have type=kubernetes.io/basic-auth', () => {
-      const secret = buildGitSecretBody(gitParams);
-
-      expect(secret.body.type).toEqual('kubernetes.io/basic-auth');
-    });
-
-    test('should have type=kubernetes.io/basic-auth', () => {
-      const secret = buildGitSecretBody(gitParams);
-
-      expect(secret.body.stringData).toEqual(gitParams);
-    });
-  });
-
-  describe('getGitParameters()', () => {
-    let mock_getRemoteGitUrl;
-    let unset_getRemoteGitUrl;
-
-    let mock_parseGitUrl;
-    let unset_parseGitUrl;
-
-    let mock_prompt;
-    let unset_prompt;
+    let mock_executeRegisterOpenShiftPipeline;
+    let unset_executeRegisterOpenShiftPipeline;
 
     beforeEach(() => {
-      mock_getRemoteGitUrl = jest.fn();
-      mock_parseGitUrl = jest.fn();
-      mock_prompt = jest.fn();
 
-      unset_getRemoteGitUrl = module.__set__('getRemoteGitUrl', mock_getRemoteGitUrl);
-      unset_parseGitUrl = module.__set__('parseGitUrl', mock_parseGitUrl);
-      unset_prompt = module.__set__('prompt', mock_prompt);
+      mock_getClusterType = jest.fn();
+      unset_getClusterType = module.__set__('getClusterType', mock_getClusterType) as () => void;
+
+      mock_executeRegisterIksPipeline = jest.fn();
+      unset_executeRegisterIksPipeline = module.__set__('executeRegisterIksPipeline', mock_executeRegisterIksPipeline) as () => void;
+
+      mock_executeRegisterOpenShiftPipeline = jest.fn();
+      unset_executeRegisterOpenShiftPipeline = module.__set__('executeRegisterOpenShiftPipeline', mock_executeRegisterOpenShiftPipeline) as () => void;
     });
 
     afterEach(() => {
-      unset_getRemoteGitUrl();
-      unset_parseGitUrl();
-      unset_prompt();
+      unset_getClusterType();
+      unset_executeRegisterIksPipeline();
+      unset_executeRegisterOpenShiftPipeline();
     });
 
-    describe('when called', () => {
-      const url = 'url';
-      const org = 'org';
-      const repo = 'repo';
-      const parseGitUrlResult = {
-        url,
-        org,
-        repo,
-      };
-
-      const username = 'username';
-      const password = 'password';
-      const branch = 'branch';
-      const answers = {
-        username,
-        password,
-        branch
-      };
-
+    describe('when cluster_type is `openshift`', () => {
       beforeEach(() => {
-        mock_getRemoteGitUrl.mockReturnValue(url);
-        mock_parseGitUrl.mockReturnValue(parseGitUrlResult);
-        mock_prompt.mockReturnValue(answers);
+        mock_getClusterType.mockResolvedValue('openshift');
       });
 
-      test('should prompt for username, password, and branch', async () => {
-        const value = await getGitParameters();
+      test('return value from executeRegisterOpenShiftPipeline()', async () => {
+        const options = {};
+        const gitParams = {};
 
-        const questions = mock_prompt.mock.calls[0][0];
-        expect(questions.map(q => q.name)).toEqual(['username', 'password', 'branch']);
+        const executeRegisterOpenShiftPipelineResult = {};
+        mock_executeRegisterOpenShiftPipeline.mockResolvedValue(executeRegisterOpenShiftPipelineResult);
+
+        expect(await executeRegisterPipeline(options, gitParams)).toBe(executeRegisterOpenShiftPipelineResult);
+
+        expect(mock_executeRegisterOpenShiftPipeline.mock.calls.length).toBe(1);
+        expect(mock_executeRegisterOpenShiftPipeline.mock.calls[0][0]).toBe(options);
+        expect(mock_executeRegisterOpenShiftPipeline.mock.calls[0][1]).toBe(gitParams);
+      });
+    });
+
+    describe('when cluster_type is `kubernetes`', () => {
+      beforeEach(() => {
+        mock_getClusterType.mockResolvedValue('kubernetes');
       });
 
-      test('should return url and name from git url', async () => {
-        const value = await getGitParameters();
+      test('return value from executeRegisterIksPipeline()', async () => {
+        const options = {};
+        const gitParams = {};
 
-        expect(value.url).toEqual(url);
-        expect(value.name).toEqual(`${org}.${repo}`);
-        expect(value.username).toEqual(username);
-        expect(value.password).toEqual(password);
+        const executeRegisterIksPipelineResult = {};
+        mock_executeRegisterIksPipeline.mockResolvedValue(executeRegisterIksPipelineResult);
 
-        expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
-      });
+        expect(await executeRegisterPipeline(options, gitParams)).toBe(executeRegisterIksPipelineResult);
 
-      test('should return url and name from git url', async () => {
-        const value = await getGitParameters();
-
-        expect(value.url).toEqual(url);
-        expect(value.name).toEqual(`${org}.${repo}`);
-        expect(value.username).toEqual(username);
-        expect(value.password).toEqual(password);
-        expect(value.branch).toEqual(branch);
-
-        expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
+        expect(mock_executeRegisterIksPipeline.mock.calls.length).toBe(1);
+        expect(mock_executeRegisterIksPipeline.mock.calls[0][0]).toBe(options);
+        expect(mock_executeRegisterIksPipeline.mock.calls[0][1]).toBe(gitParams);
       });
     });
   });
 
-  describe('generateJenkinsCrumbHeader', () => {
-    const jenkinsAccess = {
-      url: 'jenkins url',
-      api_token: 'api token',
-      username: 'jenkins admin',
-      password: 'jenkins password',
-    };
-
-    let mock_get;
-    let unset_get;
-
-    let mock_auth;
-    let mock_set;
+  describe('getClusterType()', () => {
+    let mock_getSecretData;
+    let unset_getSecretData;
 
     beforeEach(() => {
-      mock_get = jest.fn();
-      mock_auth = jest.fn();
-      mock_set = jest.fn();
-
-      unset_get = module.__set__('get', mock_get);
-
-      mock_get.mockReturnValue({auth: mock_auth});
-      mock_auth.mockReturnValue({set: mock_set});
+      mock_getSecretData = jest.fn();
+      unset_getSecretData = module.__set__('getSecretData', mock_getSecretData) as () => void;
     });
 
     afterEach(() => {
-      unset_get();
+      unset_getSecretData();
     });
 
-    describe('when successful', () => {
-      test('should return Jenkins-Crumb', async () => {
-        const expectedResult = 'crumb';
+    test('should read the `ibmcloud-apikey` in `tools` namespace', async () => {
+      mock_getSecretData.mockResolvedValue({});
 
-        mock_set.mockResolvedValue({
-          status: 200,
-          text: `Jenkins-Crumb:${expectedResult}`
-        });
+      await getClusterType();
 
-        const actualResult = await generateJenkinsCrumbHeader(jenkinsAccess);
-
-        expect(actualResult['Jenkins-Crumb']).toEqual(expectedResult);
-        expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
-        expect(mock_auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
-        expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
-      });
+      expect(mock_getSecretData.mock.calls.length).toEqual(1);
+      expect(mock_getSecretData.mock.calls[0][0]).toEqual('ibmcloud-apikey');
+      expect(mock_getSecretData.mock.calls[0][1]).toEqual('tools');
     });
 
-    describe('when not successful', () => {
-      test('should throw error', async () => {
-        const expectedResult = 'error text';
+    test('should return the `cluster_type` value from the `ibmcloud-apikey` secret', async () => {
+      const expectedResult = 'expected';
+      mock_getSecretData.mockResolvedValue({cluster_type: expectedResult});
 
-        mock_set.mockResolvedValue({
-          status: 400,
-          text: expectedResult
-        });
+      const actualResult = await getClusterType();
 
-        return generateJenkinsCrumbHeader(jenkinsAccess)
-          .then(() => fail('should throw error'))
-          .catch(err => {
-            expect(err.message).toEqual(`Unable to generate Jenkins crumb: ${expectedResult}`);
-
-            expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
-            expect(mock_auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
-            expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
-          });
-      });
+      expect(actualResult).toEqual(expectedResult);
     });
-  });
 
-  describe('buildJenkinsJobConfig()', () => {
-    describe('when git params provided', () => {
-      const gitParams = {
-        name: 'name',
-        url: 'chdkktdoogyyd943djd',
-        username: 'username',
-        password: 'password',
-        branch: 'master'
-      };
+    test('should return `kubernetes` if cluster_type not found', async () => {
+      mock_getSecretData.mockResolvedValue({});
 
-      test('replace {{GIT_REPO}} with gitParams.url', async () => {
+      const actualResult = await getClusterType();
 
-        const result = await buildJenkinsJobConfig(gitParams);
+      expect(actualResult).toEqual('kubernetes');
+    });
 
-        expect(result).not.toContain('{{GIT_REPO}}');
-        expect(result).toContain(gitParams.url);
-      });
+    test('should return `kubernetes` if getSecretData() throws error', async () => {
+      mock_getSecretData.mockRejectedValue(new Error(''));
 
-      test('replace {{GIT_CREDENTIALS}} with gitParams.name', async () => {
+      const actualResult = await getClusterType();
 
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toContain('{{GIT_CREDENTIALS}}');
-        expect(result).toContain(gitParams.name);
-      });
-
-      test('replace {{GIT_BRANCH}} with gitParams.branch', async () => {
-
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toContain('{{GIT_BRANCH}}');
-        expect(result).toContain(gitParams.branch);
-      });
-
-      test('replace all {{xxx}} references with values', async () => {
-
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toMatch(/{{.*}}/);
-      });
-    })
+      expect(actualResult).toEqual('kubernetes');
+    });
   });
 
   describe('buildCreateWebhookOptions()', () => {

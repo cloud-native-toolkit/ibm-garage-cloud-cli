@@ -4,6 +4,18 @@ import {decode as base64decode} from '../../util/base64';
 // required for rewire to work
 let buildKubeClient = KubeClient.buildKubeClient;
 
+export interface Secret {
+  apiVersion: string;
+  kind: 'Secret';
+  metadata: {
+    name: string;
+    labels: any;
+    annotations: any;
+  }
+  type: string;
+  stringData: any;
+}
+
 export async function getSecretData<T>(secretName: string, namespace: string): Promise<T> {
   const client = buildKubeClient();
 
@@ -18,7 +30,7 @@ export async function getSecretData<T>(secretName: string, namespace: string): P
   }, {} as T);
 }
 
-export async function createSecret<T>(namespace: string, secretName: string, secretBody: any) {
+export async function createSecret<T>(namespace: string, secretName: string, secretBody: any): Promise<Secret> {
   const client = buildKubeClient();
 
   try {
