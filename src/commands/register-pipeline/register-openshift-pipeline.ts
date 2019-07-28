@@ -14,7 +14,7 @@ export async function registerPipeline(options: RegisterPipelineOptions, gitPara
   try {
     const buildConfig = generateBuildConfig(gitParams.name, gitParams.url, gitParams.branch);
 
-    const fileName = path.join(process.cwd(), './.tmp/buildConfig.json');
+    const fileName = path.join(process.cwd(), './buildConfig.json');
     await writeFile(fileName, JSON.stringify(buildConfig));
 
     await spawnPromise(
@@ -31,7 +31,8 @@ export async function registerPipeline(options: RegisterPipelineOptions, gitPara
         env: process.env
       });
 
-    await deleteFile(fileName);
+    // MJP Keep file for debugging and possible redployment  
+    //await deleteFile(fileName);
 
     const host: string = await getRouteHosts(options.namespace || 'tools', 'jenkins');
 
