@@ -5,11 +5,13 @@ import {GitParams} from './create-git-secret';
 import * as kubectlFromFile from '../../api/kubectl/from-file';
 import * as childProcess from '../../util/child-process';
 import * as fileUtil from '../../util/file-util';
+import * as openshift from '../../api/openshift';
 
 let writeFile = fileUtil.writeFile;
 let spawnPromise = childProcess.spawnPromise;
 let kubectlCreate = kubectlFromFile.create;
 let kubectlApply = kubectlFromFile.apply;
+let startBuild = openshift.startBuild;
 
 export async function registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
 
@@ -21,7 +23,7 @@ export async function registerPipeline(options: RegisterPipelineOptions, gitPara
       JSON.stringify(buildConfig)
     );
 
-    await createBuildConfig(fileName, options.namespace);
+    await createBuildPipeline(buildConfig.metadata.name, fileName, options.namespace);
 
     const host: string = await getRouteHosts(options.namespace || 'tools', 'jenkins');
 
@@ -58,8 +60,10 @@ function generateBuildConfig(name: string, uri: string, branch: string = 'master
   };
 }
 
-async function createBuildConfig(fileName: string, namespace: string = 'dev') {
-  return kubectlCreate(fileName, namespace);
+async function createBuildPipeline(pipelineName: string, fileName: string, namespace: string = 'dev') {
+  await kubectlCreate(fileName, namespace);
+
+  await startBuild(pipelineName);
 }
 
 async function getRouteHosts(namespace: string, name: string): Promise<string> {
