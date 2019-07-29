@@ -1,4 +1,8 @@
-import {createSecret, Secret} from '../../api/kubectl/secrets';
+import {Secret} from '../../api/kubectl/secrets';
+import * as secrets from '../../api/kubectl/secrets';
+
+// Get values this way to allow rewire
+let createSecret = secrets.createSecret;
 
 export class GitParams {
   name: string;

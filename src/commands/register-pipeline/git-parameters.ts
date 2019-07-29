@@ -1,7 +1,7 @@
 import * as inquirer from 'inquirer';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {execPromise, ExecResult} from '../../util/child_process';
+import {execPromise, ExecResult} from '../../util/child-process';
 import {GitParams} from './create-git-secret';
 
 // set these variables here so they can be replaced by rewire

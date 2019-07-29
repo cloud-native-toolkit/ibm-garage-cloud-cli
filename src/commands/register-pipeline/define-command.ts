@@ -5,6 +5,7 @@ import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-sup
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {registerPipeline} from './register-pipeline';
 import {CommandLineOptions} from '../../model';
+import {checkKubeconfig} from '../../util/kubernetes';
 
 export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   return {
@@ -46,6 +47,8 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       }
 
       try {
+        await checkKubeconfig();
+
         await registerPipeline(argv, statusCallback);
 
         if (spinner) {

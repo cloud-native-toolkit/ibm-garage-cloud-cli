@@ -1,5 +1,5 @@
 import {splitLines} from '../../util/string-util';
-import * as cp from '../../util/child_process';
+import * as cp from '../../util/child-process';
 
 let execPromise = cp.execPromise;
 

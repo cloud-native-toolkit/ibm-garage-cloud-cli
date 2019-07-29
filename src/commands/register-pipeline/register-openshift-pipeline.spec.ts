@@ -25,14 +25,11 @@ describe('register-openshift-pipeline', () => {
     let mock_writeFile;
     let unset_writeFile;
 
-    let mock_spawnPromise;
-    let unset_spawnPromise;
-
     let mock_getRouteHosts;
     let unset_getRouteHosts;
 
-    var mock_deleteFile;
-    var unset_deleteFile;
+    let mock_createBuildConfig;
+    let unset_createBuildConfig;
 
     beforeEach(() => {
 
@@ -42,11 +39,8 @@ describe('register-openshift-pipeline', () => {
       mock_writeFile = jest.fn();
       unset_writeFile = module.__set__('writeFile', mock_writeFile) as () => void;
 
-      mock_spawnPromise = jest.fn();
-      unset_spawnPromise = module.__set__('spawnPromise', mock_spawnPromise) as () => void;
-
-      mock_deleteFile = jest.fn();
-      unset_deleteFile = module.__set__('deleteFile', mock_deleteFile) as () => void;
+      mock_createBuildConfig = jest.fn();
+      unset_createBuildConfig = module.__set__('createBuildConfig', mock_createBuildConfig) as () => void;
 
       mock_getRouteHosts = jest.fn();
       unset_getRouteHosts = module.__set__('getRouteHosts', mock_getRouteHosts) as () => void;
@@ -55,12 +49,11 @@ describe('register-openshift-pipeline', () => {
     afterEach(() => {
       unset_generateBuildConfig();
       unset_writeFile();
-      unset_spawnPromise();
-      unset_deleteFile();
+      unset_createBuildConfig();
       unset_getRouteHosts();
     });
 
-    test('should write the buildConfig to a temp file', async () => {
+    test('should generate the buildConfig', async () => {
       const expectedResult = {test: 'value'};
       mock_generateBuildConfig.mockReturnValue(expectedResult);
 
@@ -70,33 +63,28 @@ describe('register-openshift-pipeline', () => {
       expect(mock_writeFile.mock.calls[0][1]).toEqual(JSON.stringify(expectedResult));
     });
 
-    test('should spawn a process to run `oc create -f {file}`', async () => {
-      const expectedResult = {test: 'value'};
-      mock_generateBuildConfig.mockReturnValue(expectedResult);
-
-      mock_writeFile.mockResolvedValue({});
-      mock_spawnPromise.mockResolvedValue({});
-      mock_deleteFile.mockResolvedValue({});
-
-      const jenkinsUrl = 'test';
-      mock_getRouteHosts.mockResolvedValue([jenkinsUrl]);
-
+    test('should apply the buildConfig to OpenShift', async () => {
+      const buildConfig = {metadata: {name: 'pipeline-name'}};
+      const fileName = 'filename.json';
+      const jenkinsHost = 'test';
       const namespace = 'namespace';
+
+      mock_generateBuildConfig.mockReturnValue(buildConfig);
+      mock_writeFile.mockResolvedValue(fileName);
+      mock_createBuildConfig.mockResolvedValue({});
+      mock_getRouteHosts.mockResolvedValue([jenkinsHost]);
+
       const result = await registerPipeline({namespace}, gitParams);
 
-      expect(result.jenkinsUrl).toEqual(`https://${jenkinsUrl}`);
+      expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
 
       expect(mock_writeFile.mock.calls.length).toEqual(1);
-      expect(mock_writeFile.mock.calls[0][1]).toEqual(JSON.stringify(expectedResult));
+      expect(mock_writeFile.mock.calls[0][0]).toMatch(new RegExp(`^${process.cwd()}/pipeline-build-config.json`));
+      expect(mock_writeFile.mock.calls[0][1]).toEqual(JSON.stringify(buildConfig));
 
-      expect(mock_spawnPromise.mock.calls.length).toEqual(2);
-      expect(mock_spawnPromise.mock.calls[0][0]).toEqual('oc');
-      expect(mock_spawnPromise.mock.calls[0][1]).toEqual(['project', namespace]);
-
-      expect(mock_spawnPromise.mock.calls[1][0]).toEqual('oc');
-      expect(mock_spawnPromise.mock.calls[1][1][0]).toEqual('create');
-
-      expect(mock_deleteFile.mock.calls.length).toEqual(1);
+      expect(mock_createBuildConfig.mock.calls.length).toEqual(1);
+      expect(mock_createBuildConfig.mock.calls[0][0]).toEqual(fileName);
+      expect(mock_createBuildConfig.mock.calls[0][1]).toEqual(namespace);
     });
   });
 

@@ -17,19 +17,19 @@ export async function readFile(filename: string): Promise<Buffer> {
   });
 }
 
-export async function writeFile(fileName: string, contents: any) {
+export async function writeFile(fileName: string, contents: any): Promise<string> {
   return new Promise((resolve, reject) => {
     write(fileName, contents, err => {
       if (err) {
         reject(err);
       } else {
-        resolve();
+        resolve(fileName);
       }
     });
   })
 }
 
-export async function deleteFile(fileName: string) {
+export async function deleteFile(fileName: string): Promise<string> {
   return new Promise((resolve, reject) => {
     unlink(fileName, (err) => {
       if (err) {
@@ -37,7 +37,7 @@ export async function deleteFile(fileName: string) {
         return;
       }
 
-      resolve();
+      resolve(fileName);
     });
   });
 }

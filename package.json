@@ -10,12 +10,21 @@
     "igc": "dist/script.js"
   },
   "watch": {
-    "build": "src/**/*.ts"
+    "test": {
+      "patterns": ["src"],
+      "extensions": "ts",
+      "quiet": true
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test"
+    }
   },
   "scripts": {
     "pretest": "npm run build",
     "test": "jest --verbose",
-    "tdd": "jest --watch",
+    "tdd": "npm-watch test",
     "build": "tsc -d",
     "postbuild": "chmod +x dist/script.js",
     "prelink": "npm run build",
@@ -41,6 +50,7 @@
     "@types/superagent": "^4.1.1",
     "@types/yargs": "^13.0.0",
     "babel-jest": "^24.8.0",
+    "husky": "^3.0.2",
     "jest": "^24.7.1",
     "jest-plugin-context": "^2.9.0",
     "npm-watch": "^0.6.0",

@@ -1,5 +1,5 @@
 import {exec} from 'child_process';
-import {execPromise, ExecResult} from '../../util/child_process';
+import {execPromise, ExecResult} from '../../util/child-process';
 
 export class IBMCloudAccount {
   guid: string;
