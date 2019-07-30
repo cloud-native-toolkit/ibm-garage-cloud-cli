@@ -17,6 +17,13 @@ let create = openshift.create;
 let apply = openshift.apply;
 let startBuild = openshift.startBuild;
 
+export function setupDefaultOptions(): Partial<RegisterPipelineOptions> {
+  return {
+    jenkinsNamespace: 'tools',
+    pipelineNamespace: 'tools',
+  };
+}
+
 export async function registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
 
   try {
@@ -27,9 +34,9 @@ export async function registerPipeline(options: RegisterPipelineOptions, gitPara
       JSON.stringify(buildConfig)
     );
 
-    await createBuildPipeline(buildConfig.metadata.name, fileName, options.namespace);
+    await createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);
 
-    const host: string = await getRouteHosts(options.namespace || 'tools', 'jenkins');
+    const host: string = await getRouteHosts(options.jenkinsNamespace || 'tools', 'jenkins');
 
     return {jenkinsUrl: host ? `https://${host}` : ''};
   } catch (err) {
@@ -77,7 +84,7 @@ async function createBuildPipeline(pipelineName: string, fileName: string, names
     }
   }
 
-  await startBuild(pipelineName);
+  await startBuild(pipelineName, namespace);
 }
 
 interface Prompt {

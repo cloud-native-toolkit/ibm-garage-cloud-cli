@@ -11,9 +11,16 @@ let readFile = fs.readFile;
 let post = superagent.post;
 let get = superagent.get;
 
+export function setupDefaultOptions(): Partial<RegisterPipelineOptions> {
+  return {
+    jenkinsNamespace: 'tools',
+    pipelineNamespace: 'dev',
+  };
+}
+
 export async function registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
 
-  const jenkinsAccess = await pullJenkinsAccessSecrets(options.namespace || 'tools');
+  const jenkinsAccess = await pullJenkinsAccessSecrets(options.jenkinsNamespace);
 
   const jobName = gitParams.branch !== 'master'
     ? `${gitParams.name}_${gitParams.branch}`

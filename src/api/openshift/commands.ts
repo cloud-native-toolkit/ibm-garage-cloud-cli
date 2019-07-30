@@ -2,10 +2,10 @@ import * as childProcess from '../../util/child-process';
 
 let spawnPromise = childProcess.spawnPromise;
 
-export async function startBuild(pipelineName: string, verbose: boolean = false) {
+export async function startBuild(pipelineName: string, namespace: string = 'default', verbose: boolean = false) {
   return spawnPromise(
     'oc',
-    ['start-build', pipelineName],
+    ['start-build', pipelineName, '-n', namespace],
     {
       env: process.env
     },

@@ -61,24 +61,25 @@ describe('register-openshift-pipeline', () => {
       const buildConfig = {metadata: {name: pipelineName}};
       const fileName = 'filename.json';
       const jenkinsHost = 'test';
-      const namespace = 'namespace';
+      const jenkinsNamespace = 'namespace';
+      const pipelineNamespace = 'namespace1';
 
       mock_generateBuildConfig.mockReturnValue(buildConfig);
       mock_writeFile.mockResolvedValue(fileName);
       mock_createBuildPipeline.mockResolvedValue({});
       mock_getRouteHosts.mockResolvedValue([jenkinsHost]);
 
-      const result = await registerPipeline({namespace}, gitParams);
+      const result = await registerPipeline({jenkinsNamespace, pipelineNamespace}, gitParams);
 
       expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
 
       expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.json`, JSON.stringify(buildConfig));
 
-      expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, namespace);
+      expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, pipelineNamespace);
     });
   });
 
-  describe('createBuildConfig()', () => {
+  describe('createBuildPipeline()', () => {
     const fileName = 'filename';
     const namespace = 'test';
     const pipelineName = 'my pipeline';
@@ -126,7 +127,7 @@ describe('register-openshift-pipeline', () => {
         await createBuildPipeline(pipelineName, fileName, namespace);
 
         expect(mock_create).toHaveBeenCalledWith(fileName, namespace);
-        expect(mock_startBuild).toHaveBeenCalledWith(pipelineName);
+        expect(mock_startBuild).toHaveBeenCalledWith(pipelineName, namespace);
       });
     });
 

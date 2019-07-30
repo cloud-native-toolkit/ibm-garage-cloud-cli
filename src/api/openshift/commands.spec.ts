@@ -26,12 +26,13 @@ describe('commands', () => {
   describe('startBuild()', () => {
     test('should execute `oc start-build` for given file name and namespace', async () => {
       const pipelineName = 'pipelineName';
+      const namespace = 'namespace';
 
-      await startBuild(pipelineName);
+      await startBuild(pipelineName, namespace);
 
       expect(mock_spawnPromise).toHaveBeenCalledWith(
         'oc',
-        ['start-build', pipelineName],
+        ['start-build', pipelineName, '-n', namespace],
         {
           env: process.env
         },

@@ -13,14 +13,19 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
     command,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
-      .clusterNamespace({
-        optional: true,
-        describe: 'The cluster namespace where Jenkins is running',
-        default: 'tools',
-      })
       .quiet()
       .debug()
       .build()
+      .option('jenkinsNamespace', {
+        type: 'string',
+        alias: 'j',
+        describe: 'the namespace where Jenkins is running',
+      })
+      .option('pipelineNamespace', {
+        type: 'string',
+        alias: 'n',
+        describe: 'the namespace where the pipeline should be deployed',
+      })
       .option('skipWebhook', {
         type: 'boolean',
         describe: 'flag indicating that the webhook should not be created'

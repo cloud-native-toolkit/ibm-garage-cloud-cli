@@ -1,6 +1,7 @@
 
 export class RegisterPipelineOptions {
-  namespace?: string;
+  jenkinsNamespace?: string;
+  pipelineNamespace?: string;
   skipWebhook?: boolean;
   workingDir?: string;
   gitUsername?: string;

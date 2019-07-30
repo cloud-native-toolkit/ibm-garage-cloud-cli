@@ -13,10 +13,13 @@ import * as fileUtil from '../../util/file-util';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 
 // set these variables here so they can be replaced by rewire
+let setupIksDefaultOptions = iksPipeline.setupDefaultOptions;
 let executeRegisterIksPipeline = iksPipeline.registerPipeline;
+let setupOpenshiftDefaultOptions = openshiftPipeline.setupDefaultOptions;
 let executeRegisterOpenShiftPipeline = openshiftPipeline.registerPipeline;
 let readFilePromise = fileUtil.readFile;
 let getSecretData = secrets.getSecretData;
+let copySecret = secrets.copySecret;
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -30,17 +33,27 @@ class WebhookError extends CommandError {
   }
 }
 
-export async function registerPipeline(options: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
+export async function registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
+
+  const clusterType: 'openshift' | 'kubernetes' = await getClusterType();
+
+  const options: RegisterPipelineOptions = setupDefaultOptions(clusterType, cliOptions);
 
   const gitParams: GitParams = await getGitParameters(options);
 
   notifyStatus('Creating git secret');
 
-  const secret: Secret = await createGitSecret(gitParams, options.namespace, await readValuesFile(options.values));
+  const secret: Secret = await createGitSecret(gitParams, options.pipelineNamespace, await readValuesFile(options.values));
+
+  if (options.jenkinsNamespace !== options.pipelineNamespace) {
+    notifyStatus(`Copying 'ibmcloud-apikey' secret to ${options.pipelineNamespace}`);
+
+    await copySecret('ibmcloud-apikey', options.jenkinsNamespace, options.pipelineNamespace);
+  }
 
   notifyStatus('Registering pipeline');
 
-  const pipelineResult = await executeRegisterPipeline(options, gitParams);
+  const pipelineResult = await executeRegisterPipeline(clusterType, options, gitParams);
 
   if (!options.skipWebhook) {
     notifyStatus('Creating git webhook');
@@ -51,6 +64,14 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
         `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
     }
   }
+}
+
+function setupDefaultOptions(clusterType: string, cliOptions: RegisterPipelineOptions): RegisterPipelineOptions {
+  return Object.assign(
+    {},
+    clusterType === 'openshift' ? setupOpenshiftDefaultOptions() : setupIksDefaultOptions(),
+    cliOptions,
+  )
 }
 
 async function readValuesFile(valuesFileName?: string): Promise<any> {
@@ -71,8 +92,8 @@ async function readValuesFile(valuesFileName?: string): Promise<any> {
   return {};
 }
 
-async function executeRegisterPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
-  if ('openshift' === await getClusterType()) {
+async function executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
+  if ('openshift' === clusterType) {
     return executeRegisterOpenShiftPipeline(options, gitParams);
   } else {
     return executeRegisterIksPipeline(options, gitParams);

@@ -82,9 +82,6 @@ describe('register-pipeline', () => {
   });
 
   describe('executeRegisterPipeline()', () => {
-    let mock_getClusterType;
-    let unset_getClusterType;
-
     let mock_executeRegisterIksPipeline;
     let unset_executeRegisterIksPipeline;
 
@@ -92,9 +89,6 @@ describe('register-pipeline', () => {
     let unset_executeRegisterOpenShiftPipeline;
 
     beforeEach(() => {
-
-      mock_getClusterType = jest.fn();
-      unset_getClusterType = module.__set__('getClusterType', mock_getClusterType) as () => void;
 
       mock_executeRegisterIksPipeline = jest.fn();
       unset_executeRegisterIksPipeline = module.__set__('executeRegisterIksPipeline', mock_executeRegisterIksPipeline) as () => void;
@@ -104,24 +98,20 @@ describe('register-pipeline', () => {
     });
 
     afterEach(() => {
-      unset_getClusterType();
       unset_executeRegisterIksPipeline();
       unset_executeRegisterOpenShiftPipeline();
     });
 
     describe('when cluster_type is `openshift`', () => {
-      beforeEach(() => {
-        mock_getClusterType.mockResolvedValue('openshift');
-      });
-
       test('return value from executeRegisterOpenShiftPipeline()', async () => {
+        const clusterType = 'openshift';
         const options = {};
         const gitParams = {};
 
         const executeRegisterOpenShiftPipelineResult = {};
         mock_executeRegisterOpenShiftPipeline.mockResolvedValue(executeRegisterOpenShiftPipelineResult);
 
-        expect(await executeRegisterPipeline(options, gitParams)).toBe(executeRegisterOpenShiftPipelineResult);
+        expect(await executeRegisterPipeline(clusterType, options, gitParams)).toBe(executeRegisterOpenShiftPipelineResult);
 
         expect(mock_executeRegisterOpenShiftPipeline.mock.calls.length).toBe(1);
         expect(mock_executeRegisterOpenShiftPipeline.mock.calls[0][0]).toBe(options);
@@ -130,18 +120,15 @@ describe('register-pipeline', () => {
     });
 
     describe('when cluster_type is `kubernetes`', () => {
-      beforeEach(() => {
-        mock_getClusterType.mockResolvedValue('kubernetes');
-      });
-
       test('return value from executeRegisterIksPipeline()', async () => {
+        const clusterType = 'kubernetes';
         const options = {};
         const gitParams = {};
 
         const executeRegisterIksPipelineResult = {};
         mock_executeRegisterIksPipeline.mockResolvedValue(executeRegisterIksPipelineResult);
 
-        expect(await executeRegisterPipeline(options, gitParams)).toBe(executeRegisterIksPipelineResult);
+        expect(await executeRegisterPipeline(clusterType, options, gitParams)).toBe(executeRegisterIksPipelineResult);
 
         expect(mock_executeRegisterIksPipeline.mock.calls.length).toBe(1);
         expect(mock_executeRegisterIksPipeline.mock.calls[0][0]).toBe(options);

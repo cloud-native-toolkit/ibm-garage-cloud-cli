@@ -9,11 +9,25 @@ export interface Secret {
   kind: 'Secret';
   metadata: {
     name: string;
+    namespace?: string;
+    uid?: string;
+    selfLink?: string;
+    resourceVersion?: string;
+    creationTimestamp?: string;
     labels: any;
     annotations: any;
   }
   type: string;
-  stringData: any;
+  stringData?: any;
+  data?: any;
+}
+
+export async function getSecret(secretName: string, namespace: string): Promise<Secret> {
+  const client = buildKubeClient();
+
+  const result = await client.api.v1.namespace(namespace).secrets(secretName).get();
+
+  return result.body;
 }
 
 export async function getSecretData<T>(secretName: string, namespace: string): Promise<T> {
@@ -30,8 +44,10 @@ export async function getSecretData<T>(secretName: string, namespace: string): P
   }, {} as T);
 }
 
-export async function createSecret<T>(namespace: string, secretName: string, secretBody: any): Promise<Secret> {
+export async function createSecret<T>(namespace: string, secretName: string, secretBody: {body: any}): Promise<Secret> {
   const client = buildKubeClient();
+
+  console.log('creating secret', secretBody);
 
   try {
     await client.api.v1.namespaces(namespace).secrets(secretName).get();
@@ -44,4 +60,25 @@ export async function createSecret<T>(namespace: string, secretName: string, sec
 
     return result.body;
   }
+}
+
+export async function copySecret(secretName: string, fromNamespace: string, toNamespace: string): Promise<Secret> {
+  const secret = await getSecret(secretName, fromNamespace);
+
+  console.log('got secret', secret);
+
+  const metadata = {
+    name: secretName,
+    namespace: toNamespace,
+    annotations: secret.metadata.annotations,
+    labels: secret.metadata.labels
+  };
+
+  return createSecret(
+    toNamespace,
+    secretName,
+    {
+      body: Object.assign({}, secret, {metadata})
+    },
+  );
 }
