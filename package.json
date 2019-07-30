@@ -32,7 +32,9 @@
     "unlink": "npm unlink $npm_package_name",
     "prepare": "npm run build",
     "watch": "npm-watch",
-    "igc": "ts-node src/script.ts"
+    "prestart": "npm run build",
+    "start": "./dist/script.js",
+    "igc": "./dist/script.js"
   },
   "devDependencies": {
     "@babel/core": "^7.4.3",

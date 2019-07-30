@@ -47,3 +47,16 @@ Launches the `ibm-garage-cli-tools` docker image in an interactive
 terminal. This image provides commonly used infrastructure tools like,
 `terraform`, `kubectl`, etc.
  
+## Development
+
+### Run the tests
+
+```bash
+npm test
+```
+
+### Run the cli locally
+
+```bash
+npm start
+```
