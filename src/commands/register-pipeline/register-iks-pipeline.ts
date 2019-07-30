@@ -14,7 +14,7 @@ let get = superagent.get;
 export function setupDefaultOptions(): Partial<RegisterPipelineOptions> {
   return {
     jenkinsNamespace: 'tools',
-    pipelineNamespace: 'dev',
+    pipelineNamespace: 'tools',
   };
 }
 

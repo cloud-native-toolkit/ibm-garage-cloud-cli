@@ -20,7 +20,7 @@ let startBuild = openshift.startBuild;
 export function setupDefaultOptions(): Partial<RegisterPipelineOptions> {
   return {
     jenkinsNamespace: 'tools',
-    pipelineNamespace: 'tools',
+    pipelineNamespace: 'dev',
   };
 }
 

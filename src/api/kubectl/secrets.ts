@@ -47,8 +47,6 @@ export async function getSecretData<T>(secretName: string, namespace: string): P
 export async function createSecret<T>(namespace: string, secretName: string, secretBody: {body: any}): Promise<Secret> {
   const client = buildKubeClient();
 
-  console.log('creating secret', secretBody);
-
   try {
     await client.api.v1.namespaces(namespace).secrets(secretName).get();
 
@@ -64,8 +62,6 @@ export async function createSecret<T>(namespace: string, secretName: string, sec
 
 export async function copySecret(secretName: string, fromNamespace: string, toNamespace: string): Promise<Secret> {
   const secret = await getSecret(secretName, fromNamespace);
-
-  console.log('got secret', secret);
 
   const metadata = {
     name: secretName,
