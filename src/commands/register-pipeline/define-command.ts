@@ -54,6 +54,8 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       }
 
       try {
+        await checkKubeconfig();
+
         await registerPipeline(argv, statusCallback);
 
         if (spinner) {

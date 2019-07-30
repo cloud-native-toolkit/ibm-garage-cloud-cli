@@ -5,13 +5,13 @@ import * as YAML from 'json2yaml';
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {CommandLineOptions} from '../../model';
 import {getCredentials} from './credentials';
+import {checkKubeconfig} from '../../util/kubernetes';
 
 export const defineCredentialsCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   return {
     command,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
-      .kubeConfig({optional: false})
       .clusterNamespace({
         optional: true,
         describe: 'The cluster namespace where the credentials are stored',
@@ -36,6 +36,8 @@ export const defineCredentialsCommand: YargsCommandDefinition = <T>(command: str
       }
 
       try {
+        await checkKubeconfig();
+        
         const result = await getCredentials(argv.namespace, statusCallback);
 
         if (spinner) {

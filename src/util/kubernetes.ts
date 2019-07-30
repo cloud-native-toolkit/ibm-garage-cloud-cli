@@ -1,33 +1,34 @@
 import * as readline from "readline";
 import * as opn from 'open';
+import {buildKubeClient} from '../api/kubectl/client';
 
 export async function checkKubeconfig() {
-  return new Promise((resolve, reject) => {
-    if (!process.env.KUBECONFIG) {
-      console.log('KUBECONFIG environment variable not found. It appears the kubernetes environment has not been initialized.');
-      console.log('To initialize the kubernetes:');
-      console.log(' 1) Navigate to https://cloud.ibm.com/kubernetes/clusters');
-      console.log(' 2) Select the kubernetes cluster');
-      console.log(' 3) Follow the instructions on the access tab');
-      console.log('');
-      process.stdout.write('Open the URL in the default browser? [Y/n]> ');
+  const kubeClient = buildKubeClient();
 
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-        terminal: false
-      });
+  try {
+    await kubeClient.api.v1.pods.get();
+  } catch (err) {
+    console.log('It appears the kubernetes environment has not been initialized.');
+    console.log('To initialize kubernetes:');
+    console.log(' 1) Navigate to https://cloud.ibm.com/kubernetes/clusters');
+    console.log(' 2) Select the kubernetes cluster with which to work');
+    console.log(' 3) Follow the instructions on the access tab');
+    console.log('');
+    process.stdout.write('Open the URL in the default browser? [Y/n]> ');
 
-      rl.on('line', function (line) {
-        if (line === 'n') {
-          reject(new Error('KUBECONFIG not set'));
-        }
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: false
+    });
 
-        opn('https://cloud.ibm.com/kubernetes/clusters');
-        reject(new Error('KUBECONFIG not set'));
-      });
-    } else {
-      resolve();
-    }
-  });
+    rl.on('line', function (line) {
+      if (line === 'n') {
+        throw new Error('Kubernetes not set');
+      }
+
+      opn('https://cloud.ibm.com/kubernetes/clusters');
+      throw new Error('Kubernetes not set');
+    });
+  }
 }
