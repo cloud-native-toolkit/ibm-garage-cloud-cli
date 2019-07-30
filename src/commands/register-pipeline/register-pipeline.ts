@@ -10,6 +10,7 @@ import {createGitSecret, GitParams} from './create-git-secret';
 import * as iksPipeline from './register-iks-pipeline';
 import * as openshiftPipeline from './register-openshift-pipeline';
 import * as fileUtil from '../../util/file-util';
+import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 
 // set these variables here so they can be replaced by rewire
 let executeRegisterIksPipeline = iksPipeline.registerPipeline;
@@ -18,6 +19,16 @@ let readFilePromise = fileUtil.readFile;
 let getSecretData = secrets.getSecretData;
 
 const noopNotifyStatus: (status: string) => void = () => {};
+
+const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {
+  WEBHOOK: {name: 'WEBHOOK', severity: ErrorSeverity.WARNING}
+}
+
+class WebhookError extends CommandError {
+  constructor(message: string) {
+    super(message, REGISTER_PIPELINE_ERROR_TYPES.WEBHOOK);
+  }
+}
 
 export async function registerPipeline(options: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
@@ -33,10 +44,14 @@ export async function registerPipeline(options: RegisterPipelineOptions, notifyS
 
   if (!options.skipWebhook) {
     notifyStatus('Creating git webhook');
-    await createWebhook(buildCreateWebhookOptions(gitParams, pipelineResult));
+    try {
+      await createWebhook(buildCreateWebhookOptions(gitParams, pipelineResult));
+    } catch (err) {
+      throw new WebhookError(
+        `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
+    }
   }
 }
-
 
 async function readValuesFile(valuesFileName?: string): Promise<any> {
   if (!valuesFileName) {

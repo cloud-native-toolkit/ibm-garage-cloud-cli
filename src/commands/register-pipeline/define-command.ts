@@ -6,6 +6,7 @@ import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {registerPipeline} from './register-pipeline';
 import {CommandLineOptions} from '../../model';
 import {checkKubeconfig} from '../../util/kubernetes';
+import {ErrorSeverity, isCommandError} from '../../util/errors';
 
 export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
   return {
@@ -39,16 +40,15 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       let spinner;
 
       function statusCallback(status: string) {
-        if (!spinner) {
-          spinner = ora(status).start();
-        } else {
-          spinner.text = status;
-        }
+        // if (!spinner) {
+        //   spinner = ora(status).start();
+        // } else {
+        //   spinner.text = status;
+        // }
+        console.log(status);
       }
 
       try {
-        await checkKubeconfig();
-
         await registerPipeline(argv, statusCallback);
 
         if (spinner) {
@@ -61,11 +61,21 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
           spinner.stop();
         }
 
-        console.log('Error registering pipeline:', err.message);
-        if (argv.debug) {
-          console.log('Error registering pipeline:', err);
+        if (isCommandError(err)) {
+          if (err.type.severity === ErrorSeverity.WARNING) {
+            console.log(`Warning: ${err.message}`);
+            process.exit(0)
+          } else {
+            console.log(`${err.type.severity}: ${err.message}`);
+            process.exit(1);
+          }
+        } else {
+          console.log('Error registering pipeline:', err.message);
+          if (argv.debug) {
+            console.log('Error registering pipeline:', err);
+          }
+          process.exit(1);
         }
-        process.exit(1);
       }
     }
   };

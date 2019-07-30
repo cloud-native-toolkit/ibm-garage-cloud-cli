@@ -1,4 +1,6 @@
 import path = require('path');
+import * as inquirer from 'inquirer';
+
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 
 import {GitParams} from './create-git-secret';
@@ -7,10 +9,12 @@ import * as childProcess from '../../util/child-process';
 import * as fileUtil from '../../util/file-util';
 import * as openshift from '../../api/openshift';
 
+// set these variables here so they can be replaced by rewire
+let prompt = inquirer.prompt;
 let writeFile = fileUtil.writeFile;
 let spawnPromise = childProcess.spawnPromise;
-let kubectlCreate = kubectlFromFile.create;
-let kubectlApply = kubectlFromFile.apply;
+let create = openshift.create;
+let apply = openshift.apply;
 let startBuild = openshift.startBuild;
 
 export async function registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
@@ -61,9 +65,37 @@ function generateBuildConfig(name: string, uri: string, branch: string = 'master
 }
 
 async function createBuildPipeline(pipelineName: string, fileName: string, namespace: string = 'dev') {
-  await kubectlCreate(fileName, namespace);
+  try {
+    await create(fileName, namespace);
+  } catch (err) {
+    if (!err.message.match(/already exists/)) {
+      throw err;
+    }
+
+    if (await shouldUpdateExistingBuildConfig(pipelineName)) {
+      await apply(fileName, namespace);
+    }
+  }
 
   await startBuild(pipelineName);
+}
+
+interface Prompt {
+  shouldUpdate: boolean;
+}
+
+async function shouldUpdateExistingBuildConfig(pipelineName: string): Promise<boolean> {
+
+  const questions: inquirer.Questions<Prompt> = [{
+    type: 'confirm',
+    name: 'shouldUpdate',
+    message: `The build pipeline (${pipelineName}) already exists. Do you want to update it?`,
+    default: true
+  }];
+
+  const result: Prompt = await prompt(questions);
+
+  return result.shouldUpdate;
 }
 
 async function getRouteHosts(namespace: string, name: string): Promise<string> {
@@ -72,7 +104,9 @@ async function getRouteHosts(namespace: string, name: string): Promise<string> {
     ['get', 'route/jenkins', '-o', 'json'],
     {
       env: process.env
-    });
+    },
+    false
+  );
 
   const route: {spec: {host: string}} = parseRouteOutput(routeText);
 

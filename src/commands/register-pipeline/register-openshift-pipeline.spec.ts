@@ -1,10 +1,12 @@
 import rewire = require('rewire');
 import {GitParams} from './create-git-secret';
+import mock = jest.mock;
 
 const module = rewire('./register-openshift-pipeline');
 
 const registerPipeline = module.__get__('registerPipeline');
 const createBuildPipeline = module.__get__('createBuildPipeline');
+const shouldUpdateExistingBuildConfig = module.__get__('shouldUpdateExistingBuildConfig');
 const parseRouteOutput = module.__get__('parseRouteOutput');
 
 describe('register-openshift-pipeline', () => {
@@ -54,16 +56,6 @@ describe('register-openshift-pipeline', () => {
       unset_getRouteHosts();
     });
 
-    test('should generate the buildConfig', async () => {
-      const expectedResult = {test: 'value'};
-      mock_generateBuildConfig.mockReturnValue(expectedResult);
-
-      await registerPipeline({}, gitParams);
-
-      expect(mock_writeFile.mock.calls.length).toEqual(1);
-      expect(mock_writeFile.mock.calls[0][1]).toEqual(JSON.stringify(expectedResult));
-    });
-
     test('should apply the buildConfig to OpenShift', async () => {
       const pipelineName = 'pipeline-name';
       const buildConfig = {metadata: {name: pipelineName}};
@@ -80,51 +72,150 @@ describe('register-openshift-pipeline', () => {
 
       expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
 
-      expect(mock_writeFile.mock.calls.length).toEqual(1);
-      expect(mock_writeFile.mock.calls[0][0]).toMatch(new RegExp(`^${process.cwd()}/pipeline-build-config.json`));
-      expect(mock_writeFile.mock.calls[0][1]).toEqual(JSON.stringify(buildConfig));
+      expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.json`, JSON.stringify(buildConfig));
 
-      expect(mock_createBuildPipeline.mock.calls.length).toEqual(1);
-      expect(mock_createBuildPipeline.mock.calls[0][0]).toEqual(pipelineName);
-      expect(mock_createBuildPipeline.mock.calls[0][1]).toEqual(fileName);
-      expect(mock_createBuildPipeline.mock.calls[0][2]).toEqual(namespace);
+      expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, namespace);
     });
   });
 
   describe('createBuildConfig()', () => {
+    const fileName = 'filename';
+    const namespace = 'test';
+    const pipelineName = 'my pipeline';
 
-    let mock_kubectlCreate;
-    let unset_kubectlCreate;
+    let mock_create;
+    let unset_create;
 
     let mock_startBuild;
     let unset_startBuild;
 
+    let mock_shouldUpdateExistingBuildConfig;
+    let unset_shouldUpdateExistingBuildConfig;
+
+    let mock_apply;
+    let unset_apply;
+
     beforeEach(() => {
-      mock_kubectlCreate = jest.fn();
-      unset_kubectlCreate = module.__set__('kubectlCreate', mock_kubectlCreate) as () => void;
+      mock_create = jest.fn();
+      unset_create = module.__set__('create', mock_create) as () => void;
 
       mock_startBuild = jest.fn();
       unset_startBuild = module.__set__('startBuild', mock_startBuild) as () => void;
+
+      mock_shouldUpdateExistingBuildConfig = jest.fn();
+      unset_shouldUpdateExistingBuildConfig = module.__set__('shouldUpdateExistingBuildConfig', mock_shouldUpdateExistingBuildConfig) as () => void;
+
+      mock_apply = jest.fn();
+      unset_apply = module.__set__('apply', mock_apply) as () => void;
     });
 
-    describe('when kubectlCreate is successful', () => {
+    afterEach(() => {
+      unset_create();
+      unset_startBuild();
+      unset_shouldUpdateExistingBuildConfig();
+      unset_apply();
+    });
+
+    describe('when kubectl create is successful', () => {
       beforeEach(() => {
-        mock_kubectlCreate.mockResolvedValue({});
+        mock_create.mockResolvedValue({});
       });
 
       test('should start the pipeline build', async () => {
-        const fileName = 'filename';
-        const namespace = 'test';
-        const pipelineName = 'my pipeline';
 
         await createBuildPipeline(pipelineName, fileName, namespace);
 
-        expect(mock_kubectlCreate.mock.calls.length).toEqual(1);
-        expect(mock_kubectlCreate.mock.calls[0]).toEqual([fileName, namespace]);
-
-        expect(mock_startBuild.mock.calls.length).toEqual(1);
-        expect(mock_startBuild.mock.calls[0][0]).toEqual(pipelineName);
+        expect(mock_create).toHaveBeenCalledWith(fileName, namespace);
+        expect(mock_startBuild).toHaveBeenCalledWith(pipelineName);
       });
+    });
+
+    describe('when kubectl create fails because pipeline already exists', () => {
+      beforeEach(() => {
+        mock_create.mockRejectedValue(new Error('already exists'));
+      });
+
+      test('should check if existing pipeline should be updated', async () => {
+
+        await createBuildPipeline(pipelineName, fileName, namespace);
+
+        expect(mock_shouldUpdateExistingBuildConfig).toHaveBeenCalled();
+      });
+
+      describe('and when existing should be updated', () => {
+        beforeEach(() => {
+          mock_shouldUpdateExistingBuildConfig.mockResolvedValue(true);
+        });
+
+        test('should call kubectl apply', async () => {
+
+          await createBuildPipeline(pipelineName, fileName, namespace);
+
+          expect(mock_apply).toHaveBeenCalledWith(fileName, namespace);
+        });
+      });
+
+      describe('and when existing should not be updated', () => {
+        beforeEach(() => {
+          mock_shouldUpdateExistingBuildConfig.mockResolvedValue(false);
+        });
+
+        test('should not call kubectl apply', async () => {
+
+          await createBuildPipeline(pipelineName, fileName, namespace);
+
+          expect(mock_apply).not.toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('when kubectl create fails for a reason other than existing pipeline', () => {
+      const errorMessage = 'some other error';
+
+      beforeEach(() => {
+        mock_create.mockRejectedValue(new Error(errorMessage));
+      });
+
+      test('should throw error', () => {
+        return createBuildPipeline(pipelineName, fileName, namespace)
+          .then(result => fail('should throw error'))
+          .catch(err => {
+            expect(err.message).toEqual(errorMessage);
+          });
+      });
+    });
+  });
+
+  describe('shouldUpdateExistingBuildConfif()', () => {
+
+    let mock_prompt;
+    let unset_prompt;
+
+    beforeEach(() => {
+      mock_prompt = jest.fn();
+      unset_prompt = module.__set__('prompt', mock_prompt) as () => void;
+    });
+
+    afterEach(() => {
+      unset_prompt();
+    });
+
+    test('should prompt user with pipeline name', async () => {
+      const pipelineName = 'some-pipeline';
+      const expectedResult = true;
+
+      mock_prompt.mockResolvedValue({shouldUpdate: expectedResult});
+
+      const actualResult = await shouldUpdateExistingBuildConfig(pipelineName);
+
+      expect(actualResult).toEqual(expectedResult);
+
+      expect(mock_prompt).toHaveBeenCalled();
+      const questions = mock_prompt.mock.calls[0][0];
+
+      const shouldUpdate = questions.find(question => question.name === 'shouldUpdate');
+      expect(shouldUpdate).not.toBeUndefined();
+      expect(shouldUpdate.message).toContain(pipelineName);
     });
   });
 

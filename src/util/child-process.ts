@@ -21,17 +21,24 @@ export function execPromise(command: string, options: ExecOptions = {}): Promise
   })
 }
 
-export async function spawnPromise(command: string, args: string[], env: any): Promise<string> {
+export async function spawnPromise(command: string, args: string[], env: any, verbose: boolean = true): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const childProcess = spawn(command, args, env);
 
-    childProcess.stdout.pipe(process.stdout);
-    childProcess.stderr.pipe(process.stderr);
-    process.stdin.pipe(childProcess.stdin);
+    if (verbose) {
+      childProcess.stdout.pipe(process.stdout);
+      childProcess.stderr.pipe(process.stderr);
+      process.stdin.pipe(childProcess.stdin);
+    }
 
     let result: string = '';
     childProcess.stdout.on('data', (data: string) => {
       result += data;
+    });
+
+    let errorText: string = '';
+    childProcess.stderr.on('data', (data: string) => {
+      errorText += data;
     });
 
     childProcess.on('close', (code) => {
@@ -40,7 +47,7 @@ export async function spawnPromise(command: string, args: string[], env: any): P
         return;
       }
 
-      reject();
+      reject(new Error(errorText));
     });
   });
 }

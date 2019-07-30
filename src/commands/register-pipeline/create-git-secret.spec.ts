@@ -33,7 +33,7 @@ describe('create-git-secret', () => {
     });
 
     test('should call createSecret() with result from buildGitSecretBody()', async () => {
-      const gitSecretBody = {};
+      const gitSecretBody = {secret: 'value'};
       const expectedResult = {};
 
       mock_buildGitSecretBody.mockReturnValue(gitSecretBody);
@@ -49,6 +49,7 @@ describe('create-git-secret', () => {
 
       expect(actualResult).toEqual(expectedResult);
 
+      expect(mock_createSecret).toHaveBeenCalledWith(namespace, gitParams.name, {body: gitSecretBody});
     });
   });
 
@@ -68,29 +69,29 @@ describe('create-git-secret', () => {
       branch
     };
 
-    test('body.metadata.name=gitParams.name', () => {
+    test('metadata.name=gitParams.name', () => {
       const secret = buildGitSecretBody(gitParams);
 
-      expect(secret.body.metadata.name).toEqual(name);
+      expect(secret.metadata.name).toEqual(name);
     });
 
     test('should have source-secret-match-uri annotation', () => {
       const secret = buildGitSecretBody(gitParams);
 
-      expect(secret.body.metadata.annotations['build.openshift.io/source-secret-match-uri-1'])
+      expect(secret.metadata.annotations['build.openshift.io/source-secret-match-uri-1'])
         .toEqual(urlBase + '/*');
     });
 
     test('should have type=kubernetes.io/basic-auth', () => {
       const secret = buildGitSecretBody(gitParams);
 
-      expect(secret.body.type).toEqual('kubernetes.io/basic-auth');
+      expect(secret.type).toEqual('kubernetes.io/basic-auth');
     });
 
     test('should have type=kubernetes.io/basic-auth', () => {
       const secret = buildGitSecretBody(gitParams);
 
-      expect(secret.body.stringData).toEqual(gitParams);
+      expect(secret.stringData).toEqual(gitParams);
     });
   });
 });
