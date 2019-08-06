@@ -108,7 +108,7 @@ async function shouldUpdateExistingBuildConfig(pipelineName: string): Promise<bo
 async function getRouteHosts(namespace: string, name: string): Promise<string> {
   const routeText: string = await spawnPromise(
     'oc',
-    ['get', 'route/jenkins', '-o', 'json'],
+    ['get', 'route/jenkins', '-n', namespace, '-o', 'json'],
     {
       env: process.env
     },
