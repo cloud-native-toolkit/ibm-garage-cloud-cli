@@ -14,8 +14,10 @@ class VlanContainer {
 }
 
 export interface FlattenedVlans {
+  private_vlan_id?: string;
   private_vlan_number?: string;
   private_vlan_router_hostname?: string;
+  public_vlan_id?: string;
   public_vlan_number?: string;
   public_vlan_router_hostname?: string;
 }
@@ -84,8 +86,13 @@ async function getFlattenedVlans(vlan_datacenter: string): Promise<FlattenedVlan
 }
 
 function flattenVlans(vlans: IBMCloudVlan[]): FlattenedVlans {
-  return vlans.reduce(
+  return (vlans || []).reduce(
     (result: VlanResult, current: IBMCloudVlan) => {
+      if (current.type !== 'public' && current.type !== 'private') {
+        return result;
+      }
+
+      result[`${current.type}_vlan_id`] = current.id;
       result[`${current.type}_vlan_number`] = current.num;
       result[`${current.type}_vlan_router_hostname`] = current.router;
 

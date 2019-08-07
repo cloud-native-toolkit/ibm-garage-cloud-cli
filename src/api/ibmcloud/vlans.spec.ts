@@ -36,7 +36,7 @@ describe('ibmcloud-vlans', () => {
       const zone = 'myzone';
       const promiseResult = {stdout: 'vlan', stderr: 'error'};
       const expectedResult: IBMCloudVlan[] = [
-        {type: 'public', num: 1, router: 'router'},
+        {type: 'public', id: '2', num: 1, router: 'router'},
       ];
 
       beforeEach(() => {
@@ -85,14 +85,15 @@ describe('ibmcloud-vlans', () => {
         expect(vlan.length).toEqual(4);
       });
     });
-  })
+  });
 
   describe('given parseVlanRow()', () => {
     describe('when vlan value is "2558537   rates   2372     private   bcr01a.dal10   true"', () => {
-      test('then return {type: "private", num: 2372, router: "bcr01a.dal10"}', () => {
+      test('then return {type: "private", id: "2558537", num: 2372, router: "bcr01a.dal10"}', () => {
         expect(parseVlanRow('2558537   rates   2372     private   bcr01a.dal10   true'))
           .toEqual({
             type: 'private',
+            id: '2558537',
             num: 2372,
             router: 'bcr01a.dal10',
           });
@@ -100,10 +101,11 @@ describe('ibmcloud-vlans', () => {
     });
 
     describe('when vlan value is "2366017           810      private   bcr04a.dal10   true"', () => {
-      test('then return {type: "private", num: 810, router: "bcr04a.dal10"}', () => {
+      test('then return {type: "private", id: "2366017", num: 810, router: "bcr04a.dal10"}', () => {
         expect(parseVlanRow('2366017           810      private   bcr04a.dal10   true'))
           .toEqual({
             type: 'private',
+            id: '2366017',
             num: 810,
             router: 'bcr04a.dal10',
           });
@@ -111,10 +113,11 @@ describe('ibmcloud-vlans', () => {
     });
 
     describe('when vlan value is "2558531   rates   1849     public    fcr01a.dal10   true"', () => {
-      test('then return {type: "public", num: 1849, router: "fcr01a.dal10"}', () => {
+      test('then return {type: "public", id: "2558531", num: 1849, router: "fcr01a.dal10"}', () => {
         expect(parseVlanRow('2558531   rates   1849     public    fcr01a.dal10   true'))
           .toEqual({
             type: 'public',
+            id: '2558531',
             num: 1849,
             router: 'fcr01a.dal10',
           });

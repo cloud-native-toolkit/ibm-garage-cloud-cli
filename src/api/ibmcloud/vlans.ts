@@ -5,6 +5,7 @@ let execPromise = cp.execPromise;
 
 export class IBMCloudVlan {
   type: 'public' | 'private';
+  id: string;
   num: number;
   router: string;
 }
@@ -27,13 +28,14 @@ function parseVlan(vlanText: string): IBMCloudVlan[] {
 }
 
 function parseVlanRow(vlanText: string): IBMCloudVlan {
-  const vlanRegex = new RegExp('^[0-9]+   [a-zA-Z0-9 _-]+   ([0-9]+) +(private|public) +([a-zA-Z0-9.]+) .*', 'g');
+  const vlanRegex = new RegExp('^([0-9]+)   [a-zA-Z0-9 _-]+   ([0-9]+) +(private|public) +([a-zA-Z0-9.]+) .*', 'g');
 
   const result = vlanRegex.exec(vlanText);
 
   return {
-    type: result[2] as ('public' | 'private'),
-    num: +result[1],
-    router: result[3]
+    id: result[1],
+    type: result[3] as ('public' | 'private'),
+    num: +result[2],
+    router: result[4]
   };
 }
