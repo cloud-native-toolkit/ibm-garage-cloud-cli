@@ -11,6 +11,7 @@ import * as iksPipeline from './register-iks-pipeline';
 import * as openshiftPipeline from './register-openshift-pipeline';
 import * as fileUtil from '../../util/file-util';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
+import {copyConfigMap} from '../../api/kubectl/config-map';
 
 // set these variables here so they can be replaced by rewire
 let setupIksDefaultOptions = iksPipeline.setupDefaultOptions;
@@ -45,11 +46,7 @@ export async function registerPipeline(cliOptions: RegisterPipelineOptions, noti
 
   const secret: Secret = await createGitSecret(gitParams, options.pipelineNamespace, await readValuesFile(options.values));
 
-  if (options.jenkinsNamespace !== options.pipelineNamespace) {
-    notifyStatus(`Copying 'ibmcloud-apikey' secret to ${options.pipelineNamespace}`);
-
-    await copySecret('ibmcloud-apikey', options.jenkinsNamespace, options.pipelineNamespace);
-  }
+  await setupNamespace(options.pipelineNamespace, 'default', notifyStatus);
 
   notifyStatus('Registering pipeline');
 
@@ -123,4 +120,13 @@ function buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkin
     },
     pipelineResult,
   );
+}
+
+async function setupNamespace(namespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
+
+  notifyStatus(`Copying 'ibmcloud-apikey' secret to ${namespace}`);
+  await copySecret('ibmcloud-apikey', fromNamespace, namespace);
+
+  notifyStatus(`Copying 'ibmcloud-config' secret to ${namespace}`);
+  await copyConfigMap('ibmcloud-config', fromNamespace, namespace);
 }

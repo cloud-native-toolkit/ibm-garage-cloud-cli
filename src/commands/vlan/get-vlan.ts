@@ -42,7 +42,7 @@ export async function getVlan(options: GetVlanOptions, notifyStatus: (status: st
 
   notifyStatus('Getting zones');
 
-  const vlan_datacenter: string = await getVlanDatacenter(targetValues.vlan_region);
+  const vlan_datacenter: string = options.datacenter || await getVlanDatacenter(targetValues.vlan_region);
 
   notifyStatus('Getting vlans');
 

@@ -9,7 +9,11 @@ export const defineGetVlanCommand: YargsCommandDefinition = <T>(command: string)
   return {
     command,
     describe: 'print out the vlan values',
-    builder: (yargs: Argv<any>) => yargs,
+    builder: (yargs: Argv<any>) => yargs
+      .option('datacenter', {
+        alias: 'd',
+        describe: 'the datacenter to use. if not provided it will use the first one listed for the region'
+      }),
     handler: async (argv: Arguments<GetVlanOptions>) => {
       try {
         const spinner = ora('Getting vlan').start();
