@@ -11,7 +11,7 @@ import * as iksPipeline from './register-iks-pipeline';
 import * as openshiftPipeline from './register-openshift-pipeline';
 import * as fileUtil from '../../util/file-util';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
-import {copyConfigMap} from '../../api/kubectl/config-map';
+import * as configMapUtil from '../../api/kubectl/config-map';
 
 // set these variables here so they can be replaced by rewire
 let setupIksDefaultOptions = iksPipeline.setupDefaultOptions;
@@ -21,6 +21,8 @@ let executeRegisterOpenShiftPipeline = openshiftPipeline.registerPipeline;
 let readFilePromise = fileUtil.readFile;
 let getSecretData = secrets.getSecretData;
 let copySecret = secrets.copySecret;
+let copyConfigMap = configMapUtil.copyConfigMap;
+let getConfigMapData = configMapUtil.getConfigMapData;
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -36,7 +38,7 @@ class WebhookError extends CommandError {
 
 export async function registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
-  const clusterType: 'openshift' | 'kubernetes' = await getClusterType();
+  const clusterType: 'openshift' | 'kubernetes' = await getClusterType(cliOptions.jenkinsNamespace);
 
   const options: RegisterPipelineOptions = setupDefaultOptions(clusterType, cliOptions);
 
@@ -97,16 +99,27 @@ async function executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', 
   }
 }
 
-async function getClusterType(): Promise<'openshift' | 'kubernetes'> {
+async function getClusterType(namespace = 'tools'): Promise<'openshift' | 'kubernetes'> {
   try {
-    const secret = await getSecretData<{ cluster_type: 'openshift' | 'kubernetes' }>(
-      'ibmcloud-apikey',
-      'tools',
-    );
+    const configMap: {cluster_type: 'openshift' | 'kubernetes'} = await getConfigMapData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes' }>(
+      'ibmcloud-config',
+      namespace,
+    ).then<{cluster_type: 'openshift' | 'kubernetes'}>(result => ({cluster_type: result.CLUSTER_TYPE}));
 
-    return secret.cluster_type ? secret.cluster_type : 'kubernetes';
-  } catch (err) {
-    return 'kubernetes';
+    return configMap.cluster_type ? configMap.cluster_type : 'kubernetes';
+  } catch (configMapError) {
+
+    console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
+
+    try {
+      const secret = await getSecretData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
+
+      return secret.cluster_type ? secret.cluster_type : 'kubernetes';
+    } catch (secretError) {
+      console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
+
+      return 'kubernetes';
+    }
   }
 }
 

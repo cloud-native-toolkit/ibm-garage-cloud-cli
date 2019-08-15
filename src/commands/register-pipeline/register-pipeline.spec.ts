@@ -138,51 +138,92 @@ describe('register-pipeline', () => {
   });
 
   describe('getClusterType()', () => {
+    let mock_getConfigMapData;
+    let unset_getConfigMapData;
+
     let mock_getSecretData;
     let unset_getSecretData;
 
     beforeEach(() => {
+      mock_getConfigMapData = jest.fn();
+      unset_getConfigMapData = module.__set__('getConfigMapData', mock_getConfigMapData) as () => void;
+
       mock_getSecretData = jest.fn();
       unset_getSecretData = module.__set__('getSecretData', mock_getSecretData) as () => void;
     });
 
     afterEach(() => {
+      unset_getConfigMapData();
       unset_getSecretData();
     });
 
-    test('should read the `ibmcloud-apikey` in `tools` namespace', async () => {
-      mock_getSecretData.mockResolvedValue({});
+    describe('when ibmcloud-config ConfigMap exists', () => {
 
-      await getClusterType();
+      test('should read the cluster_type from `ibmcloud-config` ConfigMap in provided namespace', async () => {
+        const clusterType = 'openshift';
+        mock_getConfigMapData.mockResolvedValue({CLUSTER_TYPE: clusterType});
 
-      expect(mock_getSecretData.mock.calls.length).toEqual(1);
-      expect(mock_getSecretData.mock.calls[0][0]).toEqual('ibmcloud-apikey');
-      expect(mock_getSecretData.mock.calls[0][1]).toEqual('tools');
+        const namespace = 'namespace';
+        expect(await getClusterType(namespace)).toEqual(clusterType);
+
+        expect(mock_getConfigMapData).toHaveBeenCalledWith('ibmcloud-config', namespace);
+      });
+
+      test('should read the cluster_type from `ibmcloud-config` ConfigMap in tools namespace if not provided', async () => {
+        const clusterType = 'openshift';
+        mock_getConfigMapData.mockResolvedValue({CLUSTER_TYPE: clusterType});
+
+        await getClusterType();
+
+        expect(mock_getConfigMapData).toHaveBeenCalledWith('ibmcloud-config', 'tools');
+      });
+
+      describe('and when cluster_type is not defined', () => {
+        test('should default to kubernetes', async () => {
+          mock_getConfigMapData.mockResolvedValue({});
+
+          expect(await getClusterType()).toEqual('kubernetes');
+        });
+      })
     });
 
-    test('should return the `cluster_type` value from the `ibmcloud-apikey` secret', async () => {
-      const expectedResult = 'expected';
-      mock_getSecretData.mockResolvedValue({cluster_type: expectedResult});
+    describe('when retrieval of ibmcloud-config ConfigMap throws an error', () => {
+      beforeEach(() => {
+        mock_getConfigMapData.mockRejectedValue(new Error('unable to find configmap'));
+      });
 
-      const actualResult = await getClusterType();
+      test('should try to get the cluster type from the ibmcloud-apikey Secret in provided namespace', async () => {
+        const clusterType = 'expected';
+        mock_getSecretData.mockResolvedValue({cluster_type: clusterType});
 
-      expect(actualResult).toEqual(expectedResult);
-    });
+        const namespace = 'namespace';
+        expect(await getClusterType(namespace)).toEqual(clusterType);
 
-    test('should return `kubernetes` if cluster_type not found', async () => {
-      mock_getSecretData.mockResolvedValue({});
+        expect(mock_getSecretData).toHaveBeenCalledWith('ibmcloud-apikey', namespace);
+      });
 
-      const actualResult = await getClusterType();
+      test('should try to get the cluster type from the ibmcloud-apikey Secret in `tools` namespace if not provided', async () => {
+        const clusterType = 'expected';
+        mock_getSecretData.mockResolvedValue({cluster_type: clusterType});
 
-      expect(actualResult).toEqual('kubernetes');
-    });
+        await getClusterType();
 
-    test('should return `kubernetes` if getSecretData() throws error', async () => {
-      mock_getSecretData.mockRejectedValue(new Error(''));
+        expect(mock_getSecretData).toHaveBeenCalledWith('ibmcloud-apikey', 'tools');
+      });
 
-      const actualResult = await getClusterType();
+      test('should default to `kubernetes` if cluster_type not found', async () => {
+        mock_getSecretData.mockResolvedValue({});
 
-      expect(actualResult).toEqual('kubernetes');
+        expect(await getClusterType()).toEqual('kubernetes');
+      });
+
+      describe('and when getSecretData throws an error', () => {
+        test('should default to kubernetes', async () => {
+          mock_getSecretData.mockRejectedValue(new Error('secret not found'));
+
+          expect(await getClusterType()).toEqual('kubernetes');
+        });
+      })
     });
   });
 
