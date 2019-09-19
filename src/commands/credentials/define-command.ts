@@ -4,12 +4,13 @@ import * as YAML from 'json2yaml';
 
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {CommandLineOptions} from '../../model';
-import {getCredentials} from './credentials';
+import {Credentials} from './credentials';
 import {checkKubeconfig} from '../../util/kubernetes';
+import {Container} from 'typescript-ioc';
 
-export const defineCredentialsCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineCredentialsCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
   return {
-    command,
+    command: commandName,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
       .clusterNamespace({
@@ -37,8 +38,9 @@ export const defineCredentialsCommand: YargsCommandDefinition = <T>(command: str
 
       try {
         await checkKubeconfig();
-        
-        const result = await getCredentials(argv.namespace, statusCallback);
+
+        const command: Credentials = Container.get(Credentials);
+        const result = await command.getCredentials(argv.namespace, statusCallback);
 
         if (spinner) {
           spinner.stop();

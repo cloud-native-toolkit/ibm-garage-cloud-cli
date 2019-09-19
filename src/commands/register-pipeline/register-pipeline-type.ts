@@ -1,0 +1,7 @@
+import {RegisterPipelineOptions} from './register-pipeline-options.model';
+import {GitParams} from './create-git-secret';
+
+export abstract class RegisterPipelineType {
+  abstract setupDefaultOptions(): Partial<RegisterPipelineOptions>;
+  async abstract registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{ jenkinsUrl: string }>;
+}

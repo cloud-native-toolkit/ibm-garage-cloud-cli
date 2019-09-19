@@ -1,12 +1,7 @@
-import * as secretUtil from '../../api/kubectl/secrets';
-import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
 import * as kubeClient from '../../api/kubectl/client';
-import * as ingress from '../../api/kubectl/ingress';
-import * as configMapUtil from '../../api/kubectl/config-map';
-
-let getSecretData = secretUtil.getSecretData;
-let getConfigMapData = configMapUtil.getConfigMapData;
-let buildKubeClient = kubeClient.buildKubeClient;
+import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
+import {Container, Inject, Provides} from 'typescript-ioc';
+import {KubeClient} from '../../api/kubectl/client';
 
 export interface ComponentCredentials {
   user?: string;
@@ -80,75 +75,91 @@ type FlattenedInfo =
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-export async function getCredentials(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secrets> {
-
-  const results: Info[] = await Promise.all(
-    configMaps(
-      [
-        'jenkins-config',
-        'sonarqube-config',
-        'artifactory-config',
-        'argocd-config'
-      ], namespace)
-      .concat(secrets(['sonarqube-access', 'artifactory-access'], namespace))
-      .concat(
-        getSecretData<ComponentCredentials>('jenkins-access', namespace)
-          .then<JenkinsCredentials>(c => {
-            return Object.assign(
-              {},
-              c.username ? {JENKINS_USER: c.username} : {},
-              c.password ? {JENKINS_PASSWORD: c.password} : {});
-          }),
-        getArgoCdCredentials(namespace),
-      )
-  );
-
-  return group(flatten(results));
+export abstract class Credentials {
+  async abstract getCredentials(namespace?: string, notifyStatus?: (status: string) => void): Promise<Secrets>;
 }
 
-function configMaps(configMapNames: string[], namespace: string): Array<Promise<Info>> {
-  return configMapNames
-    .map(name => getConfigMapData(name, namespace).catch(err => ({})));
-}
+@Provides(Credentials)
+export class CredentialsImpl implements Credentials {
+  @Inject
+  private kubeSecret: KubeSecret;
+  @Inject
+  private kubeClient: KubeClient;
 
-function secrets(secretNames: string[], namespace: string): Array<Promise<Info>> {
-  return secretNames
-    .map(name => getSecretData(name, namespace).catch(err => ({})));
-}
+  async getCredentials(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secrets> {
 
-async function getArgoCdCredentials(namespace: string = 'tools'): Promise<ArgoCdCredentials> {
-  const client = buildKubeClient();
+    const results: Info[] = await Promise.all(
+      this.configMaps(
+        [
+          'jenkins-config',
+          'sonarqube-config',
+          'artifactory-config',
+          'argocd-config'
+        ], namespace)
+        .concat(this.secrets(['sonarqube-access', 'artifactory-access'], namespace))
+        .concat(
+          this.kubeSecret.getData<ComponentCredentials>('jenkins-access', namespace)
+            .then<JenkinsCredentials>(c => {
+              return Object.assign(
+                {},
+                c.username ? {JENKINS_USER: c.username} : {},
+                c.password ? {JENKINS_PASSWORD: c.password} : {});
+            }),
+          this.getArgoCdCredentials(namespace),
+        )
+    );
 
-  try {
-    const result = await client.api.v1.namespace(namespace).pods.get();
-
-    const ARGOCD_PASSWORD = result.body.items
-      .map(item => item.metadata.name)
-      .filter(name => name.startsWith('argocd-server'))[0];
-
-    return {ARGOCD_USER: 'admin', ARGOCD_PASSWORD};
-  } catch (err) {
-    return {};
+    return this.group(this.flatten(results));
   }
-}
 
-function flatten(values: Info[]): FlattenedInfo {
-  return (values || []).reduce((result: FlattenedInfo, current: Info) => {
-    return Object.assign({}, result, current);
-  }, {});
-}
+  configMaps(configMapNames: string[], namespace: string): Array<Promise<Info>> {
+    const kubeConfigMap: KubeConfigMap = Container.get(KubeConfigMap);
+    return configMapNames
+      .map(name => kubeConfigMap
+        .getData(name, namespace)
+        .catch(err => ({})));
+  }
 
-function group(values: FlattenedInfo): Secrets {
-  return Object.keys(values)
-    .filter(key => key.split('_').length === 2)
-    .reduce((secrets: Secrets, compositeKey: string) => {
-      const group = compositeKey.toLowerCase().split('_')[0];
-      const key = compositeKey.toLowerCase().split('_')[1];
+  secrets(secretNames: string[], namespace: string): Array<Promise<Info>> {
+    return secretNames
+      .map(name => this.kubeSecret
+        .getData(name, namespace)
+        .catch(err => ({}))
+      );
+  }
 
-      const groupValues = secrets[group] || {};
-      groupValues[key] = values[compositeKey];
-      secrets[group] = groupValues;
+  async getArgoCdCredentials(namespace: string = 'tools'): Promise<ArgoCdCredentials> {
+    try {
+      const result = await this.kubeClient.api.v1.namespace(namespace).pods.get();
 
-      return secrets;
+      const ARGOCD_PASSWORD = result.body.items
+        .map(item => item.metadata.name)
+        .filter(name => name.startsWith('argocd-server'))[0];
+
+      return {ARGOCD_USER: 'admin', ARGOCD_PASSWORD};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  flatten(values: Info[]): FlattenedInfo {
+    return (values || []).reduce((result: FlattenedInfo, current: Info) => {
+      return Object.assign({}, result, current);
     }, {});
+  }
+
+  group(values: FlattenedInfo): Secrets {
+    return Object.keys(values)
+      .filter(key => key.split('_').length === 2)
+      .reduce((secrets: Secrets, compositeKey: string) => {
+        const group = compositeKey.toLowerCase().split('_')[0];
+        const key = compositeKey.toLowerCase().split('_')[1];
+
+        const groupValues = secrets[group] || {};
+        groupValues[key] = values[compositeKey];
+        secrets[group] = groupValues;
+
+        return secrets;
+      }, {});
+  }
 }

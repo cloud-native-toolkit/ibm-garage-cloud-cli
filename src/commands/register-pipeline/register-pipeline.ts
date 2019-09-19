@@ -1,28 +1,21 @@
 import {parse} from 'dot-properties';
+import {Inject, Provides} from 'typescript-ioc';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import createWebhook from '../create-webhook/create-webhook';
-import {CreateWebhookOptions} from '../create-webhook';
-import * as secrets from '../../api/kubectl/secrets';
-import {Secret} from '../../api/kubectl/secrets';
-import {getGitParameters} from './git-parameters';
-import {createGitSecret, GitParams} from './create-git-secret';
+import {CreateWebhook, CreateWebhookOptions} from '../create-webhook';
+import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
+import {GitParams, GitSecret} from './create-git-secret';
 import * as iksPipeline from './register-iks-pipeline';
 import * as openshiftPipeline from './register-openshift-pipeline';
 import * as fileUtil from '../../util/file-util';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
-import * as configMapUtil from '../../api/kubectl/config-map';
+import {QueryString} from '../../api/kubectl/kubernetes-resource-manager';
+import {GetGitParameters} from './git-parameters';
+import {RegisterIksPipeline} from './register-iks-pipeline';
+import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
+import {FsPromises} from '../../util/file-util';
+import {RegisterPipelineType} from './register-pipeline-type';
 
-// set these variables here so they can be replaced by rewire
-let setupIksDefaultOptions = iksPipeline.setupDefaultOptions;
-let executeRegisterIksPipeline = iksPipeline.registerPipeline;
-let setupOpenshiftDefaultOptions = openshiftPipeline.setupDefaultOptions;
-let executeRegisterOpenShiftPipeline = openshiftPipeline.registerPipeline;
-let readFilePromise = fileUtil.readFile;
-let getSecretData = secrets.getSecretData;
-let copySecret = secrets.copySecret;
-let copyConfigMap = configMapUtil.copyConfigMap;
-let getConfigMapData = configMapUtil.getConfigMapData;
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -36,110 +29,146 @@ class WebhookError extends CommandError {
   }
 }
 
-export async function registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
+export abstract class RegisterPipeline {
+  async abstract registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus?: (status: string) => void);
+}
 
-  const clusterType: 'openshift' | 'kubernetes' = await getClusterType(cliOptions.jenkinsNamespace);
+@Provides(RegisterPipeline)
+export class RegisterPipelineImpl {
+  @Inject
+  private getGitParameters: GetGitParameters;
+  @Inject
+  private gitSecret: GitSecret;
+  @Inject
+  private createWebhook: CreateWebhook;
+  @Inject
+  private kubeConfigMap: KubeConfigMap;
+  @Inject
+  private kubeSecret: KubeSecret;
+  @Inject
+  private iksPipeline: RegisterIksPipeline;
+  @Inject
+  private openshiftPipeline: RegisterOpenshiftPipeline;
+  @Inject
+  private fs: FsPromises;
 
-  const options: RegisterPipelineOptions = setupDefaultOptions(clusterType, cliOptions);
+  async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
-  const gitParams: GitParams = await getGitParameters(options);
+    const clusterType: 'openshift' | 'kubernetes' = await this.getClusterType(cliOptions.jenkinsNamespace);
 
-  notifyStatus('Creating git secret');
+    const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
 
-  const secret: Secret = await createGitSecret(gitParams, options.pipelineNamespace, await readValuesFile(options.values));
+    const gitParams: GitParams = await this.getGitParameters.getGitParameters(options);
 
-  await setupNamespace(options.pipelineNamespace, 'default', notifyStatus);
+    notifyStatus('Creating git secret');
 
-  notifyStatus('Registering pipeline');
+    await this.gitSecret.create(gitParams, options.pipelineNamespace, await this.readValuesFile(options.values));
 
-  const pipelineResult = await executeRegisterPipeline(clusterType, options, gitParams);
+    await this.setupNamespace(options.pipelineNamespace, options.jenkinsNamespace, notifyStatus);
 
-  if (!options.skipWebhook) {
-    notifyStatus('Creating git webhook');
-    try {
-      await createWebhook(buildCreateWebhookOptions(gitParams, pipelineResult));
-    } catch (err) {
-      throw new WebhookError(
-        `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
+    notifyStatus('Registering pipeline');
+
+    const pipelineResult = await this.executeRegisterPipeline(clusterType, options, gitParams);
+
+    if (!options.skipWebhook) {
+      notifyStatus('Creating git webhook');
+
+      try {
+        await this.createWebhook.createWebhook(this.buildCreateWebhookOptions(gitParams, pipelineResult));
+      } catch (err) {
+        throw new WebhookError(
+          `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
+      }
     }
   }
-}
 
-function setupDefaultOptions(clusterType: string, cliOptions: RegisterPipelineOptions): RegisterPipelineOptions {
-  return Object.assign(
-    {},
-    clusterType === 'openshift' ? setupOpenshiftDefaultOptions() : setupIksDefaultOptions(),
-    cliOptions,
-  )
-}
+  setupDefaultOptions(clusterType: string, cliOptions: RegisterPipelineOptions): RegisterPipelineOptions {
+    const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
-async function readValuesFile(valuesFileName?: string): Promise<any> {
-  if (!valuesFileName) {
-    return {}
+    return Object.assign(
+      {},
+      pipeline.setupDefaultOptions(),
+      cliOptions,
+    );
   }
 
-  try {
-    const data: Buffer = await readFilePromise(valuesFileName);
+  getPipelineType(clusterType: string): RegisterPipelineType {
+    return clusterType === 'openshift' ? this.openshiftPipeline : this.iksPipeline;
+  }
+
+  async readValuesFile(valuesFileName?: string): Promise<any> {
+    if (!valuesFileName) {
+      return {}
+    }
 
     try {
-      return JSON.parse(data.toString());
-    } catch (err) {
-      return parse(data);
-    }
-  } catch (err) {}
+      const data: Buffer = await this.fs.readFile(valuesFileName);
 
-  return {};
-}
+      try {
+        return JSON.parse(data.toString());
+      } catch (err) {
+        return parse(data);
+      }
+    } catch (err) {}
 
-async function executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
-  if ('openshift' === clusterType) {
-    return executeRegisterOpenShiftPipeline(options, gitParams);
-  } else {
-    return executeRegisterIksPipeline(options, gitParams);
+    return {};
   }
-}
 
-async function getClusterType(namespace = 'tools'): Promise<'openshift' | 'kubernetes'> {
-  try {
-    const configMap: {cluster_type: 'openshift' | 'kubernetes'} = await getConfigMapData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes' }>(
-      'ibmcloud-config',
-      namespace,
-    ).then<{cluster_type: 'openshift' | 'kubernetes'}>(result => ({cluster_type: result.CLUSTER_TYPE}));
+  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
+    const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
-    return configMap.cluster_type ? configMap.cluster_type : 'kubernetes';
-  } catch (configMapError) {
+    return pipeline.registerPipeline(options, gitParams);
+  }
 
-    console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
-
+  async getClusterType(namespace = 'tools'): Promise<'openshift' | 'kubernetes'> {
     try {
-      const secret = await getSecretData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
+      const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes' }>(
+        'ibmcloud-config',
+        namespace,
+      );
 
-      return secret.cluster_type ? secret.cluster_type : 'kubernetes';
-    } catch (secretError) {
-      console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
+      return configMap.CLUSTER_TYPE ? configMap.CLUSTER_TYPE : 'kubernetes';
+    } catch (configMapError) {
 
-      return 'kubernetes';
+      console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
+
+      try {
+        const secret = await this.kubeSecret.getData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
+
+        return secret.cluster_type ? secret.cluster_type : 'kubernetes';
+      } catch (secretError) {
+        console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
+
+        return 'kubernetes';
+      }
     }
   }
-}
 
-function buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string}): CreateWebhookOptions {
+  buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string}): CreateWebhookOptions {
 
-  return Object.assign(
-    {
-      gitUrl: gitParams.url,
-      gitUsername: gitParams.username,
-      gitToken: gitParams.password
-    },
-    pipelineResult,
-  );
-}
+    return Object.assign(
+      {
+        gitUrl: gitParams.url,
+        gitUsername: gitParams.username,
+        gitToken: gitParams.password
+      },
+      pipelineResult,
+    );
+  }
 
-async function setupNamespace(namespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
+  async setupNamespace(toNamespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
+    if (toNamespace === fromNamespace) {
+      return;
+    }
 
-  notifyStatus(`Copying 'ibmcloud-apikey' secret to ${namespace}`);
-  await copySecret('ibmcloud-apikey', fromNamespace, namespace);
+    const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
 
-  notifyStatus(`Copying 'ibmcloud-config' secret to ${namespace}`);
-  await copyConfigMap('ibmcloud-config', fromNamespace, namespace);
+    notifyStatus(`Copying 'secrets to ${toNamespace}`);
+    const secrets = await this.kubeSecret.copyAll({namespace: fromNamespace, qs}, toNamespace);
+    console.log(`   Copied ${secrets.length} secrets`);
+
+    notifyStatus(`Copying configmaps to ${toNamespace}`);
+    const configmaps = await this.kubeConfigMap.copyAll({namespace: fromNamespace, qs}, toNamespace);
+    console.log(`   Copied ${configmaps.length} configmaps`);
+  }
 }

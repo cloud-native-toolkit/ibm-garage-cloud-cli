@@ -1,69 +1,70 @@
-import {Client1_13 as Client} from 'kubernetes-client';
-import * as KubeClient from './client';
-import _ from 'lodash';
+import {Container, Provided, Provider} from 'typescript-ioc';
+import {KubeClient} from './client';
+import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
 
-// required for rewire to work
-let buildKubeClient = KubeClient.buildKubeClient;
-
-interface Ingress {
-  body: {
-    apiVersion: string;
-    kind: 'Ingress';
-    metadata: {
-      name: string;
-      namespace: string;
-      labels: any;
-    };
-    spec: {
-      rules?: Array<{
-        host: string;
-        http: {
-          paths: Array<{
-            backend: {
-              serviceName: string;
-              servicePort: number;
-            }
-          }>
-        }
-      }>
-    };
-    status: any;
-  }
+interface Ingress extends KubeResource {
+  spec: {
+    rules?: Array<{
+      host: string;
+      http: {
+        paths: Array<{
+          backend: {
+            serviceName: string;
+            servicePort: number;
+          }
+        }>
+      }
+    }>
+  };
+  status: any;
 }
 
-export async function getIngressHosts(namespace: string, ingressName: string): Promise<string[]> {
-  const client = buildKubeClient();
+const provider: Provider = {
+  get: () => {
+    return new KubeIngress({
+      client: Container.get(KubeClient),
+      group: 'extension',
+      version: 'v1beta1',
+      kind: 'ingress',
+    });
+  }
+};
 
-  const ingress: Ingress = await client.apis.extension.v1beta1.namespace(namespace).ingress(ingressName).get();
-
-  const hosts: string[] = (ingress.body.spec.rules || [])
-    .map(rule => rule.host)
-    .filter(host => !!host);
-
-  if (hosts.length === 0) {
-    throw new Error('no hosts found');
+@Provided(provider)
+export class KubeIngress extends AbstractKubernetesResourceManager<Ingress> {
+  constructor(props: Props) {
+    super(props);
   }
 
-  return hosts;
-}
+  async getHosts(namespace: string, ingressName: string): Promise<string[]> {
+    const ingress: Ingress = await this.get(ingressName, namespace);
 
-export async function getAllIngressHosts(namespace: string): Promise<string[]> {
-  const client = buildKubeClient();
+    const hosts: string[] = (ingress.spec.rules || [])
+      .map(rule => rule.host)
+      .filter(host => !!host);
 
-  const ingresses = await client.apis.extension.v1beta1.namespace(namespace).ingress.get();
+    if (hosts.length === 0) {
+      throw new Error('no hosts found');
+    }
 
-  // Update
-  let _rules = [];
-  ingresses.body.items.forEach(item => {
-    _rules = _rules.concat(item.spec.rules);
-  });
-
-  const hosts =  _rules.map(rule => rule.host).filter(host => !!host);
-
-  if (hosts.length === 0) {
-    throw new Error('no hosts found');
+    return hosts;
   }
 
-  return hosts;
-}
+  async getAllHosts(namespace: string): Promise<string[]> {
+    const ingresses: Ingress[] = await this.list({namespace});
 
+    // Update
+    let _rules = [];
+    ingresses.forEach(item => {
+      _rules = _rules.concat(item.spec.rules);
+    });
+
+    const hosts =  _rules.map(rule => rule.host).filter(host => !!host);
+
+    if (hosts.length === 0) {
+      throw new Error('no hosts found');
+    }
+
+    return hosts;
+  }
+}

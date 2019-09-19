@@ -1,40 +1,49 @@
+import {Inject, Provides} from 'typescript-ioc';
 import {splitLines} from '../../util/string-util';
-import * as cp from '../../util/child-process';
+import {ChildProcess, ExecResult} from '../../util/child-process';
 
-let execPromise = cp.execPromise;
+export abstract class Zones {
+  async abstract getZones(region?: string): Promise<string[]>;
+}
 
-export async function getZones(region?: string): Promise<string[]> {
-  return execPromise(
+@Provides(Zones)
+export class ZonesImpl implements Zones {
+  @Inject
+  private childProcess: ChildProcess;
+
+  private readonly ZONE_PREFIX_MAP = {
+    'us-south': 'dal',
+    'us-east': 'wdc',
+    'au-syd': 'syd',
+    'jp-tok': 'tok',
+    'eu-de': 'fra',
+    'eu-gb': 'lon',
+  };
+
+  async getZones(region?: string): Promise<string[]> {
+    return this.childProcess.exec(
       'ibmcloud ks zones --region-only',
       {
         env: process.env
       },
-    ).then(({stdout}: cp.ExecResult) => {
-        return splitLines(stdout.toString())
-          .filter(filterZonesForRegion(region))
-          .map(zone => zone.trim())
+    ).then(({stdout}: ExecResult) => {
+      return splitLines(stdout.toString())
+        .filter(this.filterZonesForRegion(region))
+        .map(zone => zone.trim())
     });
-}
-
-function filterZonesForRegion(region?: string): (zone: string) => boolean {
-  if (!region) {
-    return (zone: string) => true;
   }
 
-  const zonePrefix = getZonePrefix(region);
+  filterZonesForRegion(region?: string): (zone: string) => boolean {
+    if (!region) {
+      return (zone: string) => true;
+    }
 
-  return (zone: string) => zone.startsWith(zonePrefix);
-}
+    const zonePrefix =this. getZonePrefix(region);
 
-const ZONE_PREFIX_MAP = {
-  'us-south': 'dal',
-  'us-east': 'wdc',
-  'au-syd': 'syd',
-  'jp-tok': 'tok',
-  'eu-de': 'fra',
-  'eu-gb': 'lon',
-};
+    return (zone: string) => zone.startsWith(zonePrefix);
+  }
 
-function getZonePrefix(regionName: string): string {
-  return ZONE_PREFIX_MAP[regionName];
+  getZonePrefix(regionName: string): string {
+    return this.ZONE_PREFIX_MAP[regionName];
+  }
 }

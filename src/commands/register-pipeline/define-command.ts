@@ -1,16 +1,16 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
-import ora from 'ora';
 
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {registerPipeline} from './register-pipeline';
 import {CommandLineOptions} from '../../model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import {ErrorSeverity, isCommandError} from '../../util/errors';
+import {Container} from 'typescript-ioc';
+import {RegisterPipeline} from './register-pipeline';
 
-export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
   return {
-    command,
+    command: commandName,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
       .quiet()
@@ -61,7 +61,8 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       try {
         await checkKubeconfig();
 
-        await registerPipeline(argv, statusCallback);
+        const command: RegisterPipeline = Container.get(RegisterPipeline);
+        await command.registerPipeline(argv, statusCallback);
 
         if (spinner) {
           spinner.stop();

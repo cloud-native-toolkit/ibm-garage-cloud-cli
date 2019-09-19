@@ -1,129 +1,130 @@
-import rewire = require('rewire');
+import {Container} from 'typescript-ioc';
 
-const module = rewire('./register-iks-pipeline');
+import {RegisterIksPipeline} from './register-iks-pipeline';
+import {KubeSecret} from '../../api/kubectl';
+import {providerFromValue} from '../../testHelper';
+import {FsPromises} from '../../util/file-util';
+import Mock = jest.Mock;
 
-const generateJenkinsCrumbHeader = module.__get__('generateJenkinsCrumbHeader');
-const buildJenkinsJobConfig = module.__get__('buildJenkinsJobConfig');
+jest.mock('superagent');
+const superagent = require('superagent');
 
 describe('register-iks-pipeline', () => {
   test('canary verifies test infrastructure', () => {
     expect(true).toEqual(true);
   });
 
-  describe('generateJenkinsCrumbHeader', () => {
-    const jenkinsAccess = {
-      url: 'jenkins url',
-      api_token: 'api token',
-      username: 'jenkins admin',
-      password: 'jenkins password',
-    };
-
-    let mock_get;
-    let unset_get;
-
-    let mock_auth;
-    let mock_set;
+  describe('given RegisterIksPipeline', () => {
+    let classUnderTest: RegisterIksPipeline;
+    let mock_readFile: Mock;
 
     beforeEach(() => {
-      mock_get = jest.fn();
-      mock_auth = jest.fn();
-      mock_set = jest.fn();
+      Container.bind(KubeSecret).provider(providerFromValue({}));
 
-      unset_get = module.__set__('get', mock_get);
+      mock_readFile = jest.fn();
+      Container.bind(FsPromises).provider(providerFromValue({readFile: mock_readFile}));
 
-      mock_get.mockReturnValue({auth: mock_auth});
-      mock_auth.mockReturnValue({set: mock_set});
+      classUnderTest = Container.get(RegisterIksPipeline);
     });
 
-    afterEach(() => {
-      unset_get();
-    });
+    describe('generateJenkinsCrumbHeader', () => {
+      const jenkinsAccess = {
+        url: 'jenkins url',
+        api_token: 'api token',
+        username: 'jenkins admin',
+        password: 'jenkins password',
+      } as any;
 
-    describe('when successful', () => {
-      test('should return Jenkins-Crumb', async () => {
-        const expectedResult = 'crumb';
-        const crumbRequestField = 'MyCrumb';
+      describe('when successful', () => {
+        test('should return Jenkins-Crumb', async () => {
+          const expectedResult = 'crumb';
+          const crumbRequestField = 'MyCrumb';
 
-        mock_set.mockResolvedValue({
-          status: 200,
-          body: {
-            '_class':'hudson.security.csrf.DefaultCrumbIssuer',
-            'crumb': expectedResult,
-            'crumbRequestField': crumbRequestField,
-          }
-        } as any);
+          superagent.__setMockResponse({
+            status: 200,
+            body: {crumb: expectedResult, crumbRequestField},
+          });
 
-        const actualResult = await generateJenkinsCrumbHeader(jenkinsAccess);
+          const actualResult = await classUnderTest.generateJenkinsCrumbHeader(jenkinsAccess);
 
-        expect(actualResult[crumbRequestField]).toEqual(expectedResult);
-        expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}/crumbIssuer/api/json`));
-        expect(mock_auth).toHaveBeenCalledWith(jenkinsAccess.username, jenkinsAccess.api_token);
-        expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
+          expect(actualResult[crumbRequestField]).toEqual(expectedResult);
+          expect(superagent.get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
+          expect(superagent.auth).toBeCalledWith(jenkinsAccess.username, jenkinsAccess.api_token);
+          expect(superagent.set.mock.calls[0][0]).toEqual('User-Agent');
+        });
+      });
+
+      describe('when not successful', () => {
+        test('should throw error', async () => {
+          const expectedResult = 'error text';
+
+          (superagent as any).__setMockResponse({
+            status: 400,
+            text: expectedResult
+          });
+
+          return classUnderTest.generateJenkinsCrumbHeader(jenkinsAccess)
+            .then(() => fail('should throw error'))
+            .catch(err => {
+              expect(err.message).toEqual(`Unable to generate Jenkins crumb: ${expectedResult}`);
+
+              expect((superagent.get as Mock).mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
+              expect((superagent as any).auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
+              expect((superagent as any).set.mock.calls[0][0]).toEqual('User-Agent');
+            });
+        });
       });
     });
 
-    describe('when not successful', () => {
-      test('should throw error', async () => {
-        const expectedResult = 'error text';
+    describe('buildJenkinsJobConfig()', () => {
+      beforeEach(() => {
+        mock_readFile.mockResolvedValue(`<test>
+<value1>{{GIT_REPO}}</value1>
+<value2>{{GIT_CREDENTIALS}}</value2>
+<value3>{{GIT_BRANCH}}</value3>
+</test>`);
+      });
 
-        mock_set.mockResolvedValue({
-          status: 400,
-          text: expectedResult
+      describe('when git params provided', () => {
+        const gitParams = {
+          name: 'name',
+          url: 'chdkktdoogyyd943djd',
+          username: 'username',
+          password: 'password',
+          branch: 'master'
+        };
+
+        test('replace {{GIT_REPO}} with gitParams.url', async () => {
+
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+
+          expect(result).not.toContain('{{GIT_REPO}}');
+          expect(result).toContain(gitParams.url);
         });
 
-        return generateJenkinsCrumbHeader(jenkinsAccess)
-          .then(() => fail('should throw error'))
-          .catch(err => {
-            expect(err.message).toEqual(`Unable to generate Jenkins crumb: ${expectedResult}`);
+        test('replace {{GIT_CREDENTIALS}} with gitParams.name', async () => {
 
-            expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
-            expect(mock_auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
-            expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
-          });
-      });
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+
+          expect(result).not.toContain('{{GIT_CREDENTIALS}}');
+          expect(result).toContain(gitParams.name);
+        });
+
+        test('replace {{GIT_BRANCH}} with gitParams.branch', async () => {
+
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+
+          expect(result).not.toContain('{{GIT_BRANCH}}');
+          expect(result).toContain(gitParams.branch);
+        });
+
+        test('replace all {{xxx}} references with values', async () => {
+
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+
+          expect(result).not.toMatch(/{{.*}}/);
+        });
+      })
     });
-  });
-
-  describe('buildJenkinsJobConfig()', () => {
-    describe('when git params provided', () => {
-      const gitParams = {
-        name: 'name',
-        url: 'chdkktdoogyyd943djd',
-        username: 'username',
-        password: 'password',
-        branch: 'master'
-      };
-
-      test('replace {{GIT_REPO}} with gitParams.url', async () => {
-
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toContain('{{GIT_REPO}}');
-        expect(result).toContain(gitParams.url);
-      });
-
-      test('replace {{GIT_CREDENTIALS}} with gitParams.name', async () => {
-
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toContain('{{GIT_CREDENTIALS}}');
-        expect(result).toContain(gitParams.name);
-      });
-
-      test('replace {{GIT_BRANCH}} with gitParams.branch', async () => {
-
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toContain('{{GIT_BRANCH}}');
-        expect(result).toContain(gitParams.branch);
-      });
-
-      test('replace all {{xxx}} references with values', async () => {
-
-        const result = await buildJenkinsJobConfig(gitParams);
-
-        expect(result).not.toMatch(/{{.*}}/);
-      });
-    })
   });
 });

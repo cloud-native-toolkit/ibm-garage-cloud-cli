@@ -3,12 +3,13 @@ import ora from 'ora';
 
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {CommandLineOptions} from '../../model';
-import {getIngress} from './ingress';
 import {checkKubeconfig} from '../../util/kubernetes';
+import {GetIngress} from './ingress';
+import {Container} from 'typescript-ioc';
 
-export const defineIngressCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineIngressCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
   return {
-    command,
+    command: commandName,
     describe: 'list the current ingress hosts for deployed apps in a namespace',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
       .clusterNamespace({
@@ -34,8 +35,10 @@ export const defineIngressCommand: YargsCommandDefinition = <T>(command: string)
       try {
         await checkKubeconfig();
 
+        const command: GetIngress = Container.get(GetIngress);
+
         // Retrieve the results
-        const result = await getIngress(argv.namespace, statusCallback);
+        const result = await command.getIngress(argv.namespace, statusCallback);
 
         if (spinner) {
           spinner.stop();

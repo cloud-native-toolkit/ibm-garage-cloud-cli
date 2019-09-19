@@ -1,64 +1,56 @@
-import rewire = require('rewire');
-
-const module = rewire('./from-file');
-
-const apply = module.__get__('apply');
-const create = module.__get__('create');
+import {FromFile, FromFileImpl} from './from-file';
+import {Container} from 'typescript-ioc';
+import {mockField, providerFromValue} from '../../testHelper';
+import Mock = jest.Mock;
+import {ChildProcess} from '../../util/child-process';
 
 describe('from-file', () => {
   test('canary verifies test infrastructure', () => {
     expect(true).toEqual(true);
   });
 
-  describe('apply()', () => {
+  describe('given FromFile', () => {
+    let classUnderTest: FromFileImpl;
 
-    let mock_spawnPromise;
-    let unset_spawnPromise;
-
-    beforeEach(() => {
-      mock_spawnPromise = jest.fn();
-      unset_spawnPromise = module.__set__('spawnPromise', mock_spawnPromise) as () => void;
-    });
-
-    afterEach(() => {
-      unset_spawnPromise();
-    });
-
-    test('should execute `kubectl apply` for given file name and namespace', async () => {
-      const namespace = 'namespace';
-      const fileName = 'file.json';
-
-      await apply(fileName, namespace);
-
-      expect(mock_spawnPromise.mock.calls.length).toEqual(1);
-      expect(mock_spawnPromise.mock.calls[0][0]).toEqual('kubectl');
-      expect(mock_spawnPromise.mock.calls[0][1]).toEqual(['apply', '-n', namespace, '-f', fileName]);
-    });
-  });
-
-  describe('create()', () => {
-
-    let mock_spawnPromise;
-    let unset_spawnPromise;
+    let mock_spawn: Mock;
 
     beforeEach(() => {
-      mock_spawnPromise = jest.fn();
-      unset_spawnPromise = module.__set__('spawnPromise', mock_spawnPromise) as () => void;
+      mock_spawn = jest.fn();
+      Container.bind(ChildProcess).provider(providerFromValue({spawn: mock_spawn}));
+
+      classUnderTest = Container.get(FromFile);
     });
 
-    afterEach(() => {
-      unset_spawnPromise();
+    describe('apply()', () => {
+
+      test('should execute `kubectl apply` for given file name and namespace', async () => {
+        const namespace = 'namespace';
+        const fileName = 'file.json';
+
+        await classUnderTest.apply(fileName, namespace);
+
+        expect(mock_spawn).toHaveBeenCalledTimes(1);
+        expect(mock_spawn).toHaveBeenCalledWith(
+          'kubectl',
+          ['apply', '-n', namespace, '-f', fileName],
+          {env: process.env});
+      });
     });
 
-    test('should execute `kubectl create` for given file name and namespace', async () => {
-      const namespace = 'namespace';
-      const fileName = 'file.json';
+    describe('create()', () => {
 
-      await create(fileName, namespace);
+      test('should execute `kubectl create` for given file name and namespace', async () => {
+        const namespace = 'namespace';
+        const fileName = 'file.json';
 
-      expect(mock_spawnPromise.mock.calls.length).toEqual(1);
-      expect(mock_spawnPromise.mock.calls[0][0]).toEqual('kubectl');
-      expect(mock_spawnPromise.mock.calls[0][1]).toEqual(['create', '-n', namespace, '-f', fileName]);
+        await classUnderTest.create(fileName, namespace);
+
+        expect(mock_spawn).toHaveBeenCalledTimes(1);
+        expect(mock_spawn).toHaveBeenCalledWith(
+          'kubectl',
+          ['create', '-n', namespace, '-f', fileName],
+          {env: process.env});
+      });
     });
   });
 });

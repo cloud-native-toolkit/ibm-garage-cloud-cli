@@ -1,59 +1,55 @@
-export function buildMockKubeClient() {
-  const state = {};
+import {Provider} from 'typescript-ioc';
+import {KubeClient} from './client';
+import {providerFromBuilder} from '../../testHelper';
 
-  const buildNodeFunction = nodeFunctionBuilder(state);
-
-  return withPluralKeyNames({
-    api: withPluralKeyNames({
-      v1: withPluralKeyNames({
-        namespace: buildNodeFunction('namespace', {
-          secret: buildNodeFunction('secret', {get: jest.fn()}, {post: jest.fn()}),
-          pod: buildNodeFunction('secret', {get: jest.fn()}, {post: jest.fn()})
-        }),
-      }),
+export function buildMockKubeClient(): KubeClient {
+  return buildClientNodes({
+    api: {
+      v1: {
+        namespace: {
+          configmap: ['get', 'post', 'put'],
+          secret: ['get', 'post', 'put'],
+          pod: ['get', 'post', 'put'],
+        }
+      },
       extension: {
-        v1beta1: withPluralKeyNames({
-          namespace: buildNodeFunction('namespace', {
-            ingress: buildNodeFunction('ingress', {get: jest.fn()}, {})
-          }),
-        })
-      }
-    }),
-    _state: state,
+        v1beta1: {
+          namespace: {
+            ingress: ['get', 'post', 'put'],
+          },
+        },
+      },
+    },
   });
 }
 
-function nodeFunctionBuilder(state: any) {
-  return (name: string, tempMockResult: any, mixin?: any): (arg: any) => any => {
-    const mockResult = !mixin ? withPluralKeyNames(tempMockResult) : tempMockResult;
+export function buildClientNodes(config: any) {
+  if (Array.isArray(config)) {
+    return config.reduce((result: any, key: string) => {
 
-    return Object.assign((arg) => {
-      if (arg) {
-        state[name] = arg;
-      }
-
-      return mockResult;
-    }, mixin);
-  };
-}
-
-function withPluralKeyNames(tempObject: any) {
-  const object = Object
-    .keys(tempObject)
-    .reduce((result, key) => {
-      const value = tempObject[key];
-
-      result[key] = value;
-      if (withPluralKeyNames && !key.startsWith('_')) {
-        if (key.endsWith('s')) {
-          result[`${key}es`] = value;
-        } else {
-          result[`${key}s`] = value;
-        }
-      }
+      result[key] = jest.fn();
 
       return result;
     }, {});
+  }
 
-  return object;
+  return Object.keys(config).reduce((result: any, key: string) => {
+
+    const node: any = jest.fn();
+
+    Object.assign(
+      node,
+      {toString: () => `kube mock node: ${key}, ${JSON.stringify(config[key])}`},
+      buildClientNodes(config[key]),
+    );
+
+    node.mockImplementation(() => node);
+
+    result[key] = node;
+    result[`${key}s`] = node;
+
+    return result;
+  }, {});
 }
+
+export const mockKubeClientProvider: Provider = providerFromBuilder(buildMockKubeClient);

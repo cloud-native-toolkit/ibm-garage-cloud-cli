@@ -1,5 +1,5 @@
-import {exec} from 'child_process';
-import {execPromise, ExecResult} from '../../util/child-process';
+import {Container} from 'typescript-ioc';
+import {ChildProcess, ExecResult} from '../../util/child-process';
 
 export class IBMCloudAccount {
   guid: string;
@@ -33,7 +33,8 @@ export class IBMCloudTarget {
 }
 
 export async function getIBMCloudTargetInfo(): Promise<IBMCloudTarget> {
-  return execPromise(
+  const childProcess: ChildProcess = Container.get(ChildProcess);
+  return childProcess.exec(
       'ibmcloud target --output json',
       {
         env: process.env

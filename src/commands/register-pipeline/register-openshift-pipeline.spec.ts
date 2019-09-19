@@ -1,238 +1,227 @@
-import rewire = require('rewire');
+import {Container} from 'typescript-ioc';
+import Mock = jest.Mock;
+
+jest.mock('inquirer');
+
 import {GitParams} from './create-git-secret';
-import mock = jest.mock;
-
-const module = rewire('./register-openshift-pipeline');
-
-const registerPipeline = module.__get__('registerPipeline');
-const createBuildPipeline = module.__get__('createBuildPipeline');
-const shouldUpdateExistingBuildConfig = module.__get__('shouldUpdateExistingBuildConfig');
-const parseRouteOutput = module.__get__('parseRouteOutput');
+import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
+import {mockField, providerFromValue} from '../../testHelper';
+import {FsPromises} from '../../util/file-util';
+import {OpenshiftCommands} from '../../api/openshift';
 
 describe('register-openshift-pipeline', () => {
   test('canary verifies test infrastructure', () => {
     expect(true).toEqual(true);
   });
 
-  describe('registerPipeline()', () => {
-    const name = 'name';
-    const url = 'url';
-    const username = 'username';
-    const password = 'password';
-    const branch = 'branch';
-    const gitParams: GitParams = {name, url, username, password, branch};
+  describe('given RegisterOpenshiftPipeline', () => {
+    let classUnderTest: RegisterOpenshiftPipeline;
 
-    let mock_generateBuildConfig;
-    let unset_generateBuildConfig;
-
-    let mock_writeFile;
-    let unset_writeFile;
-
-    let mock_getRouteHosts;
-    let unset_getRouteHosts;
-
-    let mock_createBuildPipeline;
-    let unset_createBuildPipeline;
-
-    beforeEach(() => {
-
-      mock_generateBuildConfig = jest.fn();
-      unset_generateBuildConfig = module.__set__('generateBuildConfig', mock_generateBuildConfig) as () => void;
-
-      mock_writeFile = jest.fn();
-      unset_writeFile = module.__set__('writeFile', mock_writeFile) as () => void;
-
-      mock_createBuildPipeline = jest.fn();
-      unset_createBuildPipeline = module.__set__('createBuildPipeline', mock_createBuildPipeline) as () => void;
-
-      mock_getRouteHosts = jest.fn();
-      unset_getRouteHosts = module.__set__('getRouteHosts', mock_getRouteHosts) as () => void;
-    });
-
-    afterEach(() => {
-      unset_generateBuildConfig();
-      unset_writeFile();
-      unset_createBuildPipeline();
-      unset_getRouteHosts();
-    });
-
-    test('should apply the buildConfig to OpenShift', async () => {
-      const pipelineName = 'pipeline-name';
-      const buildConfig = {metadata: {name: pipelineName}};
-      const fileName = 'filename.json';
-      const jenkinsHost = 'test';
-      const jenkinsNamespace = 'namespace';
-      const pipelineNamespace = 'namespace1';
-
-      mock_generateBuildConfig.mockReturnValue(buildConfig);
-      mock_writeFile.mockResolvedValue(fileName);
-      mock_createBuildPipeline.mockResolvedValue({});
-      mock_getRouteHosts.mockResolvedValue([jenkinsHost]);
-
-      const result = await registerPipeline({jenkinsNamespace, pipelineNamespace}, gitParams);
-
-      expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
-
-      expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.json`, JSON.stringify(buildConfig));
-
-      expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, pipelineNamespace);
-    });
-  });
-
-  describe('createBuildPipeline()', () => {
-    const fileName = 'filename';
-    const namespace = 'test';
-    const pipelineName = 'my pipeline';
-
-    let mock_create;
-    let unset_create;
-
-    let mock_startBuild;
-    let unset_startBuild;
-
-    let mock_shouldUpdateExistingBuildConfig;
-    let unset_shouldUpdateExistingBuildConfig;
-
-    let mock_apply;
-    let unset_apply;
+    let mock_writeFile: Mock;
+    let mock_create: Mock;
+    let mock_startBuild: Mock;
+    let mock_apply: Mock;
 
     beforeEach(() => {
       mock_create = jest.fn();
-      unset_create = module.__set__('create', mock_create) as () => void;
-
       mock_startBuild = jest.fn();
-      unset_startBuild = module.__set__('startBuild', mock_startBuild) as () => void;
-
-      mock_shouldUpdateExistingBuildConfig = jest.fn();
-      unset_shouldUpdateExistingBuildConfig = module.__set__('shouldUpdateExistingBuildConfig', mock_shouldUpdateExistingBuildConfig) as () => void;
-
       mock_apply = jest.fn();
-      unset_apply = module.__set__('apply', mock_apply) as () => void;
+      Container.bind(OpenshiftCommands).provider(providerFromValue({create: mock_create, startBuild: mock_startBuild, apply: mock_apply}));
+
+      mock_writeFile = jest.fn();
+      Container.bind(FsPromises).provider(providerFromValue({writeFile: mock_writeFile}));
+
+      classUnderTest = Container.get(RegisterOpenshiftPipeline);
     });
 
-    afterEach(() => {
-      unset_create();
-      unset_startBuild();
-      unset_shouldUpdateExistingBuildConfig();
-      unset_apply();
-    });
+    describe('registerPipeline()', () => {
+      const name = 'name';
+      const url = 'url';
+      const username = 'username';
+      const password = 'password';
+      const branch = 'branch';
+      const gitParams: GitParams = {name, url, username, password, branch};
 
-    describe('when kubectl create is successful', () => {
+      let mock_generateBuildConfig;
+      let unset_generateBuildConfig;
+
+      let mock_getRouteHosts;
+      let unset_getRouteHosts;
+
+      let mock_createBuildPipeline;
+      let unset_createBuildPipeline;
+
       beforeEach(() => {
-        mock_create.mockResolvedValue({});
+
+        mock_generateBuildConfig = jest.fn();
+        unset_generateBuildConfig = mockField(classUnderTest, 'generateBuildConfig', mock_generateBuildConfig) as () => void;
+
+        mock_createBuildPipeline = jest.fn();
+        unset_createBuildPipeline = mockField(classUnderTest, 'createBuildPipeline', mock_createBuildPipeline) as () => void;
+
+        mock_getRouteHosts = jest.fn();
+        unset_getRouteHosts = mockField(classUnderTest, 'getRouteHosts', mock_getRouteHosts) as () => void;
       });
 
-      test('should start the pipeline build', async () => {
+      afterEach(() => {
+        unset_generateBuildConfig();
+        unset_createBuildPipeline();
+        unset_getRouteHosts();
+      });
 
-        await createBuildPipeline(pipelineName, fileName, namespace);
+      test('should apply the buildConfig to OpenShift', async () => {
+        const pipelineName = 'pipeline-name';
+        const buildConfig = {metadata: {name: pipelineName}};
+        const fileName = 'filename.json';
+        const jenkinsHost = 'test';
+        const jenkinsNamespace = 'namespace';
+        const pipelineNamespace = 'namespace1';
 
-        expect(mock_create).toHaveBeenCalledWith(fileName, namespace);
-        expect(mock_startBuild).toHaveBeenCalledWith(pipelineName, namespace);
+        mock_generateBuildConfig.mockReturnValue(buildConfig);
+        mock_writeFile.mockResolvedValue(fileName);
+        mock_createBuildPipeline.mockResolvedValue({});
+        mock_getRouteHosts.mockResolvedValue([jenkinsHost]);
+
+        const result = await classUnderTest.registerPipeline({jenkinsNamespace, pipelineNamespace}, gitParams);
+
+        expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
+
+        expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.json`, JSON.stringify(buildConfig));
+
+        expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, pipelineNamespace);
       });
     });
 
-    describe('when kubectl create fails because pipeline already exists', () => {
+    describe('createBuildPipeline()', () => {
+      const fileName = 'filename';
+      const namespace = 'test';
+      const pipelineName = 'my pipeline';
+
+      let mock_shouldUpdateExistingBuildConfig;
+      let unset_shouldUpdateExistingBuildConfig;
+
       beforeEach(() => {
-        mock_create.mockRejectedValue(new Error('already exists'));
+
+        mock_shouldUpdateExistingBuildConfig = jest.fn();
+        unset_shouldUpdateExistingBuildConfig = mockField(classUnderTest, 'shouldUpdateExistingBuildConfig', mock_shouldUpdateExistingBuildConfig) as () => void;
       });
 
-      test('should check if existing pipeline should be updated', async () => {
-
-        await createBuildPipeline(pipelineName, fileName, namespace);
-
-        expect(mock_shouldUpdateExistingBuildConfig).toHaveBeenCalled();
+      afterEach(() => {
+        unset_shouldUpdateExistingBuildConfig();
       });
 
-      describe('and when existing should be updated', () => {
+      describe('when kubectl create is successful', () => {
         beforeEach(() => {
-          mock_shouldUpdateExistingBuildConfig.mockResolvedValue(true);
+          mock_create.mockResolvedValue({});
         });
 
-        test('should call kubectl apply', async () => {
+        test('should start the pipeline build', async () => {
 
-          await createBuildPipeline(pipelineName, fileName, namespace);
+          await classUnderTest.createBuildPipeline(pipelineName, fileName, namespace);
 
-          expect(mock_apply).toHaveBeenCalledWith(fileName, namespace);
+          expect(mock_create).toHaveBeenCalledWith(fileName, namespace);
+          expect(mock_startBuild).toHaveBeenCalledWith(pipelineName, namespace);
         });
       });
 
-      describe('and when existing should not be updated', () => {
+      describe('when kubectl create fails because pipeline already exists', () => {
         beforeEach(() => {
-          mock_shouldUpdateExistingBuildConfig.mockResolvedValue(false);
+          mock_create.mockRejectedValue(new Error('already exists'));
         });
 
-        test('should not call kubectl apply', async () => {
+        test('should check if existing pipeline should be updated', async () => {
 
-          await createBuildPipeline(pipelineName, fileName, namespace);
+          await classUnderTest.createBuildPipeline(pipelineName, fileName, namespace);
 
-          expect(mock_apply).not.toHaveBeenCalled();
+          expect(mock_shouldUpdateExistingBuildConfig).toHaveBeenCalled();
         });
-      });
-    });
 
-    describe('when kubectl create fails for a reason other than existing pipeline', () => {
-      const errorMessage = 'some other error';
-
-      beforeEach(() => {
-        mock_create.mockRejectedValue(new Error(errorMessage));
-      });
-
-      test('should throw error', () => {
-        return createBuildPipeline(pipelineName, fileName, namespace)
-          .then(result => fail('should throw error'))
-          .catch(err => {
-            expect(err.message).toEqual(errorMessage);
+        describe('and when existing should be updated', () => {
+          beforeEach(() => {
+            mock_shouldUpdateExistingBuildConfig.mockResolvedValue(true);
           });
+
+          test('should call kubectl apply', async () => {
+
+            await classUnderTest.createBuildPipeline(pipelineName, fileName, namespace);
+
+            expect(mock_apply).toHaveBeenCalledWith(fileName, namespace);
+          });
+        });
+
+        describe('and when existing should not be updated', () => {
+          beforeEach(() => {
+            mock_shouldUpdateExistingBuildConfig.mockResolvedValue(false);
+          });
+
+          test('should not call kubectl apply', async () => {
+
+            await classUnderTest.createBuildPipeline(pipelineName, fileName, namespace);
+
+            expect(mock_apply).not.toHaveBeenCalled();
+          });
+        });
+      });
+
+      describe('when kubectl create fails for a reason other than existing pipeline', () => {
+        const errorMessage = 'some other error';
+
+        beforeEach(() => {
+          mock_create.mockRejectedValue(new Error(errorMessage));
+        });
+
+        test('should throw error', () => {
+          return classUnderTest.createBuildPipeline(pipelineName, fileName, namespace)
+            .then(result => fail('should throw error'))
+            .catch(err => {
+              expect(err.message).toEqual(errorMessage);
+            });
+        });
       });
     });
-  });
 
-  describe('shouldUpdateExistingBuildConfif()', () => {
+    describe('shouldUpdateExistingBuildConfig()', () => {
 
-    let mock_prompt;
-    let unset_prompt;
+      let mock_prompt: Mock;
 
-    beforeEach(() => {
-      mock_prompt = jest.fn();
-      unset_prompt = module.__set__('prompt', mock_prompt) as () => void;
-    });
+      beforeEach(() => {
+        mock_prompt = require('inquirer').prompt;
+      });
 
-    afterEach(() => {
-      unset_prompt();
-    });
+      test('should prompt user with pipeline name', async () => {
+        const pipelineName = 'some-pipeline';
+        const expectedResult = true;
 
-    test('should prompt user with pipeline name', async () => {
-      const pipelineName = 'some-pipeline';
-      const expectedResult = true;
+        mock_prompt.mockResolvedValue({shouldUpdate: expectedResult});
 
-      mock_prompt.mockResolvedValue({shouldUpdate: expectedResult});
+        const actualResult = await classUnderTest.shouldUpdateExistingBuildConfig(pipelineName);
 
-      const actualResult = await shouldUpdateExistingBuildConfig(pipelineName);
+        expect(actualResult).toEqual(expectedResult);
 
-      expect(actualResult).toEqual(expectedResult);
+        expect(mock_prompt).toHaveBeenCalled();
+        const questions = mock_prompt.mock.calls[0][0];
 
-      expect(mock_prompt).toHaveBeenCalled();
-      const questions = mock_prompt.mock.calls[0][0];
-
-      const shouldUpdate = questions.find(question => question.name === 'shouldUpdate');
-      expect(shouldUpdate).not.toBeUndefined();
-      expect(shouldUpdate.message).toContain(pipelineName);
-    });
-  });
-
-  describe('parseRouteOutput()', () => {
-    describe('when routeText has json data', () => {
-      test('return json values', () => {
-        const expectedResult = {test: {more: 'value'}};
-
-        expect(parseRouteOutput(JSON.stringify(expectedResult))).toEqual(expectedResult);
+        const shouldUpdate = questions.find(question => question.name === 'shouldUpdate');
+        expect(shouldUpdate).not.toBeUndefined();
+        expect(shouldUpdate.message).toContain(pipelineName);
       });
     });
-    describe('when routeText has non-json data before json values', () => {
-      const expectedResult = {test: {more: 'value'}};
 
-      expect(parseRouteOutput('test' + JSON.stringify(expectedResult))).toEqual(expectedResult);
+    describe('parseRouteOutput()', () => {
+      describe('when routeText has json data', () => {
+        test('return json values', () => {
+          const expectedResult = {test: {more: 'value'}};
 
+          expect(classUnderTest.parseRouteOutput(JSON.stringify(expectedResult))).toEqual(expectedResult);
+        });
+      });
+      describe('when routeText has non-json data before json values', () => {
+        test('return json values', () => {
+          const expectedResult = {test: {more: 'value'}};
+
+          expect(classUnderTest.parseRouteOutput('test' + JSON.stringify(expectedResult))).toEqual(expectedResult);
+        });
+      });
     });
   });
 });

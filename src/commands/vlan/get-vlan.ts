@@ -1,12 +1,8 @@
 import {GetVlanOptions} from './get-vlan-options.model';
-import {getIBMCloudTargetInfo as getTarget, IBMCloudTarget} from '../../api/ibmcloud/target';
-import {getZones as ibmcloud_getZones} from '../../api/ibmcloud/zones';
-import {getVlans as ibmcloud_getVlans, IBMCloudVlan} from '../../api/ibmcloud/vlans';
-
-// Added variables so that rewire can access them
-let getIBMCloudTargetInfo = getTarget;
-let getZones = ibmcloud_getZones;
-let getVlans = ibmcloud_getVlans;
+import {getIBMCloudTargetInfo, IBMCloudTarget} from '../../api/ibmcloud/target';
+import {IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
+import {Inject, Provides} from 'typescript-ioc';
+import {Zones} from '../../api/ibmcloud/zones';
 
 class VlanContainer {
   private?: IBMCloudVlan;
@@ -34,70 +30,82 @@ export interface VlanResult extends FlattenedVlans, TargetInfo {
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-export async function getVlan(options: GetVlanOptions, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<VlanResult> {
-
-  notifyStatus('Getting target info');
-
-  const targetValues = await collectValuesFromTarget(options);
-
-  notifyStatus('Getting zones');
-
-  const vlan_datacenter: string = options.datacenter || await getVlanDatacenter(targetValues.vlan_region);
-
-  notifyStatus('Getting vlans');
-
-  return Object.assign(
-    {
-      vlan_datacenter,
-    },
-    await getFlattenedVlans(vlan_datacenter),
-    targetValues,
-  );
+export abstract class GetVlan {
+  async abstract getVlan(options: GetVlanOptions, notifyStatus?: (status: string) => void): Promise<VlanResult>;
 }
 
-async function collectValuesFromTarget(options: GetVlanOptions): Promise<TargetInfo> {
+@Provides(GetVlan)
+export class GetVlanImpl implements GetVlan {
+  @Inject
+  private vlans: Vlans;
+  @Inject
+  private zones: Zones;
 
-  const target: IBMCloudTarget = await getIBMCloudTargetInfo();
+  async getVlan(options: GetVlanOptions, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<VlanResult> {
 
-  if (!(options.region || target.region || target.region.name)) {
-    throw new Error('Unable to find region value. Make sure that you have run "ibmcloud target -r {region}"');
+    notifyStatus('Getting target info');
+
+    const targetValues = await this.collectValuesFromTarget(options);
+
+    notifyStatus('Getting zones');
+
+    const vlan_datacenter: string = options.datacenter || await this.getVlanDatacenter(targetValues.vlan_region);
+
+    notifyStatus('Getting vlans');
+
+    return Object.assign(
+      {
+        vlan_datacenter,
+      },
+      await this.getFlattenedVlans(vlan_datacenter),
+      targetValues,
+    );
   }
 
-  const vlan_region = options.region || target.region.name;
-  const resource_group_name = (target.resource_group ? target.resource_group.name : '<add resource group>');
-  const cluster_name = (target.resource_group ? `${target.resource_group.name}-cluster` : '<add cluster name>');
+  async collectValuesFromTarget(options: GetVlanOptions): Promise<TargetInfo> {
 
-  return {
-    vlan_region,
-    resource_group_name,
-    cluster_name
-  };
-}
+    const target: IBMCloudTarget = await getIBMCloudTargetInfo();
 
-async function getVlanDatacenter(region: string): Promise<string> {
+    if (!(options.region || target.region || target.region.name)) {
+      throw new Error('Unable to find region value. Make sure that you have run "ibmcloud target -r {region}"');
+    }
 
-  const zones: string[] = await getZones(region);
+    const vlan_region = options.region || target.region.name;
+    const resource_group_name = (target.resource_group ? target.resource_group.name : '<add resource group>');
+    const cluster_name = (target.resource_group ? `${target.resource_group.name}-cluster` : '<add cluster name>');
 
-  return zones[0];
-}
+    return {
+      vlan_region,
+      resource_group_name,
+      cluster_name
+    };
+  }
 
-async function getFlattenedVlans(vlan_datacenter: string): Promise<FlattenedVlans> {
-  return flattenVlans(await getVlans(vlan_datacenter));
-}
+  async getVlanDatacenter(region: string): Promise<string> {
 
-function flattenVlans(vlans: IBMCloudVlan[]): FlattenedVlans {
-  return (vlans || []).reduce(
-    (result: VlanResult, current: IBMCloudVlan) => {
-      if (current.type !== 'public' && current.type !== 'private') {
+    const zones: string[] = await this.zones.getZones(region);
+
+    return zones[0];
+  }
+
+  async getFlattenedVlans(vlan_datacenter: string): Promise<FlattenedVlans> {
+    return this.flattenVlans(await this.vlans.getVlans(vlan_datacenter));
+  }
+
+  flattenVlans(vlans: IBMCloudVlan[]): FlattenedVlans {
+    return (vlans || []).reduce(
+      (result: VlanResult, current: IBMCloudVlan) => {
+        if (current.type !== 'public' && current.type !== 'private') {
+          return result;
+        }
+
+        result[`${current.type}_vlan_id`] = current.id;
+        result[`${current.type}_vlan_number`] = current.num;
+        result[`${current.type}_vlan_router_hostname`] = current.router;
+
         return result;
-      }
-
-      result[`${current.type}_vlan_id`] = current.id;
-      result[`${current.type}_vlan_number`] = current.num;
-      result[`${current.type}_vlan_router_hostname`] = current.router;
-
-      return result;
-    },
-    {}
-  );
+      },
+      {}
+    );
+  }
 }

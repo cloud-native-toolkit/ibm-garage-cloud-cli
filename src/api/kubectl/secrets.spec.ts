@@ -1,37 +1,44 @@
-import rewire = require('rewire');
+import {Container} from 'typescript-ioc';
+
 import {encode as base64encode} from '../../util/base64';
-import {buildMockKubeClient} from './testHelper';
-
-const secrets = rewire('./secrets');
-
-const getSecretData = secrets.__get__('getSecretData');
-const createSecret = secrets.__get__('createSecret');
+import {KubeClient} from './client';
+import {mockKubeClientProvider} from './testHelper';
+import {KubeSecret} from './secrets';
+import {mockField} from '../../testHelper';
+import Mock = jest.Mock;
 
 describe('secrets', () => {
   test('canary verifies test infrastructure', () => {
     expect(true).toEqual(true);
   });
 
-  let unset_buildKubeClient;
-  let mock_client;
-
+  let classUnderTest: KubeSecret;
   beforeEach(() => {
-    mock_client = buildMockKubeClient();
+    Container
+      .bind(KubeClient)
+      .provider(mockKubeClientProvider);
 
-    unset_buildKubeClient = secrets.__set__('buildKubeClient', () => mock_client);
+    classUnderTest = Container.get(KubeSecret);
   });
 
-  afterEach(() => {
-    unset_buildKubeClient();
+  describe('given type', () => {
+    test('should be `secrets`', () => {
+      expect(classUnderTest.kind).toEqual('secrets');
+    });
   });
 
-  let mock_get;
+  describe('given getData()', () => {
+    let mock_get: Mock;
+    let unset_get: () => void;
 
-  beforeEach(() => {
-    mock_get = mock_client.api.v1.namespace().secrets().get;
-  });
+    beforeEach(() => {
+      mock_get = jest.fn();
+      unset_get = mockField(classUnderTest, 'get', mock_get);
+    });
 
-  describe('given getSecretData()', () => {
+    afterEach(() => {
+      unset_get();
+    });
 
     describe('when secret exists', () => {
       const url = 'url';
@@ -40,23 +47,22 @@ describe('secrets', () => {
       const api_token = 'api_token';
 
       beforeEach(() => {
-        mock_get.mockReturnValue(Promise.resolve({body: {data: {
+        mock_get.mockReturnValue(Promise.resolve({data: {
               url: base64encode(url),
               username: base64encode(username),
               password: base64encode(password),
               api_token: base64encode(api_token),
-            }}}));
+            }}));
       });
 
       test('return secret data', async () => {
         const secretName = 'test-secret';
         const namespace = 'ns';
 
-        const result = await getSecretData(secretName, namespace);
+        const result = await classUnderTest.getData(secretName, namespace);
 
         expect(result).toEqual({url, username, password, api_token});
-        expect(mock_client._state.namespace).toEqual(namespace);
-        expect(mock_client._state.secret).toEqual(secretName);
+        expect(mock_get).toBeCalledWith(secretName, namespace);
       });
     });
 
@@ -70,52 +76,14 @@ describe('secrets', () => {
 
       test('throw secret not found error', async () => {
 
-        return getSecretData(secretName, namespace)
+        return classUnderTest.getData(secretName, namespace)
           .then(() => fail('should throw error'))
           .catch(err => {
 
             expect(err.message).toEqual(`secrets "${secretName}" not found`);
 
-            expect(mock_client._state.namespace).toEqual(namespace);
-            expect(mock_client._state.secret).toEqual(secretName);
+            expect(mock_get).toBeCalledWith(secretName, namespace);
           });
-      });
-    });
-  });
-
-  xdescribe('given createSecret()', () => {
-    const namespace = 'namespace';
-    const secretName = 'my-secret';
-    const secretBody = {};
-
-    let mock_put;
-    let mock_post;
-
-    beforeEach(() => {
-      mock_put = mock_client.api.v1.namespaces().secrets().put;
-      mock_post = mock_client.api.v1.namespaces.secrets.post;
-    });
-
-    describe('when secret exists', () => {
-      test('update secret with put()', async () => {
-        const expectedResult = 'result';
-
-        mock_get.mockResolvedValue('');
-        mock_put.mockResolvedValue({body: expectedResult});
-
-        const actualResult = await createSecret(namespace, secretName, secretBody);
-
-        expect(actualResult).toEqual(expectedResult);
-        expect(mock_get.mock.calls.length).toEqual(1);
-        expect(mock_client._state.namespace).toEqual(namespace);
-        expect(mock_client._state.secret).toEqual(secretName);
-        expect(mock_put.mock.calls[0][0]).toBe(secretBody);
-      });
-    });
-
-    xdescribe('when secret does not exist', () => {
-      test('create secret with post()', () => {
-
       });
     });
   });

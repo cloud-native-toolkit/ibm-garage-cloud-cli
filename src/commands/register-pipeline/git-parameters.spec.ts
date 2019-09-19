@@ -1,196 +1,201 @@
 import * as path from "path";
-import rewire = require('rewire');
+import {Container} from 'typescript-ioc';
+import {GetGitParameters, GetGitParametersImpl} from './git-parameters';
+import {mockField} from '../../testHelper';
+import Mock = jest.Mock;
 
-const module = rewire('./git-parameters');
-
-const getRemoteGitUrl = module.__get__('getRemoteGitUrl');
-const parseGitUrl = module.__get__('parseGitUrl');
-const getGitParameters = module.__get__('getGitParameters');
+jest.mock('inquirer');
 
 describe('git-parameters', () => {
   test('canary verifies test infrastructure', () => {
     expect(true).toEqual(true);
   });
 
-  describe('getGitParameters()', () => {
-    let mock_getRemoteGitUrl;
-    let unset_getRemoteGitUrl;
-
-    let mock_parseGitUrl;
-    let unset_parseGitUrl;
-
-    let mock_prompt;
-    let unset_prompt;
+  describe('given GetGitParameters', () => {
+    let classUnderTest: GetGitParametersImpl;
 
     beforeEach(() => {
-      mock_getRemoteGitUrl = jest.fn();
-      mock_parseGitUrl = jest.fn();
-      mock_prompt = jest.fn();
-
-      unset_getRemoteGitUrl = module.__set__('getRemoteGitUrl', mock_getRemoteGitUrl);
-      unset_parseGitUrl = module.__set__('parseGitUrl', mock_parseGitUrl);
-      unset_prompt = module.__set__('prompt', mock_prompt);
+      classUnderTest = Container.get(GetGitParameters);
     });
 
-    afterEach(() => {
-      unset_getRemoteGitUrl();
-      unset_parseGitUrl();
-      unset_prompt();
-    });
+    describe('getGitParameters()', () => {
+      let mock_getRemoteGitUrl: Mock;
+      let unset_getRemoteGitUrl: () => void;
 
-    describe('when called', () => {
-      const url = 'url';
-      const org = 'org';
-      const repo = 'repo';
-      const parseGitUrlResult = {
-        url,
-        org,
-        repo,
-      };
+      let mock_parseGitUrl: Mock;
+      let unset_parseGitUrl: () => void;
 
-      const username = 'username';
-      const password = 'password';
-      const branch = 'branch';
-      const answers = {
-        username,
-        password,
-        branch
-      };
+      let mock_prompt: Mock;
 
       beforeEach(() => {
-        mock_getRemoteGitUrl.mockReturnValue(url);
-        mock_parseGitUrl.mockReturnValue(parseGitUrlResult);
-        mock_prompt.mockReturnValue(answers);
+        mock_getRemoteGitUrl = jest.fn();
+        mock_parseGitUrl = jest.fn();
+
+        mock_prompt = require('inquirer').prompt;
+
+        unset_getRemoteGitUrl = mockField(classUnderTest, 'getRemoteGitUrl', mock_getRemoteGitUrl);
+        unset_parseGitUrl = mockField(classUnderTest, 'parseGitUrl', mock_parseGitUrl);
       });
 
-      test('should prompt for username, password, and branch', async () => {
-        const value = await getGitParameters();
-
-        const questions = mock_prompt.mock.calls[0][0];
-        expect(questions.map(q => q.name)).toEqual(['username', 'password', 'branch']);
+      afterEach(() => {
+        unset_getRemoteGitUrl();
+        unset_parseGitUrl();
       });
 
-      test('should return url and name from git url', async () => {
-        const value = await getGitParameters();
+      describe('when called', () => {
+        const url = 'url';
+        const org = 'org';
+        const repo = 'repo';
+        const parseGitUrlResult = {
+          url,
+          org,
+          repo,
+        };
 
-        expect(value.url).toEqual(url);
-        expect(value.name).toEqual(`${org}.${repo}`);
-        expect(value.username).toEqual(username);
-        expect(value.password).toEqual(password);
+        const username = 'username';
+        const password = 'password';
+        const branch = 'branch';
+        const answers = {
+          username,
+          password,
+          branch
+        };
 
-        expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
-      });
+        beforeEach(() => {
+          mock_getRemoteGitUrl.mockReturnValue(url);
+          mock_parseGitUrl.mockReturnValue(parseGitUrlResult);
+          mock_prompt.mockResolvedValue(answers);
+        });
 
-      test('should return url and name from git url', async () => {
-        const value = await getGitParameters();
+        test('should prompt for username, password, and branch', async () => {
+          const value = await classUnderTest.getGitParameters();
 
-        expect(value.url).toEqual(url);
-        expect(value.name).toEqual(`${org}.${repo}`);
-        expect(value.username).toEqual(username);
-        expect(value.password).toEqual(password);
-        expect(value.branch).toEqual(branch);
+          const questions = mock_prompt.mock.calls[0][0];
+          expect(questions.map(q => q.name)).toEqual(['username', 'password', 'branch']);
+        });
 
-        expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
-      });
-    });
-  });
+        test('should return url and name from git url', async () => {
+          const value = await classUnderTest.getGitParameters();
 
-  describe('parseGitUrl', () => {
-    describe('when https github url', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const url = `https://github.com/${org}/${repo}.git`;
+          expect(value.url).toEqual(url);
+          expect(value.name).toEqual(`${org}.${repo}`);
+          expect(value.username).toEqual(username);
+          expect(value.password).toEqual(password);
 
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(url)).toEqual({url, org, repo});
-      })
-    });
+          expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
+        });
 
-    describe('when https ibm GHE url', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const url = `https://github.ibm.com/${org}/${repo}.git`;
+        test('should return url and name from git url', async () => {
+          const value = await classUnderTest.getGitParameters();
 
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(url)).toEqual({url, org, repo});
-      })
-    });
+          expect(value.url).toEqual(url);
+          expect(value.name).toEqual(`${org}.${repo}`);
+          expect(value.username).toEqual(username);
+          expect(value.password).toEqual(password);
+          expect(value.branch).toEqual(branch);
 
-    describe('when https github url without .git extension', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const host = 'github.com';
-      const url = `https://${host}/${org}/${repo}.git`;
-      const originalUrl = `https://github.com/${org}/${repo}`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(originalUrl)).toEqual({url, org, repo});
-      })
-    });
-
-    describe('when ssh github url', () => {
-      const org = 'org';
-      const repo = 'repo';
-      const host = 'github.com';
-      const url = `https://${host}/${org}/${repo}.git`;
-      const sshUrl = `git@${host}:${org}/${repo}.git`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(sshUrl)).toEqual({url, org, repo});
-      })
-    });
-
-    describe('when long ssh github url', () => {
-      const org = 'ibm-garage-cloud';
-      const repo = 'template-watson-banking-chatbot';
-      const host = 'github.com';
-      const url = `https://${host}/${org}/${repo}.git`;
-      const originalUrl = `git@${host}:${org}/${repo}.git`;
-
-      test('should return {url, org, repo}', () => {
-        expect(parseGitUrl(originalUrl)).toEqual({org, repo, url});
+          expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
+        });
       });
     });
 
-    describe('when invalid text for url', () => {
-      test('should throw error', () => {
-        expect(() => {
-          parseGitUrl('invalid');
-        }).toThrowError('invalid git url');
-      })
-    });
+    describe('parseGitUrl', () => {
+      describe('when https github url', () => {
+        const org = 'org';
+        const repo = 'repo';
+        const url = `https://github.com/${org}/${repo}.git`;
 
-    describe('when invalid url', () => {
-      test('should throw error', () => {
-        expect(() => {
-          parseGitUrl('https://bogus');
-        }).toThrowError('invalid git url');
-      })
-    });
-  });
+        test('should return {url, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo});
+        })
+      });
 
-  describe('getRemoteGitUrl()', () => {
-    describe('when path provided', () => {
-      test('should return url for provided directory', async () => {
-        const result = await getRemoteGitUrl(process.cwd());
+      describe('when https ibm GHE url', () => {
+        const org = 'org';
+        const repo = 'repo';
+        const url = `https://github.ibm.com/${org}/${repo}.git`;
 
-        expect(result).toEqual('git@github.ibm.com:garage-catalyst/ibmcloud-garage-cli.git');
+        test('should return {url, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo});
+        })
+      });
+
+      describe('when https github url without .git extension', () => {
+        const org = 'org';
+        const repo = 'repo';
+        const host = 'github.com';
+        const url = `https://${host}/${org}/${repo}.git`;
+        const originalUrl = `https://github.com/${org}/${repo}`;
+
+        test('should return {url, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({url, org, repo});
+        })
+      });
+
+      describe('when ssh github url', () => {
+        const org = 'org';
+        const repo = 'repo';
+        const host = 'github.com';
+        const url = `https://${host}/${org}/${repo}.git`;
+        const sshUrl = `git@${host}:${org}/${repo}.git`;
+
+        test('should return {url, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(sshUrl)).toEqual({url, org, repo});
+        })
+      });
+
+      describe('when long ssh github url', () => {
+        const org = 'ibm-garage-cloud';
+        const repo = 'template-watson-banking-chatbot';
+        const host = 'github.com';
+        const url = `https://${host}/${org}/${repo}.git`;
+        const originalUrl = `git@${host}:${org}/${repo}.git`;
+
+        test('should return {url, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({org, repo, url});
+        });
+      });
+
+      describe('when invalid text for url', () => {
+        test('should throw error', () => {
+          expect(() => {
+            classUnderTest.parseGitUrl('invalid');
+          }).toThrowError('invalid git url');
+        })
+      });
+
+      describe('when invalid url', () => {
+        test('should throw error', () => {
+          expect(() => {
+            classUnderTest.parseGitUrl('https://bogus');
+          }).toThrowError('invalid git url');
+        })
       });
     });
 
-    describe('when no path provided', () => {
-      test('should return url for current directory', async () => {
-        const result = await getRemoteGitUrl();
+    describe('getRemoteGitUrl()', () => {
+      describe('when path provided', () => {
+        test('should return url for provided directory', async () => {
+          const result = await classUnderTest.getRemoteGitUrl(process.cwd());
 
-        expect(result).toEqual('git@github.ibm.com:garage-catalyst/ibmcloud-garage-cli.git');
+          expect(result).toEqual('git@github.ibm.com:garage-catalyst/ibmcloud-garage-cli.git');
+        });
       });
-    });
 
-    describe('when not in repo directory', () => {
-      test('should throw error', () => {
-        return getRemoteGitUrl(path.join(process.cwd(), '..'))
-          .then(() => fail('should throw Error'))
-          .catch(err => expect(err.message.toLowerCase()).toContain('not a git repository'));
+      describe('when no path provided', () => {
+        test('should return url for current directory', async () => {
+          const result = await classUnderTest.getRemoteGitUrl();
+
+          expect(result).toEqual('git@github.ibm.com:garage-catalyst/ibmcloud-garage-cli.git');
+        });
+      });
+
+      describe('when not in repo directory', () => {
+        test('should throw error', () => {
+          return classUnderTest.getRemoteGitUrl(path.join(process.cwd(), '..'))
+            .then(() => fail('should throw Error'))
+            .catch(err => expect(err.message.toLowerCase()).toContain('not a git repository'));
+        });
       });
     });
   });

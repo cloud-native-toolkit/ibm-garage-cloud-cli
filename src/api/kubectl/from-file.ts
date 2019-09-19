@@ -1,21 +1,32 @@
-import * as childProcess from '../../util/child-process';
+import {Inject, Provides} from 'typescript-ioc';
+import {ChildProcess} from '../../util/child-process';
 
-let spawnPromise = childProcess.spawnPromise;
-
-export async function apply(fileName: string, namespace: string = 'default') {
-  return spawnPromise(
-    'kubectl',
-    ['apply', '-n', namespace, '-f', fileName],
-    {
-      env: process.env
-    });
+export abstract class FromFile {
+  async abstract apply(fileName: string, namespace?: string);
+  async abstract create(fileName: string, namespace?: string);
 }
 
-export async function create(fileName: string, namespace: string = 'default') {
-  return spawnPromise(
-    'kubectl',
-    ['create', '-n', namespace, '-f', fileName],
-    {
-      env: process.env
-    });
+@Provides(FromFile)
+export class FromFileImpl implements FromFile {
+  @Inject
+  private childProcess: ChildProcess;
+
+  async apply(fileName: string, namespace: string = 'default') {
+
+    return this.childProcess.spawn(
+      'kubectl',
+      ['apply', '-n', namespace, '-f', fileName],
+      {
+        env: process.env
+      });
+  }
+
+  async create(fileName: string, namespace: string = 'default') {
+    return this.childProcess.spawn(
+      'kubectl',
+      ['create', '-n', namespace, '-f', fileName],
+      {
+        env: process.env
+      });
+  }
 }

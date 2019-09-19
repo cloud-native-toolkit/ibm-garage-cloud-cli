@@ -1,43 +1,16 @@
 import * as fs from 'fs';
 
-let read = fs.readFile;
-let write = fs.writeFile;
-let unlink = fs.unlink;
+export class FsPromises {
 
-export async function readFile(filename: string): Promise<Buffer> {
-  return new Promise<Buffer>((resolve, reject) => {
-    read(filename, (err, data: Buffer) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+  async readFile(filename: string): Promise<Buffer> {
+    return fs.promises.readFile(filename);
+  }
 
-      resolve(data);
-    });
-  });
-}
+  async writeFile(fileName: string, contents: any): Promise<string> {
+    return fs.promises.writeFile(fileName, contents).then(() => fileName);
+  }
 
-export async function writeFile(fileName: string, contents: any): Promise<string> {
-  return new Promise((resolve, reject) => {
-    write(fileName, contents, err => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(fileName);
-      }
-    });
-  })
-}
-
-export async function deleteFile(fileName: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    unlink(fileName, (err) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(fileName);
-    });
-  });
+  async deleteFile(fileName: string): Promise<string> {
+    return fs.promises.unlink(fileName).then(() => fileName);
+  }
 }

@@ -1,13 +1,14 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
 import ora from 'ora';
+import {Container} from 'typescript-ioc';
 
 import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
 import {GetVlanOptions} from './get-vlan-options.model';
-import {getVlan, VlanResult} from './get-vlan';
+import {GetVlan, VlanResult} from './get-vlan';
 
-export const defineGetVlanCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineGetVlanCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
   return {
-    command,
+    command: commandName,
     describe: 'print out the vlan values',
     builder: (yargs: Argv<any>) => yargs
       .option('datacenter', {
@@ -22,7 +23,8 @@ export const defineGetVlanCommand: YargsCommandDefinition = <T>(command: string)
           spinner.text = status;
         }
 
-        const result: VlanResult = await getVlan(argv, statusCallback);
+        const command: GetVlan = Container.get(GetVlan);
+        const result: VlanResult = await command.getVlan(argv, statusCallback);
 
         spinner.stop();
 

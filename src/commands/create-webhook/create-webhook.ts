@@ -1,4 +1,5 @@
 import * as superagent from 'superagent';
+import {Provides} from 'typescript-ioc';
 
 import {CreateWebhookOptions} from './create-webhook-options.model';
 
@@ -47,57 +48,65 @@ interface GitAuthResponse {
   "fingerprint": string;
 }
 
-export default async function createWebhook(options: CreateWebhookOptions): Promise<string> {
-
-  const response: superagent.Response = await superagent
-    .post(buildGitUrl(options))
-    .set('Authorization', `token ${options.gitToken}`)
-    .set('User-Agent', `${options.gitUsername} via ibm-garage-cloud cli`)
-    .accept('application/vnd.github.v3+json')
-    .send(buildWebhookData(options.jenkinsUrl));
-
-  if (response.status !== 200 && response.status !== 201) {
-    throw new Error('Error creating webhook: ' + response.status + ', ' + response.body);
-  }
-
-  return response.body.id;
+export abstract class CreateWebhook {
+  async abstract createWebhook(options: CreateWebhookOptions): Promise<string>;
 }
 
-function buildGitUrl(options: CreateWebhookOptions) {
-  const apiUrl = gitApiUrl(options.gitUrl);
+@Provides(CreateWebhook)
+export class CreateWebhookImpl implements CreateWebhook {
 
-  const gitSlug = parseGitSlug(options.gitUrl);
+  async createWebhook(options: CreateWebhookOptions): Promise<string> {
 
-  return `${apiUrl}/repos/${gitSlug.owner}/${gitSlug.repo}/hooks`;
-}
+    const response: superagent.Response = await superagent
+      .post(this.buildGitUrl(options))
+      .set('Authorization', `token ${options.gitToken}`)
+      .set('User-Agent', `${options.gitUsername} via ibm-garage-cloud cli`)
+      .accept('application/vnd.github.v3+json')
+      .send(this.buildWebhookData(options.jenkinsUrl));
 
-function parseGitSlug(gitUrl: string): {owner: string; repo: string;} {
-  const results: string[] = new RegExp('https{0,1}:\/\/[^\/]+\/([^\/]+)\/([^\/]+)').exec(gitUrl);
-
-  if (!results || results.length < 3) {
-    throw new Error(`Invalid url: ${gitUrl}`);
-  }
-
-  return {owner: results[1], repo: results[2].replace('.git', '')};
-}
-
-function gitApiUrl(gitUrl: string) {
-  const apiUrl = (/https:\/\/github.com/.test(gitUrl))
-    ? 'https://api.github.com'
-    : `${gitUrl}/api/v3`;
-  return apiUrl;
-}
-
-function buildWebhookData(jenkinsUrl) {
-  const pushGitHook: GitHookData = {
-    name: 'web',
-    events: [GitEvents.push],
-    active: true,
-    config: {
-      url: `${jenkinsUrl}/github-webhook/`,
-      content_type: 'json',
-      insecure_ssl: GitHookUrlVerification.performed,
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error('Error creating webhook: ' + response.status + ', ' + response.body);
     }
-  };
-  return pushGitHook;
+
+    return response.body.id;
+  }
+
+  buildGitUrl(options: CreateWebhookOptions) {
+    const apiUrl = this.gitApiUrl(options.gitUrl);
+
+    const gitSlug = this.parseGitSlug(options.gitUrl);
+
+    return `${apiUrl}/repos/${gitSlug.owner}/${gitSlug.repo}/hooks`;
+  }
+
+  parseGitSlug(gitUrl: string): {owner: string; repo: string;} {
+    const results: string[] = new RegExp('https{0,1}:\/\/[^\/]+\/([^\/]+)\/([^\/]+)').exec(gitUrl);
+
+    if (!results || results.length < 3) {
+      throw new Error(`Invalid url: ${gitUrl}`);
+    }
+
+    return {owner: results[1], repo: results[2].replace('.git', '')};
+  }
+
+  gitApiUrl(gitUrl: string) {
+    const apiUrl = (/https:\/\/github.com/.test(gitUrl))
+      ? 'https://api.github.com'
+      : `${gitUrl}/api/v3`;
+    return apiUrl;
+  }
+
+  buildWebhookData(jenkinsUrl) {
+    const pushGitHook: GitHookData = {
+      name: 'web',
+      events: [GitEvents.push],
+      active: true,
+      config: {
+        url: `${jenkinsUrl}/github-webhook/`,
+        content_type: 'json',
+        insecure_ssl: GitHookUrlVerification.performed,
+      }
+    };
+    return pushGitHook;
+  }
 }

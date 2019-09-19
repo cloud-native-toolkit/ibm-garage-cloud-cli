@@ -1,30 +1,26 @@
-import * as secrets from '../../api/kubectl/secrets';
-import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
-import * as kubeClient from '../../api/kubectl/client';
-import * as ingress from '../../api/kubectl/ingress';
-
-let getSecretData = secrets.getSecretData;
-let getIngressHosts = ingress.getIngressHosts;
-let getAllIngressHosts = ingress.getAllIngressHosts;
-let buildKubeClient = kubeClient.buildKubeClient;
+import {Inject, Provides} from 'typescript-ioc';
+import {KubeIngress} from '../../api/kubectl/ingress';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-export async function getIngress(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<String[]> {
-
-  notifyStatus('Getting Hosts for Namespace '+namespace);
-  const hosts = await getHostsFromIngress(namespace);
-  return hosts;
-
+export abstract class GetIngress {
+  async abstract getIngress(namespace?: string, notifyStatus?: (status: string) => void): Promise<String[]>;
 }
 
-async function getHostsFromIngress(namespace: string = 'dev'): Promise<String[]> {
-  try {
+@Provides(GetIngress)
+export class GetIngressImpl implements GetIngress {
+  @Inject
+  private kubeIngress: KubeIngress;
 
-    const hosts = (await getAllIngressHosts(namespace));
+  async getIngress(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string[]> {
 
-    return hosts;
-  } catch (err) {
-    return [];
+    notifyStatus('Getting Hosts for Namespace '+namespace);
+
+    try {
+      return await this.kubeIngress.getAllHosts(namespace);
+    } catch (err) {
+      return [];
+    }
   }
 }
+
