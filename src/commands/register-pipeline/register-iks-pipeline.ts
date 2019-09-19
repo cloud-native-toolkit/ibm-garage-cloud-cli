@@ -55,7 +55,7 @@ async function pullJenkinsAccessSecrets(namespace: string = 'tools'): Promise<Je
 async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): Promise<{'Jenkins-Crumb': string}> {
 
   const response: superagent.Response = await
-    get(`${jenkinsAccess.url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)`)
+    get(`${jenkinsAccess.url}/crumbIssuer/api/json`)
       .auth(jenkinsAccess.username, jenkinsAccess.api_token)
       .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`);
 
@@ -63,9 +63,12 @@ async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): P
     throw new Error(`Unable to generate Jenkins crumb: ${response.text}`);
   }
 
-  return {
-    'Jenkins-Crumb': response.text.replace('Jenkins-Crumb:', '')
-  };
+  const body: {crumb: string, crumbRequestField: string} = response.body;
+
+  const result = {};
+  result[body.crumbRequestField] = body.crumb;
+
+  return result as any;
 }
 
 async function buildJenkinsJobConfig(gitParams: GitParams): Promise<string> {

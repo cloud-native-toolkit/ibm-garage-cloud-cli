@@ -42,17 +42,22 @@ describe('register-iks-pipeline', () => {
     describe('when successful', () => {
       test('should return Jenkins-Crumb', async () => {
         const expectedResult = 'crumb';
+        const crumbRequestField = 'MyCrumb';
 
         mock_set.mockResolvedValue({
           status: 200,
-          text: `Jenkins-Crumb:${expectedResult}`
-        });
+          body: {
+            '_class':'hudson.security.csrf.DefaultCrumbIssuer',
+            'crumb': expectedResult,
+            'crumbRequestField': crumbRequestField,
+          }
+        } as any);
 
         const actualResult = await generateJenkinsCrumbHeader(jenkinsAccess);
 
-        expect(actualResult['Jenkins-Crumb']).toEqual(expectedResult);
-        expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}.*`));
-        expect(mock_auth.mock.calls[0]).toEqual([jenkinsAccess.username, jenkinsAccess.api_token]);
+        expect(actualResult[crumbRequestField]).toEqual(expectedResult);
+        expect(mock_get.mock.calls[0][0]).toMatch(new RegExp(`^${jenkinsAccess.url}/crumbIssuer/api/json`));
+        expect(mock_auth).toHaveBeenCalledWith(jenkinsAccess.username, jenkinsAccess.api_token);
         expect(mock_set.mock.calls[0][0]).toEqual('User-Agent');
       });
     });
