@@ -1,51 +1,77 @@
 <?xml version='1.1' encoding='UTF-8'?>
-<flow-definition plugin="workflow-job@2.32">
-  <actions/>
-  <description></description>
-  <keepDependencies>false</keepDependencies>
-  <properties>
-    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.0.7"/>
-    <jenkins.model.BuildDiscarderProperty>
-      <strategy class="hudson.tasks.LogRotator">
-        <daysToKeep>-1</daysToKeep>
-        <numToKeep>5</numToKeep>
-        <artifactDaysToKeep>-1</artifactDaysToKeep>
-        <artifactNumToKeep>-1</artifactNumToKeep>
-      </strategy>
-    </jenkins.model.BuildDiscarderProperty>
-    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.29.4">
-      <projectUrl>{{GIT_REPO}}</projectUrl>
-      <displayName></displayName>
-    </com.coravy.hudson.plugins.github.GithubProjectProperty>
-    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-      <triggers>
-        <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.29.4">
-          <spec></spec>
-        </com.cloudbees.jenkins.GitHubPushTrigger>
-      </triggers>
-    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-  </properties>
-  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.68">
-    <scm class="hudson.plugins.git.GitSCM" plugin="git@3.10.0">
-      <configVersion>2</configVersion>
-      <userRemoteConfigs>
-        <hudson.plugins.git.UserRemoteConfig>
-          <url>{{GIT_REPO}}</url>
-          <credentialsId>{{GIT_CREDENTIALS}}</credentialsId>
-        </hudson.plugins.git.UserRemoteConfig>
-      </userRemoteConfigs>
-      <branches>
-        <hudson.plugins.git.BranchSpec>
-          <name>*/{{GIT_BRANCH}}</name>
-        </hudson.plugins.git.BranchSpec>
-      </branches>
-      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-      <submoduleCfg class="list"/>
-      <extensions/>
-    </scm>
-    <scriptPath>Jenkinsfile</scriptPath>
-    <lightweight>true</lightweight>
-  </definition>
-  <triggers/>
-  <disabled>false</disabled>
+<flow-definition plugin="workflow-job@2.33">
+<actions/>
+<description></description>
+<keepDependencies>false</keepDependencies>
+<properties>
+  <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.0.8"/>
+  <jenkins.model.BuildDiscarderProperty>
+    <strategy class="hudson.tasks.LogRotator">
+      <daysToKeep>-1</daysToKeep>
+      <numToKeep>5</numToKeep>
+      <artifactDaysToKeep>-1</artifactDaysToKeep>
+      <artifactNumToKeep>-1</artifactNumToKeep>
+    </strategy>
+  </jenkins.model.BuildDiscarderProperty>
+  <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.29.4">
+    <projectUrl>https://us-south.git.cloud.ibm.com/elavon-email-automation/elavon-email-automation.git/</projectUrl>
+    <displayName></displayName>
+  </com.coravy.hudson.plugins.github.GithubProjectProperty>
+  <com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty plugin="gitlab-plugin@1.5.12">
+    <gitLabConnection>IBM Cloud GitLab</gitLabConnection>
+  </com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty>
+  <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+    <triggers>
+      <com.dabsquared.gitlabjenkins.GitLabPushTrigger plugin="gitlab-plugin@1.5.12">
+        <spec></spec>
+        <triggerOnPush>true</triggerOnPush>
+        <triggerOnMergeRequest>true</triggerOnMergeRequest>
+        <triggerOnPipelineEvent>false</triggerOnPipelineEvent>
+        <triggerOnAcceptedMergeRequest>false</triggerOnAcceptedMergeRequest>
+        <triggerOnClosedMergeRequest>false</triggerOnClosedMergeRequest>
+        <triggerOnApprovedMergeRequest>true</triggerOnApprovedMergeRequest>
+        <triggerOpenMergeRequestOnPush>never</triggerOpenMergeRequestOnPush>
+        <triggerOnNoteRequest>true</triggerOnNoteRequest>
+        <noteRegex>Jenkins please retry a build</noteRegex>
+        <ciSkip>true</ciSkip>
+        <skipWorkInProgressMergeRequest>true</skipWorkInProgressMergeRequest>
+        <setBuildDescription>true</setBuildDescription>
+        <branchFilterType>All</branchFilterType>
+        <includeBranchesSpec></includeBranchesSpec>
+        <excludeBranchesSpec></excludeBranchesSpec>
+        <sourceBranchRegex></sourceBranchRegex>
+        <targetBranchRegex></targetBranchRegex>
+        <secretToken>{AQAAABAAAAAQntS7YNyw9eQ8bUHIoqpXXWPlgTwko+EVjuCgo+Trwb4=}</secretToken>
+        <pendingBuildName></pendingBuildName>
+        <cancelPendingBuildsOnUpdate>false</cancelPendingBuildsOnUpdate>
+      </com.dabsquared.gitlabjenkins.GitLabPushTrigger>
+      <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.29.4">
+        <spec></spec>
+      </com.cloudbees.jenkins.GitHubPushTrigger>
+    </triggers>
+  </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+</properties>
+<definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.73">
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@3.11.0">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>{{GIT_REPO}}</url>
+        <credentialsId>{{GIT_CREDENTIALS}}</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/{{GIT_BRANCH}}</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <scriptPath>Jenkinsfile</scriptPath>
+  <lightweight>true</lightweight>
+</definition>
+<triggers/>
+<disabled>false</disabled>
 </flow-definition>
