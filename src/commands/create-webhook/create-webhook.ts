@@ -147,6 +147,7 @@ export class CreateWebhookImpl implements CreateWebhook {
       id: `${owner}%2F${repo}`,
       url: `${protocol}://${credentials}${host}/project/${jobName}`,
       push_events: true,
+      enable_ssl_verification: (protocol === 'https'),
     } as any;
   }
 }
