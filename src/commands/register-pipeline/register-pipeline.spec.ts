@@ -213,7 +213,7 @@ describe('register-pipeline', () => {
 
         const pipelineResult = {
           jenkinsUrl: 'jenkinsUrl'
-        };
+        } as any;
 
         const result = classUnderTest.buildCreateWebhookOptions(gitParams, pipelineResult);
 

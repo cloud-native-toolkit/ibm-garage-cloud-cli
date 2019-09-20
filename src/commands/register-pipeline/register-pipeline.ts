@@ -76,6 +76,7 @@ export class RegisterPipelineImpl {
       try {
         await this.createWebhook.createWebhook(this.buildCreateWebhookOptions(gitParams, pipelineResult));
       } catch (err) {
+        console.log('Error creating webhook', err);
         throw new WebhookError(
           `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
       }
@@ -114,7 +115,7 @@ export class RegisterPipelineImpl {
     return {};
   }
 
-  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
+  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string, jobName: string, jenkinsUser: string, jenkinsPassword: string}> {
     const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
     return pipeline.registerPipeline(options, gitParams);
@@ -144,7 +145,7 @@ export class RegisterPipelineImpl {
     }
   }
 
-  buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string}): CreateWebhookOptions {
+  buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string; jenkinsUser: string; jenkinsPassword: string, jobName: string}): CreateWebhookOptions {
 
     return Object.assign(
       {

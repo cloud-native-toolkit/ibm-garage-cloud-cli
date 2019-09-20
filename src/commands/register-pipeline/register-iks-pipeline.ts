@@ -22,7 +22,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string, jobName: string, jenkinsUser: string, jenkinsPassword: string}> {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.jenkinsNamespace);
 
@@ -45,7 +45,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
         throw new Error(`Unable to create Jenkins job: ${response.text}`);
       }
 
-      return {jenkinsUrl: jenkinsAccess.url};
+      return {jenkinsUrl: jenkinsAccess.url, jenkinsUser: jenkinsAccess.username, jenkinsPassword: jenkinsAccess.api_token, jobName};
     } catch (err) {
       console.error('Error creating job', err);
       throw err;

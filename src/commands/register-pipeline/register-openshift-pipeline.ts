@@ -29,7 +29,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string}> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string, jobName: string, jenkinsUser: string, jenkinsPassword: string}> {
 
     try {
       const buildConfig = this.generateBuildConfig(gitParams.name, gitParams.url, gitParams.branch);
@@ -43,7 +43,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
       const host: string = await this.getRouteHosts(options.jenkinsNamespace || 'tools', 'jenkins');
 
-      return {jenkinsUrl: host ? `https://${host}` : ''};
+      return {jenkinsUrl: host ? `https://${host}` : '', jobName: gitParams.name, jenkinsUser: '', jenkinsPassword: ''};
     } catch (err) {
       console.log('error registering', err);
     }
