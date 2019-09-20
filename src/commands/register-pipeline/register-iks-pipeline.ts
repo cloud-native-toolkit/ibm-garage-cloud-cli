@@ -30,7 +30,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
       ? `${gitParams.name}_${gitParams.branch}`
       : gitParams.name;
 
-    const headers = options.generateCrumb ? await generateJenkinsCrumbHeader(jenkinsAccess) : {};
+    const headers = options.generateCrumb ? await this.generateJenkinsCrumbHeader(jenkinsAccess) : {};
 
     try {
       const response: Response = await
