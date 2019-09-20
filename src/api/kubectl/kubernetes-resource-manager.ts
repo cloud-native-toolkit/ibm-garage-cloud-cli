@@ -141,8 +141,6 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
   async copyAll(options: ListOptions, toNamespace: string): Promise<Array<T>> {
     const results: T[] = await this.list(options);
 
-    console.log('Got values', results);
-
     return Promise.all((results || []).map(result => {
       return this.create(
         result.metadata.name,
@@ -175,13 +173,10 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
   }
 
   resourceNode(group: string | undefined, version: string, kind: string, namespace: string) {
-    console.log('getting resource node:', group, version, kind, namespace);
 
     const node = !group
       ? this.client.api[version].namespace(namespace)[kind] :
       this.client.apis[group][version].namespace(namespace)[kind];
-
-    console.log('got resource node', node);
 
     return node;
   }

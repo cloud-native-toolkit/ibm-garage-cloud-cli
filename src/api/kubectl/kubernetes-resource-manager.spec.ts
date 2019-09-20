@@ -37,7 +37,6 @@ class TestV1KubernetesResource extends AbstractKubernetesResourceManager<TestRes
 
 export const testV1Beta1Provider: Provider = {
   get: () => {
-    console.log('in provider');
     return new TestV1Beta1KubernetesResource({
       client: Container.get(KubeClient),
       group: 'extension',
