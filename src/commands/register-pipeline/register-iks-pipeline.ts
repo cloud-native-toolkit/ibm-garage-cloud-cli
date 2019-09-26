@@ -26,12 +26,14 @@ export async function registerPipeline(options: RegisterPipelineOptions, gitPara
     ? `${gitParams.name}_${gitParams.branch}`
     : gitParams.name;
 
+  const headers = options.generateCrumb ? await generateJenkinsCrumbHeader(jenkinsAccess) : {};
+
   try {
     const response: superagent.Response = await
       post(`${jenkinsAccess.url}/createItem?name=${jobName}`)
         .auth(jenkinsAccess.username, jenkinsAccess.api_token)
-        .set(await generateJenkinsCrumbHeader(jenkinsAccess))
-        .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`)
+        .set(headers)
+        .set('User-Agent', `${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`)
         .set('Content-Type', 'text/xml')
         .send(await buildJenkinsJobConfig(gitParams));
 
@@ -41,9 +43,7 @@ export async function registerPipeline(options: RegisterPipelineOptions, gitPara
 
     return {jenkinsUrl: jenkinsAccess.url};
   } catch (err) {
-    // const newErr = new Error(err.response.headers['x-error']);
-    // newErr.stack = err.stack;
-    // throw newErr;
+    console.error('Error creating job', err);
     throw err;
   }
 }
@@ -54,10 +54,12 @@ async function pullJenkinsAccessSecrets(namespace: string = 'tools'): Promise<Je
 
 async function generateJenkinsCrumbHeader(jenkinsAccess: JenkinsAccessSecret): Promise<{'Jenkins-Crumb': string}> {
 
+  console.log(`${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`);
+
   const response: superagent.Response = await
     get(`${jenkinsAccess.url}/crumbIssuer/api/json`)
       .auth(jenkinsAccess.username, jenkinsAccess.api_token)
-      .set('User-Agent', `${jenkinsAccess.username} via ibm-garage-cloud cli`);
+      .set('User-Agent', `${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`);
 
   if (response.status !== 200 && response.status !== 201) {
     throw new Error(`Unable to generate Jenkins crumb: ${response.text}`);

@@ -7,4 +7,5 @@ export class RegisterPipelineOptions {
   gitUsername?: string;
   gitPat?: string;
   values?: string;
+  generateCrumb?: boolean = false;
 }

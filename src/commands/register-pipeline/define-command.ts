@@ -40,6 +40,11 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(command
       })
       .option('values', {
         description: 'optional file with additional values to add to the secret'
+      })
+      .option('generateCrumb', {
+        alias: 'c',
+        description: 'flag indicating that a crumb is required to complete the registration',
+        default: false,
       }),
     handler: async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions>) => {
       let spinner;
