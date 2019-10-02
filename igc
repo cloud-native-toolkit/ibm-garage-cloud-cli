@@ -2,4 +2,4 @@
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd -P)
 
-${SCRIPT_DIR}/dist/script.js "$@"
+node --no-warnings ${SCRIPT_DIR}/dist/script.js "$@"

@@ -7,7 +7,7 @@
   "license": "MIT",
   "private": false,
   "bin": {
-    "igc": "dist/script.js"
+    "igc": "node --no-warnings dist/script.js"
   },
   "watch": {
     "test": {
