@@ -18,6 +18,7 @@ describe('config-jenkins-auth', () => {
     let mock_create: Mock;
     let mock_getSecretData: Mock;
     let mock_getIngressHosts: Mock;
+    let mock_getIngressUrls: Mock;
 
     beforeEach(() => {
       mock_generateToken = jest.fn();
@@ -31,7 +32,11 @@ describe('config-jenkins-auth', () => {
       }));
 
       mock_getIngressHosts = jest.fn();
-      Container.bind(KubeIngress).provider(providerFromValue({getHosts: mock_getIngressHosts}));
+      mock_getIngressUrls = jest.fn();
+      Container.bind(KubeIngress).provider(providerFromValue({
+        getHosts: mock_getIngressHosts,
+        getUrls: mock_getIngressUrls,
+      }));
 
       classUnderTest = Container.get(JenkinsAuth);
     });
@@ -245,6 +250,8 @@ describe('config-jenkins-auth', () => {
 
       describe('when host provided and url not provided', () => {
         test('return `http://${host} for url`', async () => {
+          mock_getIngressUrls.mockResolvedValue([]);
+
           const result = await classUnderTest.retrieveJenkinsUrl({host});
 
           expect(result).toEqual({host, url: `http://${host}`});
@@ -254,6 +261,7 @@ describe('config-jenkins-auth', () => {
       describe('when host and namespace not provided', () => {
         test('get host from ingress in "tools" namespace', async () => {
           mock_getIngressHosts.mockResolvedValue([host]);
+          mock_getIngressUrls.mockResolvedValue([]);
 
           const result = await classUnderTest.retrieveJenkinsUrl();
 
@@ -265,6 +273,7 @@ describe('config-jenkins-auth', () => {
       describe('when namespace provided and host not provided', () => {
         test('get host from ingress in provided namespace', async () => {
           mock_getIngressHosts.mockResolvedValue([host]);
+          mock_getIngressUrls.mockResolvedValue([]);
 
           const namespace = 'namespace';
 

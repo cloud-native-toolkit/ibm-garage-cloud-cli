@@ -82,6 +82,10 @@ export class JenkinsAuthImpl implements JenkinsAuth {
       host = (await this.kubeIngress.getHosts(namespace, 'jenkins'))[0];
     }
 
+    if (!url) {
+      url = (await this.kubeIngress.getUrls(namespace, 'jenkins'))[0];
+    }
+
     return {host, url: url || `http://${host}`};
   }
 

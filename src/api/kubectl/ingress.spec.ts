@@ -1,5 +1,5 @@
 import {buildMockKubeClient, mockKubeClientProvider} from './testHelper';
-import {KubeIngress} from './ingress';
+import {Ingress, KubeIngress} from './ingress';
 import {Container} from 'typescript-ioc';
 import {KubeClient} from './client';
 import Mock = jest.Mock;
@@ -21,7 +21,7 @@ describe('ingress', () => {
       classUnderTest = Container.get(KubeIngress);
     });
 
-    describe('getHosts()', () => {
+    describe('given getHosts()', () => {
       let mock_get: Mock;
       let unset_get: () => void;
 
@@ -133,6 +133,95 @@ describe('ingress', () => {
 
               expect(mock_get).toBeCalledWith(ingressName, namespace);
             });
+        });
+      });
+    });
+
+    describe('given getUrls()', () => {
+      let mock_get: Mock;
+      let unset_get: () => void;
+      beforeEach(() => {
+        mock_get = jest.fn();
+        unset_get = mockField(classUnderTest, 'get', mock_get);
+      });
+      afterEach(() => {
+        unset_get();
+      });
+
+      describe('when ingress has only tls section', () => {
+        const host1 = 'host1';
+        const host2 = 'host2';
+        const ingress: Ingress = {
+          spec: {
+            tls: [{
+              hosts: [host1, host2],
+              secretName: 'secret-name',
+            }]
+          },
+          status: '',
+          metadata: {
+            name: 'name'
+          }
+        };
+        beforeEach(() => {
+          mock_get.mockResolvedValue(ingress);
+        });
+
+        test('then return https://{host}', async () => {
+          expect(await classUnderTest.getUrls('namespace', 'ingress'))
+            .toEqual([`https://${host1}`, `https://${host2}`]);
+        });
+      });
+
+      describe('when ingress has only rules section', () => {
+        const host = 'host1';
+        const ingress: Ingress = {
+          spec: {
+            rules: [{
+              host,
+              http: {} as any,
+            }],
+          },
+          status: '',
+          metadata: {
+            name: 'name'
+          }
+        };
+        beforeEach(() => {
+          mock_get.mockResolvedValue(ingress);
+        });
+
+        test('then return http://{host}', async () => {
+          expect(await classUnderTest.getUrls('namespace', 'ingress'))
+            .toEqual([`http://${host}`]);
+        });
+      });
+
+      describe('when ingress has tls and rules section', () => {
+        const host = 'host1';
+        const ingress: Ingress = {
+          spec: {
+            tls: [{
+              hosts: [host],
+              secretName: 'secret-name',
+            }],
+            rules: [{
+              host,
+              http: {} as any,
+            }],
+          },
+          status: '',
+          metadata: {
+            name: 'name'
+          }
+        };
+        beforeEach(() => {
+          mock_get.mockResolvedValue(ingress);
+        });
+
+        test('then return http://{host}', async () => {
+          expect(await classUnderTest.getUrls('namespace', 'ingress'))
+            .toEqual([`https://${host}`, `http://${host}`]);
         });
       });
     });
