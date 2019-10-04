@@ -33,6 +33,11 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(commandName: string
           required: false,
           alias: 'host',
         }))
+        .options(buildOptionWithEnvDefault('JENKINS_URL', {
+          description: 'The url of the Jenkins server',
+          required: false,
+          alias: 'url',
+        }))
         .options(buildOptionWithEnvDefault('JENKINS_USERNAME', {
           description: 'The username of the user for whom the api token will be generated',
           default: 'admin',
