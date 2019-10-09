@@ -207,4 +207,10 @@ export class DefaultOptionBuilder<T> {
   }
 }
 
-export type YargsCommandDefinition = <T>(command: string, aliases?: string[], describe?: string) => CommandModule<T> | undefined;
+export interface YargsCommandDefinitionArgs {
+  command: string;
+  aliases?: string[];
+  describe?: string
+}
+
+export type YargsCommandDefinition = <T>(params: YargsCommandDefinitionArgs) => CommandModule<T> | undefined;

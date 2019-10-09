@@ -4,9 +4,9 @@ import * as ora from 'ora';
 import {ibmcloudLogin} from './ibmcloud-login';
 import {IbmCloudLogin} from './ibmcloud-login.model';
 import {CommandLineOptions} from '../../model';
-import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 
-export const defineLoginCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineLoginCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
     describe: 'log in using the ibmcloud cli, optionally configure the cluster, and optionally runs a command',

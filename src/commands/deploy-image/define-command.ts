@@ -2,9 +2,9 @@ import {Arguments, Argv, CommandModule} from 'yargs';
 import {DeployOptions} from './deploy-options.model';
 import {deployImage} from './deploy-image';
 import {CommandLineOptions} from '../../model';
-import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 
-export const defineDeployImageCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineDeployImageCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
     describe: 'deploy an image from the IBM Cloud registry into a kubernetes cluster',

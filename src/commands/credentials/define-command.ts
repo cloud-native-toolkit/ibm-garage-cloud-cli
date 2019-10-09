@@ -2,15 +2,15 @@ import {Arguments, Argv, CommandModule} from 'yargs';
 import ora from 'ora';
 import * as YAML from 'json2yaml';
 
-import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 import {CommandLineOptions} from '../../model';
 import {Credentials} from './credentials';
 import {checkKubeconfig} from '../../util/kubernetes';
 import {Container} from 'typescript-ioc';
 
-export const defineCredentialsCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
+export const defineCredentialsCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
-    command: commandName,
+    command,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
       .clusterNamespace({

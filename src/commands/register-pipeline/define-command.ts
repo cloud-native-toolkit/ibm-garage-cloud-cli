@@ -1,6 +1,6 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
 
-import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {CommandLineOptions} from '../../model';
 import {checkKubeconfig} from '../../util/kubernetes';
@@ -8,9 +8,9 @@ import {ErrorSeverity, isCommandError} from '../../util/errors';
 import {Container} from 'typescript-ioc';
 import {RegisterPipeline} from './register-pipeline';
 
-export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(commandName: string, aliases: string[] = []): CommandModule<T> => {
+export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>({command, aliases = []}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
-    command: commandName,
+    command,
     aliases,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)

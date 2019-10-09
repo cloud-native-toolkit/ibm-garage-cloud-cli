@@ -1,12 +1,17 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
-import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {
+  buildOptionWithEnvDefault,
+  DefaultOptionBuilder,
+  YargsCommandDefinition,
+  YargsCommandDefinitionArgs
+} from '../../util/yargs-support';
 import {launchTools} from './launch-tools';
 import {LaunchToolsOptions} from './launch-tools-options.model';
 
-export const defineLaunchToolsCommand: YargsCommandDefinition = <T>(command: string, describe: string): CommandModule<T> => {
+export const defineLaunchToolsCommand: YargsCommandDefinition = <T>({command, describe}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'Launch the IBM Garage Cloud tools image connected to the current directory',
+    describe: describe || 'Launch the IBM Garage Cloud tools image connected to the current directory',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<LaunchToolsOptions>(yargs)
       .apiKey({optional: true})
       .build()

@@ -1,11 +1,11 @@
-import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 import {Arguments, Argv, CommandModule} from 'yargs';
 import {generateToken, GenerateTokenOptions} from '../generate-token';
 import {BuildOptions} from './build-options.model';
 import {CommandLineOptions} from '../../model';
 import {buildImage} from './build-image';
 
-export const defineBuildImageCommand: YargsCommandDefinition = <T>(command: string): CommandModule<T> => {
+export const defineBuildImageCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
     describe: 'build the image and push it into the IBM Cloud registry',

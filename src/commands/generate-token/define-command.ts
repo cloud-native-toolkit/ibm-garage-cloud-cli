@@ -1,20 +1,25 @@
 import ora from 'ora';
 import {Arguments, Argv, CommandModule} from 'yargs';
 
-import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {
+  buildOptionWithEnvDefault,
+  DefaultOptionBuilder,
+  YargsCommandDefinition,
+  YargsCommandDefinitionArgs
+} from '../../util/yargs-support';
 import {GenerateToken, generateToken, GenerateTokenOptions} from '../generate-token';
 import {CommandLineOptions} from '../../model';
 import {Container} from 'typescript-ioc';
 
-export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
-  const command: GenerateToken = Container.get(GenerateToken);
+export const defineGenerateTokenCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
+  const generateTokenCommand: GenerateToken = Container.get(GenerateToken);
 
-  if (!command.isAvailable()) {
+  if (!generateTokenCommand.isAvailable()) {
     return;
   }
 
   return {
-    command: commandName,
+    command,
     describe: 'generate a Jenkins api token',
     builder: (yargs: Argv<any>) => {
       return new DefaultOptionBuilder(yargs)
@@ -62,7 +67,7 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>(commandNam
       }
 
       try {
-        const apiToken = await command.generateToken(options, statusCallback);
+        const apiToken = await generateTokenCommand.generateToken(options, statusCallback);
 
         if (argv.yaml) {
           const yamlBase = typeof argv.yaml === 'string' ? argv.yaml : 'jenkins';

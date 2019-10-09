@@ -1,15 +1,15 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
 import ora from 'ora';
 
-import {DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 import {CommandLineOptions} from '../../model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import {GetIngress} from './ingress';
 import {Container} from 'typescript-ioc';
 
-export const defineIngressCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
+export const defineIngressCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
-    command: commandName,
+    command,
     describe: 'list the current ingress hosts for deployed apps in a namespace',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
       .clusterNamespace({

@@ -17,37 +17,37 @@ scriptName('igc')
   .usage('IBM Garage Cloud CLI')
   .usage('')
   .usage('Usage: $0 <command> [args]')
-  .command(defineJenkinsAuth(
-    'jenkins-auth',
-  ))
-  .command(defineGenerateTokenCommand(
-    'gen-token'
-  ))
-  .command(defineRegisterPipelineCommand(
-    'pipeline',
-    ['register']
-  ))
-  .command(defineCreateWebhookCommand(
-    'git-webhook',
-  ))
-  .command(defineBuildImageCommand(
-    'build',
-  ))
-  .command(defineDeployImageCommand(
-    'deploy',
-  ))
-  .command(defineLaunchToolsCommand(
-    'tools',
-  ))
-  .command(defineGetVlanCommand(
-    'vlan',
-  ))
-  .command(defineCredentialsCommand(
-    'credentials',
-  ))
-  .command(defineIngressCommand(
-    'ingress',
-  ))
+  .command(defineJenkinsAuth({
+    command: 'jenkins-auth',
+  }))
+  .command(defineGenerateTokenCommand({
+    command: 'gen-token'
+  }))
+  .command(defineRegisterPipelineCommand({
+    command: 'pipeline',
+    aliases: ['register'],
+  }))
+  .command(defineCreateWebhookCommand({
+    command: 'git-webhook',
+  }))
+  .command(defineBuildImageCommand({
+    command: 'build',
+  }))
+  .command(defineDeployImageCommand({
+    command: 'deploy',
+  }))
+  .command(defineLaunchToolsCommand({
+    command: 'tools',
+  }))
+  .command(defineGetVlanCommand({
+    command: 'vlan',
+  }))
+  .command(defineCredentialsCommand({
+    command: 'credentials',
+  }))
+  .command(defineIngressCommand({
+    command: 'ingress',
+  }))
   .demandCommand()
   .help()
   .argv;

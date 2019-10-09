@@ -1,13 +1,18 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
 
 import {CreateWebhookOptions} from './create-webhook-options.model';
-import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {
+  buildOptionWithEnvDefault,
+  DefaultOptionBuilder,
+  YargsCommandDefinition,
+  YargsCommandDefinitionArgs
+} from '../../util/yargs-support';
 import {CreateWebhook} from './create-webhook';
 import {Container} from 'typescript-ioc';
 
-export const defineCreateWebhookCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
+export const defineCreateWebhookCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
-    command: commandName,
+    command,
     describe: 'create git webhook for Jenkins pipeline',
     builder: (yargs: Argv<any>) => yargs
       .options(buildOptionWithEnvDefault('JENKINS_URL', {

@@ -2,21 +2,26 @@ import ora from 'ora';
 import {Arguments, Argv, CommandModule} from 'yargs';
 import {Container} from 'typescript-ioc';
 
-import {buildOptionWithEnvDefault, DefaultOptionBuilder, YargsCommandDefinition} from '../../util/yargs-support';
+import {
+  buildOptionWithEnvDefault,
+  DefaultOptionBuilder,
+  YargsCommandDefinition,
+  YargsCommandDefinitionArgs
+} from '../../util/yargs-support';
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {JenkinsAuth} from './config-jenkins-auth';
 
-export const defineJenkinsAuth: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
-  const command: JenkinsAuth = Container.get(JenkinsAuth);
+export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
+  const jenkinsAuth: JenkinsAuth = Container.get(JenkinsAuth);
 
-  if (!command.isAvailable()) {
+  if (!jenkinsAuth.isAvailable()) {
     return;
   }
 
   const kubeConfigSet = !!process.env.KUBECONFIG;
 
   return {
-    command: commandName,
+    command,
     describe: 'generate a Jenkins api token and register it as kubernetes secret',
     builder: (yargs: Argv<any>) => {
       return new DefaultOptionBuilder(yargs)
@@ -61,7 +66,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>(commandName: string
       }
 
       try {
-        await command.configJenkinsAuth(argv, statusCallback);
+        await jenkinsAuth.configJenkinsAuth(argv, statusCallback);
       } catch (err) {
         console.log('Error configuring Jenkins authentication', err);
         process.exit(1);

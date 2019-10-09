@@ -69,6 +69,12 @@ export abstract class CreateWebhook {
   async abstract createWebhook(options: CreateWebhookOptions): Promise<string>;
 }
 
+export class CreateWebhookError extends Error {
+  constructor(message: string, public alreadyExists: boolean) {
+    super(message);
+  }
+}
+
 @Provides(CreateWebhook)
 export class CreateWebhookImpl implements CreateWebhook {
 
