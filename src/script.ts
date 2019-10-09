@@ -26,6 +26,9 @@ scriptName('igc')
   .command(defineRegisterPipelineCommand(
     'register',
   ))
+  .command(defineRegisterPipelineCommand(
+    'pipeline',
+  ))
   .command(defineCreateWebhookCommand(
     'git-webhook',
   ))
