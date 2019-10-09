@@ -24,10 +24,8 @@ scriptName('igc')
     'gen-token'
   ))
   .command(defineRegisterPipelineCommand(
-    'register',
-  ))
-  .command(defineRegisterPipelineCommand(
     'pipeline',
+    ['register']
   ))
   .command(defineCreateWebhookCommand(
     'git-webhook',

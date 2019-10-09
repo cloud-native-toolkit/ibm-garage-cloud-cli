@@ -8,9 +8,10 @@ import {ErrorSeverity, isCommandError} from '../../util/errors';
 import {Container} from 'typescript-ioc';
 import {RegisterPipeline} from './register-pipeline';
 
-export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(commandName: string): CommandModule<T> => {
+export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>(commandName: string, aliases: string[] = []): CommandModule<T> => {
   return {
     command: commandName,
+    aliases,
     describe: 'register the pipeline in Jenkins for the repo',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
       .quiet()
