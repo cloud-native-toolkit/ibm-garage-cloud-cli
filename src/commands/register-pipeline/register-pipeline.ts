@@ -2,7 +2,7 @@ import {parse} from 'dot-properties';
 import {Inject, Provides} from 'typescript-ioc';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {CreateWebhook, CreateWebhookOptions} from '../create-webhook';
+import {CreateWebhook, CreateWebhookErrorTypes, CreateWebhookOptions, isCreateWebhookError} from '../create-webhook';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {GitParams, GitSecret} from './create-git-secret';
 import * as iksPipeline from './register-iks-pipeline';
@@ -76,9 +76,12 @@ export class RegisterPipelineImpl {
       try {
         await this.createWebhook.createWebhook(this.buildCreateWebhookOptions(gitParams, pipelineResult));
       } catch (err) {
-        console.log('Error creating webhook', err);
-        throw new WebhookError(
-          `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
+        if (isCreateWebhookError(err) && err.errorType === CreateWebhookErrorTypes.alreadyExists) {
+          throw new WebhookError('Webhook already exists for this repository.');
+        }  else {
+          throw new WebhookError(
+            `Error creating webhook. The webhook can be manually created by sending push events to ${pipelineResult.jenkinsUrl}`)
+        }
       }
     }
   }

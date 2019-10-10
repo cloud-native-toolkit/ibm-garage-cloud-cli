@@ -69,10 +69,45 @@ export abstract class CreateWebhook {
   async abstract createWebhook(options: CreateWebhookOptions): Promise<string>;
 }
 
+export enum CreateWebhookErrorTypes {
+  alreadyExists = 'alreadyExists',
+  unknown = 'unknown'
+}
+
 export class CreateWebhookError extends Error {
-  constructor(message: string, public alreadyExists: boolean) {
+  constructor(public readonly errorType: CreateWebhookErrorTypes, message: string, public readonly causedBy?: Error) {
     super(message);
   }
+}
+
+export class WebhookAlreadyExists extends CreateWebhookError {
+  constructor(message: string, causedBy?: Error) {
+    super(CreateWebhookErrorTypes.alreadyExists, message, causedBy);
+  }
+}
+
+export class UnknownWebhookError extends CreateWebhookError {
+  constructor(message: string, causedBy?: Error) {
+    super(CreateWebhookErrorTypes.unknown, message, causedBy);
+  }
+}
+
+export function isCreateWebhookError(error: Error): error is CreateWebhookError {
+  return error && !!(error as CreateWebhookError).errorType;
+}
+
+interface ResponseError extends Error {
+  status: number;
+  response: {
+    req: object;
+    header: object;
+    status: number;
+    text: string;
+  }
+}
+
+export function isResponseError(error: Error): error is ResponseError {
+  return error && !!((error as ResponseError).status);
 }
 
 @Provides(CreateWebhook)
@@ -83,21 +118,30 @@ export class CreateWebhookImpl implements CreateWebhook {
     const gitSlug = this.parseGitSlug(options.gitUrl);
     const apiUrl: {url: string, type: string} = this.gitApiUrl(gitSlug);
 
-    const response: Response = await post(this.buildGitUrl(options))
-      .set(apiUrl.type === 'github'
-        ? {'Authorization': `token ${options.gitToken}`}
-        : {'Private-Token': options.gitToken})
-      .set('User-Agent', `${options.gitUsername} via ibm-garage-cloud cli`)
-      .accept(apiUrl.type === 'github' ? 'application/vnd.github.v3+json' : 'application/json')
-      .send(apiUrl.type === 'gitlab'
-        ? this.buildGitlabHookData(Object.assign({}, options, gitSlug))
-        : this.buildGitWebhookData(options.jenkinsUrl));
+    try {
+      const response: Response = await post(this.buildGitUrl(options))
+        .set(apiUrl.type === 'github'
+          ? {'Authorization': `token ${options.gitToken}`}
+          : {'Private-Token': options.gitToken})
+        .set('User-Agent', `${options.gitUsername} via ibm-garage-cloud cli`)
+        .accept(apiUrl.type === 'github' ? 'application/vnd.github.v3+json' : 'application/json')
+        .send(apiUrl.type === 'gitlab'
+          ? this.buildGitlabHookData(Object.assign({}, options, gitSlug))
+          : this.buildGitWebhookData(options.jenkinsUrl));
 
-    if (response.status !== 200 && response.status !== 201) {
-      throw new Error('Error creating webhook: ' + response.status + ', ' + response.body);
+      return response.body.id;
+    } catch (err) {
+      if (isResponseError(err)) {
+        if (err.response.text.match(/Hook already exists/)) {
+          throw new WebhookAlreadyExists('Webhook already exists on repository', err);
+        } else {
+          throw new UnknownWebhookError('Unknown error creating webhook', err);
+        }
+      } else {
+        console.log('Error is not a response error', err);
+        throw new UnknownWebhookError(err.message, err);
+      }
     }
-
-    return response.body.id;
   }
 
   buildGitUrl(options: CreateWebhookOptions) {
