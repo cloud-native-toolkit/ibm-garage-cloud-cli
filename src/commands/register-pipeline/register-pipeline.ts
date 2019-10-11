@@ -60,7 +60,7 @@ export class RegisterPipelineImpl {
 
     const gitParams: GitParams = await this.getGitParameters.getGitParameters(options);
 
-    notifyStatus('Creating git secret');
+    notifyStatus('Creating secret with git credentials');
 
     await this.gitSecret.create(gitParams, options.pipelineNamespace, await this.readValuesFile(options.values));
 

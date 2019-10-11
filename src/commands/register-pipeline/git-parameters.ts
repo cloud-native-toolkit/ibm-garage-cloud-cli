@@ -1,4 +1,4 @@
-import {prompt, Questions} from 'inquirer';
+import {prompt, Question, Questions} from 'inquirer';
 import {Provides} from 'typescript-ioc';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
@@ -7,6 +7,33 @@ import {GitParams} from './create-git-secret';
 
 export abstract class GetGitParameters {
   async abstract getGitParameters(options?: RegisterPipelineOptions): Promise<GitParams>;
+}
+
+export class QuestionBuilder<T> {
+  private readonly _questions: Array<Question<T>> = [];
+  private readonly _values: T = {} as any;
+
+  question(question: Question<T>, value?: string): QuestionBuilder<T> {
+    if (!value) {
+      this._questions.push(question);
+    } else {
+      this._values[question.name] = value;
+    }
+
+    return this;
+  }
+
+  async prompt(): Promise<T> {
+    const promptValues = this._questions.length > 0 ? await prompt(this._questions) : {};
+
+    return Object.assign({}, this._values, promptValues);
+  }
+}
+
+interface GitQuestion {
+  username: string;
+  password: string;
+  branch: string;
 }
 
 @Provides(GetGitParameters)
@@ -19,34 +46,40 @@ export class GetGitParametersImpl implements GetGitParameters {
 
   async getGitParameters(options: RegisterPipelineOptions = {}): Promise<GitParams> {
 
-    const parsedGitUrl = this.parseGitUrl(await this.getRemoteGitUrl(options.workingDir));
+    const parsedGitUrl: {url: string; org: string; repo: string} = this.parseGitUrl(await this.getRemoteGitUrl(options.workingDir));
+    const currentBranch: string = await this.getCurrentBranch(options.workingDir);
 
-    const questions: Questions<{username: string; password: string; branch: string}> = [{
-      type: 'input',
-      name: 'username',
-      message: `Please provide the username for ${parsedGitUrl.url}:`,
-      default: options.gitUsername,
-    }, {
-      type: 'password',
-      name: 'password',
-      message: `Please provide your password/personal access token:`,
-      default: options.gitPat,
-    }, {
-      type: 'input',
-      name: 'branch',
-      message: `Please provide the branch the pipeline should use:`,
-      default: 'master',
-    }];
+    console.log(`  Project git repo: ${parsedGitUrl.url}`);
 
-    const answers = await prompt(questions);
+    const questionBuilder = new QuestionBuilder<GitQuestion>()
+      .question({
+        type: 'input',
+        name: 'username',
+        message: `Provide the username:`,
+      }, options.gitUsername)
+      .question({
+        type: 'password',
+        name: 'password',
+        message: `Provide your password/personal access token:`,
+      }, options.gitPat)
+      .question({
+        type: 'input',
+        name: 'branch',
+        message: `Provide the branch the pipeline should use:`,
+        default: currentBranch,
+      });
 
-    return {
-      url: parsedGitUrl.url,
-      name: `${parsedGitUrl.org}.${parsedGitUrl.repo}`,
-      username: answers.username,
-      password: answers.password,
-      branch: answers.branch,
-    };
+    const answers: GitQuestion = await questionBuilder.prompt();
+
+    const result = Object.assign(
+      {
+        url: parsedGitUrl.url,
+        name: `${parsedGitUrl.org}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
+      },
+      answers,
+    );
+
+    return result;
   }
 
   parseGitUrl(url: string): {url: string; org: string; repo: string} {
@@ -77,6 +110,15 @@ export class GetGitParametersImpl implements GetGitParameters {
   async getRemoteGitUrl(workingDir: string = process.cwd()): Promise<string> {
     return execPromise(
       'git remote get-url origin',
+      {
+        cwd: workingDir
+      },
+    ).then(({stdout}: ExecResult) => stdout.toString().trim());
+  }
+
+  async getCurrentBranch(workingDir: string = process.cwd()): Promise<string> {
+    return execPromise(
+      'git rev-parse --abbrev-ref HEAD',
       {
         cwd: workingDir
       },

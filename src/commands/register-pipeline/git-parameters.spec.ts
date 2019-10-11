@@ -42,7 +42,7 @@ describe('git-parameters', () => {
         unset_parseGitUrl();
       });
 
-      describe('when called', () => {
+      describe('when called with non-master branch', () => {
         const url = 'url';
         const org = 'org';
         const repo = 'repo';
@@ -78,7 +78,7 @@ describe('git-parameters', () => {
           const value = await classUnderTest.getGitParameters();
 
           expect(value.url).toEqual(url);
-          expect(value.name).toEqual(`${org}.${repo}`);
+          expect(value.name).toEqual(`${org}.${repo}.${branch}`);
           expect(value.username).toEqual(username);
           expect(value.password).toEqual(password);
 
@@ -89,7 +89,7 @@ describe('git-parameters', () => {
           const value = await classUnderTest.getGitParameters();
 
           expect(value.url).toEqual(url);
-          expect(value.name).toEqual(`${org}.${repo}`);
+          expect(value.name).toEqual(`${org}.${repo}.${branch}`);
           expect(value.username).toEqual(username);
           expect(value.password).toEqual(password);
           expect(value.branch).toEqual(branch);
