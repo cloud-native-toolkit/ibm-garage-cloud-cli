@@ -7,7 +7,7 @@ import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs
 export const defineDeployImageCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'deploy an image from the IBM Cloud registry into a kubernetes cluster',
+    describe: 'Deploy an image from the IBM Cloud registry into a kubernetes cluster',
     builder: (argv: Argv<any>) => new DefaultOptionBuilder(argv)
       .baseOptions()
       .clusterName()

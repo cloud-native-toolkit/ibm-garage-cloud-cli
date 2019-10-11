@@ -11,7 +11,7 @@ import {LaunchToolsOptions} from './launch-tools-options.model';
 export const defineLaunchToolsCommand: YargsCommandDefinition = <T>({command, describe}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: describe || 'Launch the IBM Garage Cloud tools image connected to the current directory',
+    describe: describe || 'Launch the IBM Garage for Cloud tools image connected to the current directory',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<LaunchToolsOptions>(yargs)
       .apiKey({optional: true})
       .build()

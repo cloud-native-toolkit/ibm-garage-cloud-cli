@@ -8,7 +8,7 @@ import {buildImage} from './build-image';
 export const defineBuildImageCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'build the image and push it into the IBM Cloud registry',
+    describe: 'Build the image and push it into the IBM Cloud registry',
     builder: (argv: Argv<any>) => new DefaultOptionBuilder(argv).baseOptions().build(),
     handler: async (argv: Arguments<BuildOptions & CommandLineOptions>) => {
       if (argv.debug) {

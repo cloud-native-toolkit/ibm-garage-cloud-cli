@@ -12,7 +12,7 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>({comman
   return {
     command,
     aliases,
-    describe: 'register the pipeline in Jenkins for the repo',
+    describe: 'Register a pipeline for the current code repository in Jenkins',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
       .quiet()
       .debug()

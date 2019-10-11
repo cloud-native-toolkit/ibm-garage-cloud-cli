@@ -9,7 +9,7 @@ import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs
 export const defineLoginCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'log in using the ibmcloud cli, optionally configure the cluster, and optionally runs a command',
+    describe: 'Log in using the ibmcloud cli, optionally configure the cluster, and optionally runs a command',
     builder: (argv: Argv<any>) => new DefaultOptionBuilder(argv)
       .apiKey({optional: true})
       .region()

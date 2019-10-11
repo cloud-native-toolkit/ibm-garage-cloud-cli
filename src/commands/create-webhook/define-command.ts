@@ -13,7 +13,7 @@ import {Container} from 'typescript-ioc';
 export const defineCreateWebhookCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'create git webhook for Jenkins pipeline',
+    describe: 'Create a git webhook for a given Jenkins pipeline',
     builder: (yargs: Argv<any>) => yargs
       .options(buildOptionWithEnvDefault('JENKINS_URL', {
         alias: 'jenkinsUrl',

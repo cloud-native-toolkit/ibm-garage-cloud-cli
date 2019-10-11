@@ -20,7 +20,7 @@ export const defineGenerateTokenCommand: YargsCommandDefinition = <T>({command}:
 
   return {
     command,
-    describe: 'generate a Jenkins api token',
+    describe: 'Generate a Jenkins api token',
     builder: (yargs: Argv<any>) => {
       return new DefaultOptionBuilder(yargs)
         .debug()

@@ -22,7 +22,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCom
 
   return {
     command,
-    describe: 'generate a Jenkins api token and register it as kubernetes secret',
+    describe: 'Generate a Jenkins api token and register it as kubernetes secret',
     builder: (yargs: Argv<any>) => {
       return new DefaultOptionBuilder(yargs)
         .kubeConfig()

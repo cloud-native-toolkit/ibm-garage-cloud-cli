@@ -11,7 +11,7 @@ import {Container} from 'typescript-ioc';
 export const defineCredentialsCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'register the pipeline in Jenkins for the repo',
+    describe: 'Lists the urls and credentials for the tools deployed to the cluster',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
       .clusterNamespace({
         optional: true,

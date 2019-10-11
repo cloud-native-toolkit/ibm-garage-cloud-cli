@@ -10,7 +10,7 @@ import {Container} from 'typescript-ioc';
 export const defineIngressCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'list the current ingress hosts for deployed apps in a namespace',
+    describe: 'List the current ingress hosts for deployed apps in a namespace',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
       .clusterNamespace({
         optional: false,

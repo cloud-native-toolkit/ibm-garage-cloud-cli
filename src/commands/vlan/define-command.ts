@@ -9,7 +9,7 @@ import {GetVlan, VlanResult} from './get-vlan';
 export const defineGetVlanCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
-    describe: 'print out the vlan values',
+    describe: 'Print out the vlan values',
     builder: (yargs: Argv<any>) => yargs
       .option('datacenter', {
         alias: 'd',
