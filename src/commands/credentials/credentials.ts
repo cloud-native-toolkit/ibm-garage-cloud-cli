@@ -1,7 +1,9 @@
-import * as kubeClient from '../../api/kubectl/client';
-import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
-import {Container, Inject, Provides} from 'typescript-ioc';
+import {Inject, Provides} from 'typescript-ioc';
+import * as _ from 'lodash';
+
 import {KubeClient} from '../../api/kubectl/client';
+import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
+import {ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
 
 export interface ComponentCredentials {
   user?: string;
@@ -84,51 +86,43 @@ export class CredentialsImpl implements Credentials {
   @Inject
   private kubeSecret: KubeSecret;
   @Inject
+  private kubeConfigMap: KubeConfigMap;
+  @Inject
   private kubeClient: KubeClient;
 
   async getCredentials(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secrets> {
 
-    const results: Info[] = await Promise.all(
-      this.configMaps(
-        [
-          'jenkins-config',
-          'sonarqube-config',
-          'artifactory-config',
-          'argocd-config'
-        ], namespace)
-        .concat(this.secrets(['sonarqube-access', 'artifactory-access'], namespace))
-        .concat(
-          this.kubeSecret.getData<ComponentCredentials>('jenkins-access', namespace)
-            .then<JenkinsCredentials>(c => {
-              return Object.assign(
-                {},
-                c.username ? {JENKINS_USER: c.username} : {},
-                c.password ? {JENKINS_PASSWORD: c.password} : {});
-            }),
-          this.getArgoCdCredentials(namespace),
-        )
-    );
+    const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
+    const listOptions: ListOptions = {namespace, qs};
 
-    return this.group(this.flatten(results));
+    const results: Array<Array<object>> = await Promise.all([
+      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
+      this.kubeSecret.listData(listOptions, ['jenkins-access']),
+      Promise.all([
+        this.getArgoCdCredentials(namespace),
+        this.getJenkinsCredentials(namespace),
+      ]),
+    ]);
+
+    return this.group(_.assign({}, ...(_.flatten(results))));
   }
 
-  configMaps(configMapNames: string[], namespace: string): Array<Promise<Info>> {
-    const kubeConfigMap: KubeConfigMap = Container.get(KubeConfigMap);
-    return configMapNames
-      .map(name => kubeConfigMap
-        .getData(name, namespace)
-        .catch(err => ({})));
+  async getJenkinsCredentials(namespace: string): Promise<{JENKINS_USER?: string, JENKINS_PASSWORD?: string, JENKINS_APITOKEN?: string}> {
+
+    try {
+      const jenkinsAccess: {username: string, password: string, api_token: string} = await this.kubeSecret.getData('jenkins-access', namespace);
+
+      return {
+        JENKINS_USER: jenkinsAccess.username,
+        JENKINS_PASSWORD: jenkinsAccess.password,
+        JENKINS_APITOKEN: jenkinsAccess.api_token,
+      };
+    } catch (err) {
+      return {};
+    }
   }
 
-  secrets(secretNames: string[], namespace: string): Array<Promise<Info>> {
-    return secretNames
-      .map(name => this.kubeSecret
-        .getData(name, namespace)
-        .catch(err => ({}))
-      );
-  }
-
-  async getArgoCdCredentials(namespace: string = 'tools'): Promise<ArgoCdCredentials> {
+  async getArgoCdCredentials(namespace: string): Promise<ArgoCdCredentials> {
     try {
       const result = await this.kubeClient.api.v1.namespace(namespace).pods.get();
 
@@ -142,16 +136,14 @@ export class CredentialsImpl implements Credentials {
     }
   }
 
-  flatten(values: Info[]): FlattenedInfo {
-    return (values || []).reduce((result: FlattenedInfo, current: Info) => {
-      return Object.assign({}, result, current);
-    }, {});
-  }
-
   group(values: FlattenedInfo): Secrets {
     return Object.keys(values)
       .filter(key => key.split('_').length === 2)
-      .reduce((secrets: Secrets, compositeKey: string) => {
+      .reduce((secrets: object, compositeKey: string) => {
+        if (compositeKey.split('_').length < 2) {
+          return secrets;
+        }
+
         const group = compositeKey.toLowerCase().split('_')[0];
         const key = compositeKey.toLowerCase().split('_')[1];
 

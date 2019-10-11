@@ -1,5 +1,5 @@
 import {decode as base64decode} from '../../util/base64';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesResourceManager, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
 import {Container, Provided, Provider} from 'typescript-ioc';
 import {KubeClient} from './client';
 
@@ -27,12 +27,23 @@ export class KubeSecret extends AbstractKubernetesResourceManager<Secret> {
   async getData<U>(secretName: string, namespace: string): Promise<U> {
     const secret: Secret = await this.get(secretName, namespace);
 
-    const values = secret.data;
+    return this.decodeSecretData(secret.data);
+  }
 
-    return Object.keys(values).reduce((decodedResults, currentKey) => {
-      decodedResults[currentKey] = base64decode(values[currentKey]);
+  decodeSecretData<U>(secretData: U): any {
+    return Object.keys(secretData).reduce((decodedResults, currentKey) => {
+      decodedResults[currentKey] = base64decode(secretData[currentKey]);
 
       return decodedResults;
     }, {} as U);
+  }
+
+  async listData<U>(options: ListOptions, exclude: string[] = []): Promise<U[]> {
+    const secrets: Secret[] = await this.list(options);
+
+    return secrets
+      .filter(secret => !exclude.includes(secret.metadata.name))
+      .map(secret => secret.data)
+      .map(this.decodeSecretData);
   }
 }
