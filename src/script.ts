@@ -12,6 +12,7 @@ import {defineJenkinsAuth} from './commands/jenkins-auth/define-command';
 import {defineCreateWebhookCommand} from './commands/create-webhook/define-command';
 import {defineCredentialsCommand} from './commands/credentials/define-command';
 import {defineIngressCommand} from './commands/ingress/define-command';
+import {defineToolConfigCommand} from './commands/tool-config/define-command';
 
 scriptName('igc')
   .usage('IBM Garage Cloud CLI')
@@ -47,6 +48,9 @@ scriptName('igc')
   }))
   .command(defineIngressCommand({
     command: 'ingress',
+  }))
+  .command(defineToolConfigCommand({
+    command: 'tool-config',
   }))
   .demandCommand()
   .help()
