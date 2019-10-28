@@ -14,7 +14,7 @@
     </strategy>
   </jenkins.model.BuildDiscarderProperty>
   <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.29.4">
-    <projectUrl>https://us-south.git.cloud.ibm.com/elavon-email-automation/elavon-email-automation.git/</projectUrl>
+    <projectUrl>{{GIT_REPO}}</projectUrl>
     <displayName></displayName>
   </com.coravy.hudson.plugins.github.GithubProjectProperty>
   <com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty plugin="gitlab-plugin@1.5.12">
