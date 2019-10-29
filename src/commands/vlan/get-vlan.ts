@@ -1,7 +1,8 @@
+import {Inject, Provides} from 'typescript-ioc';
+
 import {GetVlanOptions} from './get-vlan-options.model';
 import {getIBMCloudTargetInfo, IBMCloudTarget} from '../../api/ibmcloud/target';
 import {IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
-import {Inject, Provides} from 'typescript-ioc';
 import {Zones} from '../../api/ibmcloud/zones';
 
 class VlanContainer {
@@ -9,14 +10,14 @@ class VlanContainer {
   public?: IBMCloudVlan;
 }
 
-export interface FlattenedVlans {
-  private_vlan_id?: string;
-  private_vlan_number?: string;
-  private_vlan_router_hostname?: string;
-  public_vlan_id?: string;
-  public_vlan_number?: string;
-  public_vlan_router_hostname?: string;
-}
+// export interface FlattenedVlans {
+//   private_vlan_id?: string;
+//   private_vlan_number?: string;
+//   private_vlan_router_hostname?: string;
+//   public_vlan_id?: string;
+//   public_vlan_number?: string;
+//   public_vlan_router_hostname?: string;
+// }
 
 export interface TargetInfo {
   vlan_region: string;
@@ -24,7 +25,7 @@ export interface TargetInfo {
   cluster_name: string;
 }
 
-export interface VlanResult extends FlattenedVlans, TargetInfo {
+export interface VlanResult extends VlanContainer, TargetInfo {
   vlan_datacenter: string;
 }
 
@@ -88,20 +89,18 @@ export class GetVlanImpl implements GetVlan {
     return zones[0];
   }
 
-  async getFlattenedVlans(vlan_datacenter: string): Promise<FlattenedVlans> {
+  async getFlattenedVlans(vlan_datacenter: string): Promise<VlanContainer> {
     return this.flattenVlans(await this.vlans.getVlans(vlan_datacenter));
   }
 
-  flattenVlans(vlans: IBMCloudVlan[]): FlattenedVlans {
+  flattenVlans(vlans: IBMCloudVlan[]): VlanContainer {
     return (vlans || []).reduce(
-      (result: VlanResult, current: IBMCloudVlan) => {
+      (result: VlanContainer, current: IBMCloudVlan) => {
         if (current.type !== 'public' && current.type !== 'private') {
           return result;
         }
 
-        result[`${current.type}_vlan_id`] = current.id;
-        result[`${current.type}_vlan_number`] = current.num;
-        result[`${current.type}_vlan_router_hostname`] = current.router;
+        result[current.type] = current;
 
         return result;
       },

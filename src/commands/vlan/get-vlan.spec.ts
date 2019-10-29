@@ -1,9 +1,9 @@
-import {FlattenedVlans, GetVlan, GetVlanImpl, TargetInfo} from './get-vlan';
+import {GetVlan, GetVlanImpl, TargetInfo} from './get-vlan';
 import {IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
 import {Container} from 'typescript-ioc';
-import Mock = jest.Mock;
 import {mockField, providerFromValue} from '../../testHelper';
 import {Zones} from '../../api/ibmcloud/zones';
+import Mock = jest.Mock;
 
 describe('get-vlan', () => {
   test('canary verifies test infrastructure', () => {
@@ -66,7 +66,7 @@ describe('get-vlan', () => {
         const vlan_datacenter = 'vlan';
         mock_getVlanDatacenter.mockResolvedValue(vlan_datacenter);
 
-        const flattenedVlans: FlattenedVlans = {
+        const flattenedVlans = {
           private_vlan_number: '1',
           private_vlan_router_hostname: '2',
           public_vlan_number: '3',
@@ -98,21 +98,17 @@ describe('get-vlan', () => {
       });
 
       test('when vlan with type=public provided return object with public_... values', () => {
-        const id = 'id';
-        const num = 1;
-        const router = 'router';
-        const vlans: IBMCloudVlan[] = [{type: 'public', id, num, router}];
+        const public_vlan: IBMCloudVlan = {type: 'public', id: 'id', num: 1, router: 'router'};
+        const vlans: IBMCloudVlan[] = [public_vlan];
 
-        expect(classUnderTest.flattenVlans(vlans)).toEqual({public_vlan_id: id, public_vlan_number: num, public_vlan_router_hostname: router});
+        expect(classUnderTest.flattenVlans(vlans)).toEqual({public: public_vlan});
       });
 
       test('when vlan with type=private provided return object with public_... values', () => {
-        const id = 'id';
-        const num = 1;
-        const router = 'router';
-        const vlans: IBMCloudVlan[] = [{type: 'private', id, num, router}];
+        const private_vlan: IBMCloudVlan = {type: 'private', id: 'id', num: 1, router: 'router'};
+        const vlans: IBMCloudVlan[] = [private_vlan];
 
-        expect(classUnderTest.flattenVlans(vlans)).toEqual({private_vlan_id: id, private_vlan_number: num, private_vlan_router_hostname: router});
+        expect(classUnderTest.flattenVlans(vlans)).toEqual({private: private_vlan});
       });
 
       test('when vlan with type=bogus provided return empty object', () => {
@@ -125,34 +121,27 @@ describe('get-vlan', () => {
       });
 
       test('when vlan with public and private types provided return both', () => {
-        const public_vlan_id = 'public_id';
-        const public_vlan_number = 1;
-        const public_vlan_router_hostname = 'public_router';
-        const private_vlan_id = 'private_id';
-        const private_vlan_number = 2;
-        const private_vlan_router_hostname = 'private_router';
+        const public_vlan: IBMCloudVlan = {
+          type: 'public',
+          id: 'public_id',
+          num: 1,
+          router: 'public_router'
+        };
+        const private_vlan: IBMCloudVlan = {
+          type: 'private',
+          id: 'private_id',
+          num: 2,
+          router: 'private_router'
+        };
+
         const vlans: IBMCloudVlan[] = [
-          {
-            type: 'public',
-            id: public_vlan_id,
-            num: public_vlan_number,
-            router: public_vlan_router_hostname
-          },
-          {
-            type: 'private',
-            id: private_vlan_id,
-            num: private_vlan_number,
-            router: private_vlan_router_hostname
-          }
+          public_vlan,
+          private_vlan,
         ];
 
         expect(classUnderTest.flattenVlans(vlans)).toEqual({
-          public_vlan_id,
-          public_vlan_number,
-          public_vlan_router_hostname,
-          private_vlan_id,
-          private_vlan_number,
-          private_vlan_router_hostname
+          public: public_vlan,
+          private: private_vlan,
         });
       });
     });
