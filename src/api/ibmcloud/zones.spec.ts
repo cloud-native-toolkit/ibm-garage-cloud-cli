@@ -1,6 +1,6 @@
 import {Container} from 'typescript-ioc';
 import {Zones, ZonesImpl} from './zones';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import {ChildProcess} from '../../util/child-process';
 
 describe('ibmcloud-zones', () => {
@@ -27,7 +27,7 @@ describe('ibmcloud-zones', () => {
 
       beforeEach(() => {
         mock_filterZonesForRegion = jest.fn();
-        unset_filterZonesForRegion = mockField(classUnderTest, 'filterZonesForRegion', mock_filterZonesForRegion);
+        unset_filterZonesForRegion = setField(classUnderTest, 'filterZonesForRegion', mock_filterZonesForRegion);
       });
 
       afterEach(() => {

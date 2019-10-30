@@ -15,6 +15,7 @@ import {RegisterIksPipeline} from './register-iks-pipeline';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
 import {FsPromises} from '../../util/file-util';
 import {RegisterPipelineType} from './register-pipeline-type';
+import {Namespace} from '../namespace/namespace';
 
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -50,6 +51,8 @@ export class RegisterPipelineImpl {
   @Inject
   private openshiftPipeline: RegisterOpenshiftPipeline;
   @Inject
+  private namespaceBuilder: Namespace;
+  @Inject
   private fs: FsPromises;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
@@ -60,11 +63,11 @@ export class RegisterPipelineImpl {
 
     const gitParams: GitParams = await this.getGitParameters.getGitParameters(options);
 
+    await this.setupNamespace(options.pipelineNamespace, options.jenkinsNamespace, notifyStatus);
+
     notifyStatus('Creating secret with git credentials');
 
     await this.gitSecret.create(gitParams, options.pipelineNamespace, await this.readValuesFile(options.values));
-
-    await this.setupNamespace(options.pipelineNamespace, options.jenkinsNamespace, notifyStatus);
 
     notifyStatus('Registering pipeline');
 
@@ -165,14 +168,6 @@ export class RegisterPipelineImpl {
       return;
     }
 
-    const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
-
-    notifyStatus(`Copying 'secrets to ${toNamespace}`);
-    const secrets = await this.kubeSecret.copyAll({namespace: fromNamespace, qs}, toNamespace);
-    console.log(`   Copied ${secrets.length} secrets`);
-
-    notifyStatus(`Copying configmaps to ${toNamespace}`);
-    const configmaps = await this.kubeConfigMap.copyAll({namespace: fromNamespace, qs}, toNamespace);
-    console.log(`   Copied ${configmaps.length} configmaps`);
+    await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
   }
 }

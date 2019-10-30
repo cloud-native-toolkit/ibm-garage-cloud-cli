@@ -2,7 +2,7 @@ import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
 import {KubeClient} from './client';
 
-export type ListOptions = { namespace?: string } & Query;
+export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
 
 export interface KubeResource {
   apiVersion?: string;
@@ -32,8 +32,10 @@ export interface KubeBody<T> {
   body: T;
 }
 
-export interface Query {
+export interface Query<T extends KubeResource> {
   qs?: QueryString;
+  filter?: (obj: T) => boolean;
+  map?: (obj: T) => T;
 }
 
 export interface QueryString {
@@ -49,15 +51,21 @@ export interface QueryString {
 }
 
 export abstract class KubernetesResourceManager<T extends KubeResource> {
-  async abstract list(options?: ListOptions): Promise<Array<T>>;
+  async abstract list(options?: ListOptions<T>): Promise<Array<T>>;
+
+  async abstract createOrUpdate(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
 
   async abstract create(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
+
+  async abstract update(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
+
+  async abstract exists(name: string, namespace?: string): Promise<boolean>;
 
   async abstract 'get'(name: string, namespace?: string): Promise<T>;
 
   async abstract copy(name: string, fromNamespace: string, toNamespace: string): Promise<T>;
 
-  async abstract copyAll(options: ListOptions, toNamespace: string): Promise<Array<T>>;
+  async abstract copyAll(options: ListOptions<T>, toNamespace: string): Promise<Array<T>>;
 }
 
 export interface Props {
@@ -84,38 +92,67 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     }
   }
 
-  async list(options: ListOptions = {}): Promise<Array<T>> {
+  async list(options: ListOptions<T> = {}): Promise<Array<T>> {
 
     const namespace = options.namespace || 'default';
 
-    const getOptions: Query = this.buildQuery(options);
+    const getOptions: Query<T> = this.buildQuery(options);
 
     const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
     const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
 
-    const items: T[] = _.get(result, 'body.items', []);
+    const items: T[] = _.get(result, 'body.items', [])
+      .filter(options.filter || (() => true))
+      .map(options.map || (val => val));
 
     return items;
   }
 
-  buildQuery(options: ListOptions): Query {
+  buildQuery(options: ListOptions<T>): Query<T> {
     return {qs: options.qs};
+  }
+
+  async createOrUpdate(name: string, body: KubeBody<T>, namespace: string = 'default'): Promise<T> {
+
+    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+
+    const result: KubeBody<T> = (await this.exists(name, namespace))
+      ? await kubeResource(name).put(body)
+      : await kubeResource.post(body);
+
+    return result.body;
   }
 
   async create(name: string, body: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
     const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+
+    const result: KubeBody<T> = await kubeResource.post(body);
+
+    return result.body;
+  }
+
+  async update(name: string, body: KubeBody<T>, namespace: string = 'default'): Promise<T> {
+
+    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+
+    const result: KubeBody<T> = await kubeResource(name).put(body);
+
+    return result.body;
+  }
+
+  async exists(name: string, namespace: string = 'default'): Promise<boolean> {
+    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+
     try {
-      await kubeResource(name).get();
+      const result = await kubeResource(name).get();
 
-      const result: KubeBody<T> = await kubeResource(name).put(body);
+      if (result) {
+        return true;
+      }
+    } catch (err) {}
 
-      return result.body;
-    } catch (err) {
-      const result = await kubeResource.post(body);
-
-      return result.body;
-    }
+    return false;
   }
 
   async get(name: string, namespace: string = 'default'): Promise<T> {
@@ -129,7 +166,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
   async copy(name: string, fromNamespace: string, toNamespace: string): Promise<T> {
     const result = await this.get(name, fromNamespace);
 
-    return this.create(
+    return this.createOrUpdate(
       name,
       {
         body: this.updateWithNamespace(result, toNamespace)
@@ -138,11 +175,11 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     );
   }
 
-  async copyAll(options: ListOptions, toNamespace: string): Promise<Array<T>> {
+  async copyAll(options: ListOptions<T>, toNamespace: string): Promise<Array<T>> {
     const results: T[] = await this.list(options);
 
     return Promise.all((results || []).map(result => {
-      return this.create(
+      return this.createOrUpdate(
         result.metadata.name,
         {
           body: this.updateWithNamespace(result, toNamespace)

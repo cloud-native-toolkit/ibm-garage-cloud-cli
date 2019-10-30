@@ -1,7 +1,7 @@
 import {Container} from 'typescript-ioc';
 
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import {RegisterPipeline, RegisterPipelineImpl} from './register-pipeline';
 import {FsPromises} from '../../util/file-util';
 import {RegisterPipelineType} from './register-pipeline-type';
@@ -100,7 +100,7 @@ describe('register-pipeline', () => {
 
       beforeEach(() => {
         mock_getPipelineType = jest.fn();
-        unset_getPipelineType = mockField(classUnderTest, 'getPipelineType', mock_getPipelineType);
+        unset_getPipelineType = setField(classUnderTest, 'getPipelineType', mock_getPipelineType);
 
         const pipeline: RegisterPipelineType = {
           registerPipeline: mock_registerPipeline,

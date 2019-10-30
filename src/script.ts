@@ -13,6 +13,7 @@ import {defineCreateWebhookCommand} from './commands/create-webhook/define-comma
 import {defineCredentialsCommand} from './commands/credentials/define-command';
 import {defineIngressCommand} from './commands/ingress/define-command';
 import {defineToolConfigCommand} from './commands/tool-config/define-command';
+import {defineNamespace} from './commands/namespace/define-command';
 
 scriptName('igc')
   .usage('IBM Garage Cloud CLI')
@@ -51,6 +52,9 @@ scriptName('igc')
   }))
   .command(defineToolConfigCommand({
     command: 'tool-config',
+  }))
+  .command(defineNamespace({
+    command: 'namespace',
   }))
   .demandCommand()
   .help()

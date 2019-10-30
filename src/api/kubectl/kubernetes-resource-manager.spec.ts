@@ -8,7 +8,7 @@ import {
 import {KubeClient} from './client';
 import {buildMockKubeClient} from './testHelper';
 import {Container, Provided, Provider} from 'typescript-ioc';
-import {providerFromValue} from '../../testHelper';
+import {mockField, providerFromValue, setField} from '../../testHelper';
 import {Secret} from './secrets';
 import Mock = jest.Mock;
 
@@ -69,7 +69,7 @@ describe('kubernetes-resource-manager', () => {
   });
 
   describe('given TestV1KubernetesResource', () => {
-    describe.only('given constructor', () => {
+    describe('given constructor', () => {
       test('group should be undefined', () => {
         expect(classUnderTest.group).toBeUndefined();
       });
@@ -116,7 +116,7 @@ describe('kubernetes-resource-manager', () => {
         });
 
         test('then return list of secrets', async () => {
-          const expectedResult: Secret[] = [{}, {}] as any;
+          const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
           const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
           mock_get.mockResolvedValue({body: listResult});
 
@@ -125,13 +125,13 @@ describe('kubernetes-resource-manager', () => {
 
           expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledTimes(1);
           expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
-          expect(actualResult).toBe(expectedResult);
+          expect(actualResult).toEqual(expectedResult);
         });
       });
 
       describe('when selector is provided', () => {
         test('then filter the results with selector', async () => {
-          const expectedResult: Secret[] = [{}, {}] as any;
+          const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
           const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
           (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
 
@@ -139,8 +139,66 @@ describe('kubernetes-resource-manager', () => {
           const labelSelector = 'app=test';
           const actualResult = await classUnderTest.list({namespace, qs: {labelSelector}});
 
-          expect(actualResult).toBe(expectedResult);
+          expect(actualResult).toEqual(expectedResult);
           expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({qs: {labelSelector}});
+        });
+      });
+
+      describe('when filter is provided', () => {
+        test('then apply filter to results', async () => {
+          const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
+          const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
+          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+
+          const filter = jest.fn();
+          filter.mockReturnValue(true);
+
+          const namespace = 'ns';
+          const actualResult = await classUnderTest.list({namespace, filter});
+
+          expect(actualResult).toEqual(expectedResult);
+          expect(filter).toHaveBeenCalledTimes(2);
+          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
+        });
+      });
+
+      describe('when map is provided', () => {
+        test('then apply map to results', async () => {
+          const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
+          const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
+          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+
+          const map = jest.fn();
+          map.mockImplementation(val => val);
+
+          const namespace = 'ns';
+          const actualResult = await classUnderTest.list({namespace, map});
+
+          expect(actualResult).toEqual(expectedResult);
+          expect(map).toHaveBeenCalledTimes(2);
+          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
+        });
+      });
+
+      describe('when filter and map are provided', () => {
+        test('then apply filter and map to results', async () => {
+          const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
+          const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
+          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+
+          const filter = jest.fn();
+          filter.mockReturnValue(true);
+
+          const map = jest.fn();
+          map.mockImplementation(val => val);
+
+          const namespace = 'ns';
+          const actualResult = await classUnderTest.list({namespace, filter, map});
+
+          expect(actualResult).toEqual(expectedResult);
+          expect(filter).toHaveBeenCalledTimes(2);
+          expect(map).toHaveBeenCalledTimes(2);
+          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
         });
       });
     });
@@ -152,10 +210,10 @@ describe('kubernetes-resource-manager', () => {
       let unset_create;
       beforeEach(() => {
         mock_list = jest.fn();
-        unset_list = mockField(classUnderTest, 'list', mock_list);
+        unset_list = setField(classUnderTest, 'list', mock_list);
 
         mock_create = jest.fn();
-        unset_create = mockField(classUnderTest, 'create', mock_create);
+        unset_create = setField(classUnderTest, 'createOrUpdate', mock_create);
       });
 
       afterEach(() => {
@@ -206,28 +264,32 @@ describe('kubernetes-resource-manager', () => {
       const secretName = 'my-secret';
       const secretBody = {body: {metadata: {name: secretName}}};
 
-      let mock_get: Mock;
+      let exists: Mock;
       let mock_put: Mock;
       let mock_post: Mock;
 
       beforeEach(() => {
-        mock_get = (mockClient.api.v1.namespaces as any).secrets.get;
+        exists = mockField(classUnderTest, 'exists');
+
         mock_put = (mockClient.api.v1.namespaces as any).secrets.put;
         mock_post = (mockClient.api.v1.namespaces as any).secrets.post;
       });
 
       describe('when secret exists', () => {
+        beforeEach(() => {
+          exists.mockResolvedValue(true);
+        });
+
         test('update secret with put()', async () => {
           const expectedResult = 'result';
 
-          mock_get.mockResolvedValue('');
           mock_put.mockResolvedValue({body: expectedResult});
 
-          const actualResult = await classUnderTest.create(secretName, secretBody, namespace);
+          const actualResult = await classUnderTest.createOrUpdate(secretName, secretBody, namespace);
 
           expect(actualResult).toEqual(expectedResult);
 
-          expect(mock_get).toHaveBeenCalledTimes(1);
+          expect(exists).toHaveBeenCalledTimes(1);
           expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
           expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(secretName);
           expect(mock_put).toHaveBeenCalledWith(secretBody);
@@ -237,14 +299,13 @@ describe('kubernetes-resource-manager', () => {
           test('then default the namespace to `default`', async () => {
             const expectedResult = 'result';
 
-            mock_get.mockResolvedValue('');
             mock_put.mockResolvedValue({body: expectedResult});
 
-            const actualResult = await classUnderTest.create(secretName, secretBody);
+            const actualResult = await classUnderTest.createOrUpdate(secretName, secretBody);
 
             expect(actualResult).toEqual(expectedResult);
 
-            expect(mock_get).toHaveBeenCalledTimes(1);
+            expect(exists).toHaveBeenCalledTimes(1);
             expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
             expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(secretName);
             expect(mock_put).toHaveBeenCalledWith(secretBody);
@@ -253,19 +314,21 @@ describe('kubernetes-resource-manager', () => {
       });
 
       describe('when secret does not exist', () => {
+        beforeEach(() => {
+          exists.mockResolvedValue(false);
+        });
+
         test('create secret with post()', async () => {
           const expectedResult = 'result';
 
-          mock_get.mockRejectedValue(new Error('value does not exist'));
           mock_post.mockResolvedValue({body: expectedResult});
 
-          const actualResult = await classUnderTest.create(secretName, secretBody, namespace);
+          const actualResult = await classUnderTest.createOrUpdate(secretName, secretBody, namespace);
 
           expect(actualResult).toEqual(expectedResult);
 
-          expect(mock_get).toHaveBeenCalledTimes(1);
+          expect(exists).toHaveBeenCalledTimes(1);
           expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
-          expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(secretName);
           expect(mock_post).toHaveBeenCalledWith(secretBody);
         });
       });
@@ -351,10 +414,10 @@ describe('kubernetes-resource-manager', () => {
       let mock_updateWithNamespace: Mock;
       beforeEach(() => {
         mock_get = jest.fn();
-        unset_get = mockField(classUnderTest, 'get', mock_get);
+        unset_get = setField(classUnderTest, 'get', mock_get);
 
         mock_create = jest.fn();
-        unset_create = mockField(classUnderTest, 'create', mock_create);
+        unset_create = setField(classUnderTest, 'createOrUpdate', mock_create);
 
         mock_updateWithNamespace = jest.fn();
       });
@@ -406,11 +469,3 @@ describe('kubernetes-resource-manager', () => {
   });
 });
 
-function mockField<T>(obj: T, field: keyof T, mock: Mock): () => void {
-  const oldValue = obj[field];
-  obj[field] = mock as any;
-
-  return () => {
-    obj[field] = oldValue;
-  }
-}

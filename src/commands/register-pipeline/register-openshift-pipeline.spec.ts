@@ -5,7 +5,7 @@ jest.mock('inquirer');
 
 import {GitParams} from './create-git-secret';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import {FsPromises} from '../../util/file-util';
 import {OpenshiftCommands} from '../../api/openshift';
 
@@ -54,13 +54,13 @@ describe('register-openshift-pipeline', () => {
       beforeEach(() => {
 
         mock_generateBuildConfig = jest.fn();
-        unset_generateBuildConfig = mockField(classUnderTest, 'generateBuildConfig', mock_generateBuildConfig) as () => void;
+        unset_generateBuildConfig = setField(classUnderTest, 'generateBuildConfig', mock_generateBuildConfig) as () => void;
 
         mock_createBuildPipeline = jest.fn();
-        unset_createBuildPipeline = mockField(classUnderTest, 'createBuildPipeline', mock_createBuildPipeline) as () => void;
+        unset_createBuildPipeline = setField(classUnderTest, 'createBuildPipeline', mock_createBuildPipeline) as () => void;
 
         mock_getRouteHosts = jest.fn();
-        unset_getRouteHosts = mockField(classUnderTest, 'getRouteHosts', mock_getRouteHosts) as () => void;
+        unset_getRouteHosts = setField(classUnderTest, 'getRouteHosts', mock_getRouteHosts) as () => void;
       });
 
       afterEach(() => {
@@ -103,7 +103,7 @@ describe('register-openshift-pipeline', () => {
       beforeEach(() => {
 
         mock_shouldUpdateExistingBuildConfig = jest.fn();
-        unset_shouldUpdateExistingBuildConfig = mockField(classUnderTest, 'shouldUpdateExistingBuildConfig', mock_shouldUpdateExistingBuildConfig) as () => void;
+        unset_shouldUpdateExistingBuildConfig = setField(classUnderTest, 'shouldUpdateExistingBuildConfig', mock_shouldUpdateExistingBuildConfig) as () => void;
       });
 
       afterEach(() => {

@@ -1,7 +1,7 @@
 import {Container} from 'typescript-ioc';
 import {IBMCloudVlan, Vlans, VlansImpl} from './vlans';
 import {ChildProcess} from '../../util/child-process';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import Mock = jest.Mock;
 
 describe('ibmcloud-vlans', () => {
@@ -30,7 +30,7 @@ describe('ibmcloud-vlans', () => {
       beforeEach(() => {
 
         mock_parseVlan = jest.fn();
-        unset_parseVlan = mockField(classUnderTest, 'parseVlan', mock_parseVlan);
+        unset_parseVlan = setField(classUnderTest, 'parseVlan', mock_parseVlan);
       });
 
       afterEach(() => {

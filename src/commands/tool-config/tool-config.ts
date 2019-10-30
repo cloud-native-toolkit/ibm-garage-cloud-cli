@@ -38,7 +38,7 @@ export class ToolsConfig {
     const namespace = options.namespace || 'tools';
 
     if (options.url) {
-      await this.kubeConfigMap.create(
+      await this.kubeConfigMap.createOrUpdate(
         `${options.name}-config`,
         {
           body: this.buildConfigMap(options.name, options.url)
@@ -52,7 +52,7 @@ export class ToolsConfig {
     }
 
     if (options.username && options.password) {
-      await this.kubeSecret.create(
+      await this.kubeSecret.createOrUpdate(
         `${options.name}-access`,
         {
           body: this.buildSecret(options.name, options.username, options.password),

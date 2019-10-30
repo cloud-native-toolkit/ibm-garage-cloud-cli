@@ -1,7 +1,7 @@
 import * as path from "path";
 import {Container} from 'typescript-ioc';
 import {GetGitParameters, GetGitParametersImpl} from './git-parameters';
-import {mockField} from '../../testHelper';
+import {setField} from '../../testHelper';
 import Mock = jest.Mock;
 
 jest.mock('inquirer');
@@ -33,8 +33,8 @@ describe('git-parameters', () => {
 
         mock_prompt = require('inquirer').prompt;
 
-        unset_getRemoteGitUrl = mockField(classUnderTest, 'getRemoteGitUrl', mock_getRemoteGitUrl);
-        unset_parseGitUrl = mockField(classUnderTest, 'parseGitUrl', mock_parseGitUrl);
+        unset_getRemoteGitUrl = setField(classUnderTest, 'getRemoteGitUrl', mock_getRemoteGitUrl);
+        unset_parseGitUrl = setField(classUnderTest, 'parseGitUrl', mock_parseGitUrl);
       });
 
       afterEach(() => {

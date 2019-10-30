@@ -22,7 +22,7 @@ export class GitSecretImpl implements GitSecret {
   async create(gitParams: GitParams, namespace: string = 'tools', additionalParams: any = {}) {
     const gitSecret = this.buildGitSecretBody(gitParams, additionalParams);
 
-    return this.kubeSecret.create(
+    return this.kubeSecret.createOrUpdate(
       gitParams.name,
       {body: gitSecret},
       namespace,

@@ -1,7 +1,7 @@
 import {GetVlan, GetVlanImpl, TargetInfo} from './get-vlan';
 import {IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
 import {Container} from 'typescript-ioc';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import {Zones} from '../../api/ibmcloud/zones';
 import Mock = jest.Mock;
 
@@ -46,9 +46,9 @@ describe('get-vlan', () => {
         mock_getVlanDatacenter = jest.fn();
         mock_getFlattenedVlans = jest.fn();
 
-        unset_collectValuesFromTarget = mockField(classUnderTest, 'collectValuesFromTarget', mock_collectValuesFromTarget);
-        unset_getVlanDatacenter = mockField(classUnderTest, 'getVlanDatacenter', mock_getVlanDatacenter);
-        unset_getFlattenedVlans = mockField(classUnderTest, 'getFlattenedVlans', mock_getFlattenedVlans);
+        unset_collectValuesFromTarget = setField(classUnderTest, 'collectValuesFromTarget', mock_collectValuesFromTarget);
+        unset_getVlanDatacenter = setField(classUnderTest, 'getVlanDatacenter', mock_getVlanDatacenter);
+        unset_getFlattenedVlans = setField(classUnderTest, 'getFlattenedVlans', mock_getFlattenedVlans);
       });
 
       afterEach(() => {

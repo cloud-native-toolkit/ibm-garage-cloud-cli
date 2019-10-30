@@ -7,7 +7,7 @@ import {
   GitHookUrlVerification,
   GitlabHookData
 } from './create-webhook';
-import {mockField} from '../../testHelper';
+import {setField} from '../../testHelper';
 import * as superagent from 'superagent';
 import {CreateWebhookOptions} from './create-webhook-options.model';
 
@@ -43,19 +43,19 @@ describe('create-webhook', () => {
 
       beforeEach(() => {
         mock_gitApiUrl = jest.fn();
-        unset_gitApiUrl = mockField(classUnderTest, 'gitApiUrl', mock_gitApiUrl) as () => void;
+        unset_gitApiUrl = setField(classUnderTest, 'gitApiUrl', mock_gitApiUrl) as () => void;
 
         mock_buildGitUrl = jest.fn();
-        unset_buildGitUrl = mockField(classUnderTest, 'buildGitUrl', mock_buildGitUrl) as () => void;
+        unset_buildGitUrl = setField(classUnderTest, 'buildGitUrl', mock_buildGitUrl) as () => void;
 
         mock_buildGitlabHookData = jest.fn();
-        unset_buildGitlabHookData = mockField(classUnderTest, 'buildGitlabHookData', mock_buildGitlabHookData) as () => void;
+        unset_buildGitlabHookData = setField(classUnderTest, 'buildGitlabHookData', mock_buildGitlabHookData) as () => void;
 
         mock_buildGitWebhookData = jest.fn();
-        unset_buildGitWebhookData = mockField(classUnderTest, 'buildGitWebhookData', mock_buildGitWebhookData) as () => void;
+        unset_buildGitWebhookData = setField(classUnderTest, 'buildGitWebhookData', mock_buildGitWebhookData) as () => void;
 
         mock_parseGitSlug = jest.fn();
-        unset_parseGitSlug = mockField(classUnderTest, 'parseGitSlug', mock_parseGitSlug) as () => void;
+        unset_parseGitSlug = setField(classUnderTest, 'parseGitSlug', mock_parseGitSlug) as () => void;
       });
 
       afterEach(() => {
@@ -149,12 +149,12 @@ describe('create-webhook', () => {
 
       beforeEach(() => {
         mock_gitApiUrl = jest.fn();
-        unset_gitApiUrl = mockField(classUnderTest, 'gitApiUrl', mock_gitApiUrl);
+        unset_gitApiUrl = setField(classUnderTest, 'gitApiUrl', mock_gitApiUrl);
 
         mock_parseGitSlug = jest.fn();
         gitSlug = {protocol, host, owner, repo};
         mock_parseGitSlug.mockReturnValue(gitSlug);
-        unset_parseGitSlug = mockField(classUnderTest, 'parseGitSlug', mock_parseGitSlug);
+        unset_parseGitSlug = setField(classUnderTest, 'parseGitSlug', mock_parseGitSlug);
       });
 
       afterEach(() => {

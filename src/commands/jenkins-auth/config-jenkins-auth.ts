@@ -100,7 +100,7 @@ export class JenkinsAuthImpl implements JenkinsAuth {
 
     notifyStatus(`Generating jenkins-access secret using apiToken: ${apiToken}`);
 
-    return this.kubeSecret.create(
+    return this.kubeSecret.createOrUpdate(
       'jenkins-access',
       {
         body: {

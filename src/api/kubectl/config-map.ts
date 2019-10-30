@@ -28,7 +28,7 @@ export class KubeConfigMap extends AbstractKubernetesResourceManager<ConfigMap> 
     return result.data;
   }
 
-  async listData<U>(options: ListOptions, exclude: string[] = []): Promise<U[]> {
+  async listData<U>(options: ListOptions<ConfigMap>, exclude: string[] = []): Promise<U[]> {
     const configMaps: ConfigMap[] = await this.list(options);
 
     return configMaps

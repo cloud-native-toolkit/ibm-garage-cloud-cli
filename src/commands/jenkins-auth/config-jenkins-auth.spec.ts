@@ -1,7 +1,7 @@
 import {Container} from 'typescript-ioc';
 import {KubeSecret} from '../../api/kubectl';
 import {JenkinsAuth, JenkinsAuthImpl} from './config-jenkins-auth';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import {GenerateToken, GenerateTokenOptions} from '../generate-token';
 import {KubeIngress} from '../../api/kubectl/ingress';
 import Mock = jest.Mock;
@@ -27,7 +27,7 @@ describe('config-jenkins-auth', () => {
       mock_create = jest.fn();
       mock_getSecretData = jest.fn();
       Container.bind(KubeSecret).provider(providerFromValue({
-        create: mock_create,
+        createOrUpdate: mock_create,
         getData: mock_getSecretData,
       }));
 
@@ -72,10 +72,10 @@ describe('config-jenkins-auth', () => {
         mock_retrieveJenkinsApiToken = jest.fn();
         mock_generateJenkinsAuthSecret = jest.fn();
 
-        unset_retrieveJenkinsCredentials = mockField(classUnderTest, 'retrieveJenkinsCredentials', mock_retrieveJenkinsCredentials);
-        unset_retrieveJenkinsUrl = mockField(classUnderTest, 'retrieveJenkinsUrl', mock_retrieveJenkinsUrl);
-        unset_retrieveJenkinsApiToken = mockField(classUnderTest, 'retrieveJenkinsApiToken', mock_retrieveJenkinsApiToken);
-        unset_generateJenkinsAuthSecret = mockField(classUnderTest, 'generateJenkinsAuthSecret', mock_generateJenkinsAuthSecret);
+        unset_retrieveJenkinsCredentials = setField(classUnderTest, 'retrieveJenkinsCredentials', mock_retrieveJenkinsCredentials);
+        unset_retrieveJenkinsUrl = setField(classUnderTest, 'retrieveJenkinsUrl', mock_retrieveJenkinsUrl);
+        unset_retrieveJenkinsApiToken = setField(classUnderTest, 'retrieveJenkinsApiToken', mock_retrieveJenkinsApiToken);
+        unset_generateJenkinsAuthSecret = setField(classUnderTest, 'generateJenkinsAuthSecret', mock_generateJenkinsAuthSecret);
       });
 
       afterEach(() => {
@@ -318,7 +318,7 @@ describe('config-jenkins-auth', () => {
       beforeEach(() => {
         mock_create = jest.fn();
 
-        Container.bind(KubeSecret).provider({get: () => ({create: mock_create})});
+        Container.bind(KubeSecret).provider({get: () => ({createOrUpdate: mock_create})});
       });
 
       describe('when successful', () => {

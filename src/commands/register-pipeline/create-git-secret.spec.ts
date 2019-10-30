@@ -1,7 +1,7 @@
 import {GitParams, GitSecret, GitSecretImpl} from './create-git-secret';
 import {Container} from 'typescript-ioc';
 import {KubeSecret} from '../../api/kubectl';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import Mock = jest.Mock;
 
 describe('create-git-secret', () => {
@@ -11,13 +11,13 @@ describe('create-git-secret', () => {
 
   describe('given GitSecret', () => {
     let classUnderTest: GitSecretImpl;
-    let mock_createSecret: Mock;
+    let mock_createOrUpdateSecret: Mock;
 
     beforeEach(() => {
-      mock_createSecret = jest.fn();
+      mock_createOrUpdateSecret = jest.fn();
       Container
         .bind(KubeSecret)
-        .provider(providerFromValue({create: mock_createSecret}));
+        .provider(providerFromValue({createOrUpdate: mock_createOrUpdateSecret}));
 
       classUnderTest = Container.get(GitSecretImpl);
     });
@@ -29,7 +29,7 @@ describe('create-git-secret', () => {
 
       beforeEach(() => {
         mock_buildGitSecretBody = jest.fn();
-        unset_buildGitSecretBody = mockField(classUnderTest, 'buildGitSecretBody', mock_buildGitSecretBody);
+        unset_buildGitSecretBody = setField(classUnderTest, 'buildGitSecretBody', mock_buildGitSecretBody);
       });
 
       afterEach(() => {
@@ -41,7 +41,7 @@ describe('create-git-secret', () => {
         const expectedResult = {};
 
         mock_buildGitSecretBody.mockReturnValue(gitSecretBody);
-        mock_createSecret.mockResolvedValue(expectedResult);
+        mock_createOrUpdateSecret.mockResolvedValue(expectedResult);
 
         const gitParams: any = {
           name: 'git name'
@@ -54,7 +54,7 @@ describe('create-git-secret', () => {
         expect(actualResult).toEqual(expectedResult);
 
         expect(mock_buildGitSecretBody).toHaveBeenCalledWith(gitParams, additionalParams);
-        expect(mock_createSecret).toHaveBeenCalledWith(gitParams.name, {body: gitSecretBody}, namespace);
+        expect(mock_createOrUpdateSecret).toHaveBeenCalledWith(gitParams.name, {body: gitSecretBody}, namespace);
       });
     });
 

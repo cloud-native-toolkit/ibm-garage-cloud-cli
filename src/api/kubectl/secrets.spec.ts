@@ -4,7 +4,7 @@ import {encode as base64encode} from '../../util/base64';
 import {KubeClient} from './client';
 import {mockKubeClientProvider} from './testHelper';
 import {KubeSecret} from './secrets';
-import {mockField} from '../../testHelper';
+import {setField} from '../../testHelper';
 import Mock = jest.Mock;
 
 describe('secrets', () => {
@@ -33,7 +33,7 @@ describe('secrets', () => {
 
     beforeEach(() => {
       mock_get = jest.fn();
-      unset_get = mockField(classUnderTest, 'get', mock_get);
+      unset_get = setField(classUnderTest, 'get', mock_get);
     });
 
     afterEach(() => {

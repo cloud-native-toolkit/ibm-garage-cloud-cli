@@ -2,7 +2,7 @@ import {ToolsConfig} from './tool-config';
 import {Container} from 'typescript-ioc';
 import Mock = jest.Mock;
 import {ConfigMap, KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import {mocked} from 'ts-jest';
 
 describe('tool-config', () => {
@@ -11,17 +11,17 @@ describe('tool-config', () => {
   });
 
   let classUnderTest: ToolsConfig;
-  let kubeConfigMap_create: Mock;
-  let kubeSecret_create: Mock;
+  let kubeConfigMap_createOrUpdate: Mock;
+  let kubeSecret_createOrUpdate: Mock;
 
   beforeEach(() => {
-    kubeConfigMap_create = jest.fn();
-    kubeSecret_create = jest.fn();
+    kubeConfigMap_createOrUpdate = jest.fn();
+    kubeSecret_createOrUpdate = jest.fn();
     Container.bind(KubeConfigMap).provider(providerFromValue({
-      create: kubeConfigMap_create,
+      createOrUpdate: kubeConfigMap_createOrUpdate,
     }));
     Container.bind(KubeSecret).provider(providerFromValue({
-      create: kubeSecret_create,
+      createOrUpdate: kubeSecret_createOrUpdate,
     }));
 
     classUnderTest = Container.get(ToolsConfig);
@@ -36,10 +36,10 @@ describe('tool-config', () => {
 
     beforeEach(() => {
       mock_buildConfigMap = jest.fn();
-      unset_buildConfigMap = mockField(classUnderTest, 'buildConfigMap', mock_buildConfigMap);
+      unset_buildConfigMap = setField(classUnderTest, 'buildConfigMap', mock_buildConfigMap);
 
       mock_buildSecret = jest.fn();
-      unset_buildSecret = mockField(classUnderTest, 'buildSecret', mock_buildSecret);
+      unset_buildSecret = setField(classUnderTest, 'buildSecret', mock_buildSecret);
     });
     afterEach(() => {
       unset_buildConfigMap();
@@ -55,12 +55,12 @@ describe('tool-config', () => {
         const configMap = {};
         mock_buildConfigMap.mockReturnValue(configMap);
 
-        kubeConfigMap_create.mockResolvedValue({metadata: {name}});
+        kubeConfigMap_createOrUpdate.mockResolvedValue({metadata: {name}});
 
         await classUnderTest.configureTool({name, url, namespace});
 
         const configMapName = `${name}-config`;
-        expect(kubeConfigMap_create).toHaveBeenCalledWith(
+        expect(kubeConfigMap_createOrUpdate).toHaveBeenCalledWith(
           configMapName,
           {body: configMap},
           namespace
@@ -78,12 +78,12 @@ describe('tool-config', () => {
         const secret = {};
         mock_buildSecret.mockReturnValue(secret);
 
-        kubeSecret_create.mockResolvedValue({metadata: {name}});
+        kubeSecret_createOrUpdate.mockResolvedValue({metadata: {name}});
 
         await classUnderTest.configureTool({name, username, password, namespace});
 
         const secretName = `${name}-access`;
-        expect(kubeSecret_create).toHaveBeenCalledWith(
+        expect(kubeSecret_createOrUpdate).toHaveBeenCalledWith(
           secretName,
           {body: secret},
           namespace,

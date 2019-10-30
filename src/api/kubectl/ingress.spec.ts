@@ -3,7 +3,7 @@ import {Ingress, KubeIngress} from './ingress';
 import {Container} from 'typescript-ioc';
 import {KubeClient} from './client';
 import Mock = jest.Mock;
-import {mockField} from '../../testHelper';
+import {setField} from '../../testHelper';
 
 describe('ingress', () => {
   test('canary verifies test infrastructure', () => {
@@ -27,7 +27,7 @@ describe('ingress', () => {
 
       beforeEach(() => {
         mock_get = jest.fn();
-        unset_get = mockField(classUnderTest, 'get', mock_get);
+        unset_get = setField(classUnderTest, 'get', mock_get);
       });
 
       afterEach(() => {
@@ -142,7 +142,7 @@ describe('ingress', () => {
       let unset_get: () => void;
       beforeEach(() => {
         mock_get = jest.fn();
-        unset_get = mockField(classUnderTest, 'get', mock_get);
+        unset_get = setField(classUnderTest, 'get', mock_get);
       });
       afterEach(() => {
         unset_get();

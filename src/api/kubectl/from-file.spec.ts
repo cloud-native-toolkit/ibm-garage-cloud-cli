@@ -1,6 +1,6 @@
 import {FromFile, FromFileImpl} from './from-file';
 import {Container} from 'typescript-ioc';
-import {mockField, providerFromValue} from '../../testHelper';
+import {setField, providerFromValue} from '../../testHelper';
 import Mock = jest.Mock;
 import {ChildProcess} from '../../util/child-process';
 

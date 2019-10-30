@@ -34,7 +34,13 @@ This includes Jenkins, Argo CD, and SonarQube.
 Lists the ingress urls for the provided namespace. If no namespace
 is provided, `dev` is used.
 
-### register
+### namespace
+
+Optionally creates a namespace and prepares it for use by copying in
+pull secrets and tls secrets from the default namespace and config maps and
+secrets from the template namespace (defaults to `tools` if not provided)
+
+### pipeline
 
 Registers a project as a Jenkins pipeline by creating a Kubernetes secret to hold 
 the Git authentication information, calling the Jenkins API, and creating a web-hook.

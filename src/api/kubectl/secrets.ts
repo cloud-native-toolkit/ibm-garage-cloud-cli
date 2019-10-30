@@ -38,7 +38,7 @@ export class KubeSecret extends AbstractKubernetesResourceManager<Secret> {
     }, {} as U);
   }
 
-  async listData<U>(options: ListOptions, exclude: string[] = []): Promise<U[]> {
+  async listData<U>(options: ListOptions<Secret>, exclude: string[] = []): Promise<U[]> {
     const secrets: Secret[] = await this.list(options);
 
     return secrets

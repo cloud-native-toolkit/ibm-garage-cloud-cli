@@ -93,7 +93,7 @@ export class CredentialsImpl implements Credentials {
   async getCredentials(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secrets> {
 
     const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
-    const listOptions: ListOptions = {namespace, qs};
+    const listOptions: ListOptions<any> = {namespace, qs};
 
     const results: Array<Array<object>> = await Promise.all([
       this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
