@@ -93,26 +93,27 @@ describe('register-iks-pipeline', () => {
           password: 'password',
           branch: 'master'
         };
+        const credentialsName = 'credentialsName';
 
         test('replace {{GIT_REPO}} with gitParams.url', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
 
           expect(result).not.toContain('{{GIT_REPO}}');
           expect(result).toContain(gitParams.url);
         });
 
-        test('replace {{GIT_CREDENTIALS}} with gitParams.name', async () => {
+        test('replace {{GIT_CREDENTIALS}} with credentialsName', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
 
           expect(result).not.toContain('{{GIT_CREDENTIALS}}');
-          expect(result).toContain(gitParams.name);
+          expect(result).toContain(credentialsName);
         });
 
         test('replace {{GIT_BRANCH}} with gitParams.branch', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
 
           expect(result).not.toContain('{{GIT_BRANCH}}');
           expect(result).toContain(gitParams.branch);
@@ -120,7 +121,7 @@ describe('register-iks-pipeline', () => {
 
         test('replace all {{xxx}} references with values', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams);
+          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
 
           expect(result).not.toMatch(/{{.*}}/);
         });

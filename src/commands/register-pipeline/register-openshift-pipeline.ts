@@ -29,10 +29,10 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string, jobName: string, jenkinsUser: string, jenkinsPassword: string}> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
 
     try {
-      const buildConfig = this.generateBuildConfig(gitParams.name, gitParams.url, gitParams.branch);
+      const buildConfig = this.generateBuildConfig(credentialsName, gitParams.url, gitParams.branch);
 
       const fileName = await this.fsPromises.writeFile(
         path.join(process.cwd(), './pipeline-build-config.json'),

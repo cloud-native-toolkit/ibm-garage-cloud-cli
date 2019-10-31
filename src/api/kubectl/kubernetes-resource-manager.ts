@@ -116,9 +116,11 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
 
-    const result: KubeBody<T> = (await this.exists(name, namespace))
-      ? await kubeResource(name).put(body)
-      : await kubeResource.post(body);
+    const {processedName, processedBody} = this.processInputs(name, body);
+
+    const result: KubeBody<T> = (await this.exists(processedName, namespace))
+      ? await kubeResource(processedName).put(processedBody)
+      : await kubeResource.post(processedBody);
 
     return result.body;
   }
@@ -127,7 +129,9 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
 
-    const result: KubeBody<T> = await kubeResource.post(body);
+    const {processedBody} = this.processInputs(name, body);
+
+    const result: KubeBody<T> = await kubeResource.post(processedBody);
 
     return result.body;
   }
@@ -136,7 +140,9 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
 
-    const result: KubeBody<T> = await kubeResource(name).put(body);
+    const {processedName, processedBody} = this.processInputs(name, body);
+
+    const result: KubeBody<T> = await kubeResource(processedName).put(processedBody);
 
     return result.body;
   }
@@ -216,5 +222,30 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
       this.client.apis[group][version].namespace(namespace)[kind];
 
     return node;
+  }
+
+  processInputs(name: string, body: KubeBody<T>): {processedName: string, processedBody: KubeBody<T>} {
+
+    const processedName = name.toLowerCase().replace(new RegExp('_', 'g'), '-');
+    const processedBody: KubeBody<T> = {
+      body: Object.assign(
+        {},
+        body.body,
+        {
+          metadata: Object.assign(
+            {},
+            body.body.metadata,
+            {
+              name: processedName,
+            } as KubeMetadata
+          ),
+        },
+      ),
+    };
+
+    return {
+      processedName,
+      processedBody,
+    };
   }
 }

@@ -22,7 +22,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string, jobName: string, jenkinsUser: string, jenkinsPassword: string}> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.jenkinsNamespace);
 
@@ -39,7 +39,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
           .set(headers)
           .set('User-Agent', `${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`)
           .set('Content-Type', 'text/xml')
-          .send(await this.buildJenkinsJobConfig(gitParams));
+          .send(await this.buildJenkinsJobConfig(gitParams, credentialsName));
 
       if (response.status !== 200 && response.status !== 201) {
         throw new Error(`Unable to create Jenkins job: ${response.text}`);
@@ -78,12 +78,12 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     return result as any;
   }
 
-  async buildJenkinsJobConfig(gitParams: GitParams): Promise<string> {
+  async buildJenkinsJobConfig(gitParams: GitParams, credentialsName: string): Promise<string> {
     const data: Buffer = await this.fs.readFile(path.join(__dirname, '../../../etc/jenkins-config-template.xml'));
 
     return data.toString()
       .replace(new RegExp('{{GIT_REPO}}', 'g'), gitParams.url)
-      .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), gitParams.name)
+      .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), credentialsName)
       .replace(new RegExp('{{GIT_BRANCH}}', 'g'), gitParams.branch);
   }
 

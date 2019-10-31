@@ -37,8 +37,9 @@ describe('create-git-secret', () => {
       });
 
       test('should call secret.create() with result from buildGitSecretBody()', async () => {
+        const name = 'expected name';
         const gitSecretBody = {secret: 'value'};
-        const expectedResult = {};
+        const expectedResult = {metadata: {name}};
 
         mock_buildGitSecretBody.mockReturnValue(gitSecretBody);
         mock_createOrUpdateSecret.mockResolvedValue(expectedResult);
@@ -51,7 +52,7 @@ describe('create-git-secret', () => {
 
         const actualResult = await classUnderTest.create(gitParams, namespace, additionalParams);
 
-        expect(actualResult).toEqual(expectedResult);
+        expect(actualResult).toEqual(name);
 
         expect(mock_buildGitSecretBody).toHaveBeenCalledWith(gitParams, additionalParams);
         expect(mock_createOrUpdateSecret).toHaveBeenCalledWith(gitParams.name, {body: gitSecretBody}, namespace);

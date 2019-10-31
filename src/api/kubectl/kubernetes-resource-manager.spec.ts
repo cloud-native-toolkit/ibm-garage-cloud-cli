@@ -259,17 +259,23 @@ describe('kubernetes-resource-manager', () => {
       });
     });
 
-    describe('given create()', () => {
+    describe('given createOrUpdate()', () => {
       const namespace = 'namespace';
       const secretName = 'my-secret';
       const secretBody = {body: {metadata: {name: secretName}}};
 
+      let processedName = 'processedName';
+      let processedBody = {value: 'val'};
+
       let exists: Mock;
       let mock_put: Mock;
       let mock_post: Mock;
+      let processInputs: Mock;
 
       beforeEach(() => {
         exists = mockField(classUnderTest, 'exists');
+        processInputs = mockField(classUnderTest, 'processInputs');
+        processInputs.mockReturnValue({processedName, processedBody});
 
         mock_put = (mockClient.api.v1.namespaces as any).secrets.put;
         mock_post = (mockClient.api.v1.namespaces as any).secrets.post;
@@ -290,9 +296,10 @@ describe('kubernetes-resource-manager', () => {
           expect(actualResult).toEqual(expectedResult);
 
           expect(exists).toHaveBeenCalledTimes(1);
+          expect(processInputs).toHaveBeenCalledWith(secretName, secretBody);
           expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
-          expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(secretName);
-          expect(mock_put).toHaveBeenCalledWith(secretBody);
+          expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(processedName);
+          expect(mock_put).toHaveBeenCalledWith(processedBody);
         });
 
         describe('and when namespace not provided', () => {
@@ -306,9 +313,10 @@ describe('kubernetes-resource-manager', () => {
             expect(actualResult).toEqual(expectedResult);
 
             expect(exists).toHaveBeenCalledTimes(1);
+            expect(processInputs).toHaveBeenCalledWith(secretName, secretBody);
             expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
-            expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(secretName);
-            expect(mock_put).toHaveBeenCalledWith(secretBody);
+            expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(processedName);
+            expect(mock_put).toHaveBeenCalledWith(processedBody);
           });
         });
       });
@@ -327,9 +335,10 @@ describe('kubernetes-resource-manager', () => {
 
           expect(actualResult).toEqual(expectedResult);
 
+          expect(processInputs).toHaveBeenCalledWith(secretName, secretBody);
           expect(exists).toHaveBeenCalledTimes(1);
           expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
-          expect(mock_post).toHaveBeenCalledWith(secretBody);
+          expect(mock_post).toHaveBeenCalledWith(processedBody);
         });
       });
     });
@@ -464,6 +473,73 @@ describe('kubernetes-resource-manager', () => {
           },
           toNamespace,
         );
+      });
+    });
+
+    describe('given processInputs()', () => {
+      describe('when name is valid', () => {
+        test('then return same value', async () => {
+          const name = 'test-name-valid';
+          const body: KubeBody<KubeResource> = {
+            body: {
+              metadata: {
+                name,
+                labels: {
+                  test: 'value'
+                }
+              }
+            }
+          };
+
+          expect(classUnderTest.processInputs(name, body))
+            .toEqual({processedName: name, processedBody: body});
+        });
+      });
+
+      describe('when name contains upper case values', () => {
+        test('then return same value with lower case name', async () => {
+          const name = 'tesT-name-valid';
+          const labels = {
+            test: 'value'
+          };
+          const body: KubeBody<KubeResource> = {
+            body: {
+              metadata: {
+                name,
+                labels,
+              }
+            }
+          };
+
+          expect(classUnderTest.processInputs(name, body))
+            .toEqual({
+              processedName: name.toLowerCase(),
+              processedBody: {body: {metadata: {name: name.toLowerCase(), labels}}}
+            });
+        });
+      });
+
+      describe('when name contains an underscore', () => {
+        test('then return same value with lower case name', async () => {
+          const name = 'test_name_valid';
+          const labels = {
+            test: 'value'
+          };
+          const body: KubeBody<KubeResource> = {
+            body: {
+              metadata: {
+                name,
+                labels,
+              }
+            }
+          };
+
+          expect(classUnderTest.processInputs(name, body))
+            .toEqual({
+              processedName: name.replace(new RegExp('_', 'g'), '-'),
+              processedBody: {body: {metadata: {name: name.replace(new RegExp('_', 'g'), '-'), labels}}}
+            });
+        });
       });
     });
   });

@@ -5,15 +5,11 @@ import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {CreateWebhook, CreateWebhookErrorTypes, CreateWebhookOptions, isCreateWebhookError} from '../create-webhook';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {GitParams, GitSecret} from './create-git-secret';
-import * as iksPipeline from './register-iks-pipeline';
-import * as openshiftPipeline from './register-openshift-pipeline';
-import * as fileUtil from '../../util/file-util';
-import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
-import {QueryString} from '../../api/kubectl/kubernetes-resource-manager';
-import {GetGitParameters} from './git-parameters';
 import {RegisterIksPipeline} from './register-iks-pipeline';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
 import {FsPromises} from '../../util/file-util';
+import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
+import {GetGitParameters} from './git-parameters';
 import {RegisterPipelineType} from './register-pipeline-type';
 import {Namespace} from '../namespace/namespace';
 
@@ -67,11 +63,11 @@ export class RegisterPipelineImpl {
 
     notifyStatus('Creating secret with git credentials');
 
-    await this.gitSecret.create(gitParams, options.pipelineNamespace, await this.readValuesFile(options.values));
+    const credentialsName = await this.gitSecret.create(gitParams, options.pipelineNamespace, await this.readValuesFile(options.values));
 
-    notifyStatus('Registering pipeline');
+    notifyStatus('Registering pipeline: ' + credentialsName);
 
-    const pipelineResult = await this.executeRegisterPipeline(clusterType, options, gitParams);
+    const pipelineResult = await this.executeRegisterPipeline(clusterType, options, gitParams, credentialsName);
 
     if (!options.skipWebhook) {
       notifyStatus('Creating git webhook');
@@ -121,10 +117,10 @@ export class RegisterPipelineImpl {
     return {};
   }
 
-  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams): Promise<{jenkinsUrl: string, jobName: string, jenkinsUser: string, jenkinsPassword: string}> {
+  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
     const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
-    return pipeline.registerPipeline(options, gitParams);
+    return pipeline.registerPipeline(options, gitParams, credentialsName);
   }
 
   async getClusterType(namespace = 'tools'): Promise<'openshift' | 'kubernetes'> {
