@@ -41,7 +41,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
       await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);
 
-      const host: string = await this.getRouteHosts(options.jenkinsNamespace || 'tools', 'jenkins');
+      const host: string = await this.getRouteHosts(options.pipelineNamespace || 'tools', 'jenkins');
 
       return {jenkinsUrl: host ? `https://${host}` : '', jobName: gitParams.name, jenkinsUser: '', jenkinsPassword: ''};
     } catch (err) {
