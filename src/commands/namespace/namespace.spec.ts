@@ -3,6 +3,7 @@ import {Namespace, NamespaceImpl} from './namespace';
 import Mock = jest.Mock;
 import {mockField, providerFromValue, setField} from '../../testHelper';
 import {KubeSecret, Secret} from '../../api/kubectl';
+import {KubeNamespace} from '../../api/kubectl/namespace';
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -19,12 +20,22 @@ describe('namespace', () => {
   });
 
   describe('given create()', () => {
+    let kubeNamespace_exists: Mock;
+    let kubeNamespace_create: Mock;
     let setupPullSecrets: Mock;
     let setupTlsSecrets: Mock;
     let copyConfigMaps: Mock;
     let copySecrets: Mock;
     let setupServiceAccountWithPullSecrets: Mock;
     beforeEach(() => {
+      kubeNamespace_create = jest.fn();
+      kubeNamespace_exists = jest.fn();
+
+      Container.bind(KubeNamespace).provider(providerFromValue({
+        create: kubeNamespace_create,
+        exists: kubeNamespace_exists,
+      }));
+
       setupPullSecrets = mockField(classUnderTest, 'setupPullSecrets');
       setupTlsSecrets = mockField(classUnderTest, 'setupTlsSecrets');
       copyConfigMaps = mockField(classUnderTest, 'copyConfigMaps');
@@ -33,10 +44,35 @@ describe('namespace', () => {
     });
 
     describe('when called', () => {
+
       test('then should return the namespace name', async () => {
         const namespace = 'test';
 
         expect(await classUnderTest.create(namespace)).toEqual(namespace);
+      });
+
+      describe('and when namespace exists', () => {
+        test('then should not create it', async () => {
+          const namespace = 'test';
+
+          kubeNamespace_exists.mockResolvedValue(true);
+
+          expect(await classUnderTest.create(namespace)).toEqual(namespace);
+
+          expect(kubeNamespace_create).not.toHaveBeenCalled();
+        });
+      });
+
+      describe('and when namespace does not exists', () => {
+        test('then it should create it', async () => {
+          const namespace = 'test';
+
+          kubeNamespace_exists.mockResolvedValue(false);
+
+          expect(await classUnderTest.create(namespace)).toEqual(namespace);
+
+          expect(kubeNamespace_create).toHaveBeenCalledWith(namespace);
+        });
       });
 
       test('then should setup pull secrets from default namespace', async () => {
