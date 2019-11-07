@@ -9,6 +9,7 @@ export class JenkinsAuthOptions extends IbmCloudCluster {
   jenkinsApiToken?: string;
   namespace?: string;
   debug?: boolean;
+  inCluster?: boolean;
 }
 
 export const JENKINS_AUTH_ENV_PROPERTIES: {[key in keyof JenkinsAuthOptions]: EnvironmentOptionKey} = {

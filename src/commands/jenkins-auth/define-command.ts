@@ -50,6 +50,11 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCom
         .options('jenkinsApiToken', {
           description: 'The Jenkins API Token. If not provided one will be generated',
           required: false
+        })
+        .options('inCluster', {
+          type: 'boolean',
+          description: 'Flag indicating that the kube configuration should come from the enclosing cluster',
+          required: false
         });
     },
     handler: async (argv: Arguments<JenkinsAuthOptions>) => {

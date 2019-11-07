@@ -1,9 +1,10 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Container, Inject, Provides} from 'typescript-ioc';
 
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {GenerateToken, GenerateTokenOptions} from '../generate-token';
 import {KubeSecret} from '../../api/kubectl';
 import {KubeIngress} from '../../api/kubectl/ingress';
+import {DefaultBackend, InClusterBackend, KubeBackend} from '../../api/kubectl/client';
 
 interface JenkinsSecret {
   'jenkins-admin-password': string;
@@ -44,6 +45,8 @@ export class JenkinsAuthImpl implements JenkinsAuth {
       console.log('options: ', options);
     }
 
+    this.configureKubernetesBackend(options);
+
     const {username, password} = await this.retrieveJenkinsCredentials(options, notifyStatus);
 
     const {host, url} = await this.retrieveJenkinsUrl(options, notifyStatus);
@@ -57,6 +60,14 @@ export class JenkinsAuthImpl implements JenkinsAuth {
       {host, url, username, password, apiToken},
       notifyStatus,
     );
+  }
+
+  configureKubernetesBackend({inCluster}: {inCluster?: boolean} = {inCluster: false}) {
+    if (inCluster) {
+      Container.bind(KubeBackend).to(InClusterBackend);
+    } else {
+      Container.bind(KubeBackend).to(DefaultBackend);
+    }
   }
 
   async retrieveJenkinsCredentials({username, password, namespace = 'tools'}: {username?: string; password?: string; namespace?: string} = {}, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<{username: string; password: string}> {
