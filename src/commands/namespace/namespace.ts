@@ -171,7 +171,7 @@ export class NamespaceImpl implements Namespace{
           }
 
           return secrets;
-        }, serviceAccount.imagePullSecrets.slice())
+        }, (serviceAccount.imagePullSecrets || []).slice())
       }
     );
   }
