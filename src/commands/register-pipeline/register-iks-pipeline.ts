@@ -1,6 +1,7 @@
 import * as path from 'path';
 import {Inject} from 'typescript-ioc';
 import {Response, get, post} from 'superagent';
+import {prompt, Questions} from 'inquirer';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {GitParams} from './create-git-secret';
@@ -8,6 +9,10 @@ import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
 import {KubeSecret} from '../../api/kubectl';
 import {RegisterPipelineType} from './register-pipeline-type';
 import {FsPromises} from '../../util/file-util';
+
+interface Prompt {
+  shouldUpdate: boolean;
+}
 
 export class RegisterIksPipeline implements RegisterPipelineType {
   @Inject
@@ -26,27 +31,46 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.jenkinsNamespace);
 
-    const jobName = gitParams.branch !== 'master'
-      ? `${gitParams.name}_${gitParams.branch}`
-      : gitParams.name;
+    const jobName = gitParams.name;
 
     const headers = options.generateCrumb ? await this.generateJenkinsCrumbHeader(jenkinsAccess) : {};
 
-    try {
-      const jobUrl = jenkinsAccess.url;
-      // const jobUrl = `{jenkinsAccess.url}/job/${options.pipelineNamespace}`;
-      const response: Response = await this.buildJenkinsItem(
-        jobUrl,
-        jobName,
-        jenkinsAccess.username,
-        jenkinsAccess.api_token,
+    const folderOptions = Object.assign(
+      {},
+      jenkinsAccess,
+      {
+        name: options.pipelineNamespace,
         headers,
-        await this.buildJenkinsPipelineConfig(gitParams, credentialsName, options.pipelineNamespace),
+      }
+    );
+
+    try {
+      if (!(await this.ifJenkinsResourceExists(folderOptions))) {
+        this.createJenkinsFolder(folderOptions);
+      }
+
+      const pipelineOptions = Object.assign(
+        {},
+        jenkinsAccess,
+        {
+          name: jobName,
+          headers,
+          url: `${folderOptions.url}/job/${folderOptions.name}`,
+          content: await this.buildJenkinsPipelineConfig(gitParams, credentialsName, options.pipelineNamespace),
+        }
       );
 
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(`Unable to create Jenkins job: ${response.text}`);
+      if (await this.ifJenkinsResourceExists(pipelineOptions)) {
+        const shouldReplace = await this.shouldUpdateExistingBuildConfig(jobName);
+
+        if (!shouldReplace) {
+          process.exit(0);
+        }
+
+        await this.deleteJenkinsPipeline(pipelineOptions);
       }
+
+      await this.createJenkinsPipeline(pipelineOptions);
 
       return {
         jenkinsUrl: jenkinsAccess.url,
@@ -56,7 +80,46 @@ export class RegisterIksPipeline implements RegisterPipelineType {
         webhookUrl: ''
       };
     } catch (err) {
-      console.error('Error creating job', err.message);
+      console.error('Error creating job', err);
+      throw err;
+    }
+  }
+
+  async ifJenkinsResourceExists({url, name, username, api_token, headers = {}}: {url: string, name: string, username: string, api_token: string, headers: object}): Promise<boolean> {
+    try {
+      const result: Response = await get(`${url}/checkJobName?value=${name}`)
+        .auth(username, api_token)
+        .set(headers)
+        .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`);
+
+      if (result.status === 200 && (result.text || '').match('.*job already exists with the name.*')) {
+        return true;
+      }
+    } catch (err) {
+      if (err.status === 404) {
+        return false;
+      }
+
+      throw err;
+    }
+
+    return false;
+  }
+
+  async createJenkinsFolder({url, name, username, api_token, headers = {}}: {url: string, name: string, username: string, api_token: string, headers: object}) {
+    try {
+      await post(`${url}/createItem`)
+        .query({
+          name,
+          mode: 'com.cloudbees.hudson.plugins.folder.Folder',
+          Submit: 'OK',
+        })
+        .type('application/x-www-form-urlencoded')
+        .auth(username, api_token)
+        .set(headers)
+        .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`);
+    } catch (err) {
+      console.log('Error creating folder');
       throw err;
     }
   }
@@ -87,13 +150,20 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     return result as any;
   }
 
-  async buildJenkinsItem(url: string, jobName: string, username: string, apiToken: string, headers: object, content: string): Promise<Response> {
-    return post(`${url}/createItem?name=${jobName}`)
-        .auth(username, apiToken)
-        .set(headers)
-        .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`)
-        .set('Content-Type', 'text/xml')
-        .send(content);
+  async createJenkinsPipeline({url, name, username, api_token, headers, content}: {url: string, name: string, username: string, api_token: string, headers: object, content: string}): Promise<Response> {
+    return post(`${url}/createItem?name=${name}`)
+      .auth(username, api_token)
+      .set(headers)
+      .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`)
+      .set('Content-Type', 'text/xml')
+      .send(content);
+  }
+
+  async deleteJenkinsPipeline({url, name, username, api_token, headers}: {url: string, name: string, username: string, api_token: string, headers: object}): Promise<Response> {
+    return post(`${url}/job/${name}/doDelete`)
+      .auth(username, api_token)
+      .set(headers)
+      .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`);
   }
 
   async buildJenkinsFolderConfig(): Promise<string> {
@@ -110,6 +180,20 @@ export class RegisterIksPipeline implements RegisterPipelineType {
       .replace(new RegExp('{{GIT_REPO}}', 'g'), gitParams.url)
       .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), credentialsName)
       .replace(new RegExp('{{GIT_BRANCH}}', 'g'), gitParams.branch);
+  }
+
+  async shouldUpdateExistingBuildConfig(pipelineName: string): Promise<boolean> {
+
+    const questions: Questions<Prompt> = [{
+      type: 'confirm',
+      name: 'shouldUpdate',
+      message: `The build pipeline (${pipelineName}) already exists. Do you want to replace it?`,
+      default: true
+    }];
+
+    const result: Prompt = await prompt(questions);
+
+    return result.shouldUpdate;
   }
 
   async readFilePromise(filename: string): Promise<Buffer> {
