@@ -18,7 +18,7 @@ const provider: Provider = {
 };
 
 @Provided(provider)
-export class KubeServiceAccount  extends AbstractKubernetesResourceManager<ServiceAccount> {
+export class KubeServiceAccount extends AbstractKubernetesResourceManager<ServiceAccount> {
   constructor(props: Props) {
     super(props);
   }

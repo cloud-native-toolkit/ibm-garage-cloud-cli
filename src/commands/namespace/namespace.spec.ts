@@ -5,6 +5,8 @@ import {mockField, providerFromValue, setField} from '../../testHelper';
 import {KubeSecret, Secret} from '../../api/kubectl';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
+import {KubeRole} from '../../api/kubectl/role';
+import {KubeRoleBinding} from '../../api/kubectl/role-binding';
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -14,18 +16,36 @@ describe('namespace', () => {
   let classUnderTest: NamespaceImpl;
   let serviceAccounts_get: Mock;
   let serviceAccounts_update: Mock;
+  let serviceAccounts_copy: Mock;
   let secrets_list: Mock;
+  let secrets_copy: Mock;
+  let roles_copy: Mock;
+  let roleBindings_copy: Mock;
   beforeEach(() => {
     serviceAccounts_get = jest.fn();
     serviceAccounts_update = jest.fn();
+    serviceAccounts_copy = jest.fn();
     Container.bind(KubeServiceAccount).provider(providerFromValue({
       get: serviceAccounts_get,
       update: serviceAccounts_update,
+      copy: serviceAccounts_copy,
     }));
 
     secrets_list = jest.fn();
+    secrets_copy = jest.fn();
     Container.bind(KubeSecret).provider(providerFromValue({
       list: secrets_list,
+      copy: secrets_copy,
+    }));
+
+    roles_copy = jest.fn();
+    Container.bind(KubeRole).provider(providerFromValue({
+      copy: roles_copy,
+    }));
+
+    roleBindings_copy = jest.fn();
+    Container.bind(KubeRoleBinding).provider(providerFromValue({
+      copy: roleBindings_copy,
     }));
 
     classUnderTest = Container.get(Namespace);
@@ -43,6 +63,7 @@ describe('namespace', () => {
     let copyConfigMaps: Mock;
     let copySecrets: Mock;
     let setupServiceAccountWithPullSecrets: Mock;
+    let copyJenkinsCredentials: Mock;
     beforeEach(() => {
       kubeNamespace_create = jest.fn();
       kubeNamespace_exists = jest.fn();
@@ -57,6 +78,7 @@ describe('namespace', () => {
       copyConfigMaps = mockField(classUnderTest, 'copyConfigMaps');
       copySecrets = mockField(classUnderTest, 'copySecrets');
       setupServiceAccountWithPullSecrets = mockField(classUnderTest, 'setupServiceAccountWithPullSecrets');
+      copyJenkinsCredentials = mockField(classUnderTest, 'copyJenkinsCredentials');
     });
 
     describe('when called', () => {
@@ -107,6 +129,14 @@ describe('namespace', () => {
         expect(setupTlsSecrets).toHaveBeenCalledWith(namespace, 'default');
       });
 
+      test('then should setup service account with pull secrets', async () => {
+        const namespace = 'test';
+
+        await classUnderTest.create(namespace);
+
+        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace);
+      });
+
       test('then should copy config maps in catalyst-tools group', async () => {
         const namespace = 'test';
 
@@ -123,12 +153,12 @@ describe('namespace', () => {
         expect(copySecrets).toHaveBeenCalledWith(namespace, 'tools');
       });
 
-      test('then should setup service account with pull secrets', async () => {
+      test('then should copy the jenkins credentials', async () => {
         const namespace = 'test';
 
         await classUnderTest.create(namespace);
 
-        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace);
+        expect(copyJenkinsCredentials).toHaveBeenCalledWith('tools', namespace);
       });
     });
   });
@@ -451,6 +481,132 @@ describe('namespace', () => {
         console.log('Actual result: ', actualResult);
         expect(actualResult)
           .toEqual([{name: name1}, {name: name2}, {name: name3}]);
+      });
+    });
+  });
+
+  describe('given copyJenkinsCredentials()', () => {
+    let copyServiceAccount: Mock;
+    beforeEach(() => {
+      copyServiceAccount = mockField(classUnderTest, 'copyServiceAccount');
+    });
+
+    describe('when called', () => {
+      test('then copy service account, role, and roleBinding', async () => {
+        const toNamespace = 'toNamespace';
+        const fromNamespace = 'fromNamespace';
+
+        await classUnderTest.copyJenkinsCredentials(fromNamespace, toNamespace);
+
+        expect(roles_copy).toHaveBeenCalledWith(
+          'jenkins-schedule-agents',
+          fromNamespace,
+          toNamespace,
+        );
+        expect(roleBindings_copy).toHaveBeenCalledWith(
+          'jenkins-schedule-agents',
+          fromNamespace,
+          toNamespace,
+        );
+        expect(copyServiceAccount).toHaveBeenCalledWith(
+          'jenkins',
+          fromNamespace,
+          toNamespace,
+        );
+      });
+    });
+  });
+
+  describe('given copyServiceAccount()', () => {
+    let getServiceAccountSecretNames: Mock;
+    beforeEach(() => {
+      getServiceAccountSecretNames = mockField(classUnderTest, 'getServiceAccountSecretNames');
+    });
+
+    describe('when called', () => {
+      test('then copy the service account', async () => {
+        getServiceAccountSecretNames.mockReturnValue([]);
+
+        const name = 'name';
+        const toNamespace = 'toNamespace';
+        const fromNamespace = 'fromNamespace';
+        await classUnderTest.copyServiceAccount(name, fromNamespace, toNamespace);
+
+        expect(serviceAccounts_copy).toHaveBeenCalledWith(name, fromNamespace, toNamespace);
+      });
+
+      test('then copy all of the service account secrets', async () => {
+        const name1 = 'name1';
+        const name2 = 'name2';
+        const name3 = 'name3';
+        const serviceAccount: ServiceAccount = {
+          kind: 'ServiceAccount',
+          metadata: {
+            name: 'test',
+          },
+        };
+        serviceAccounts_copy.mockResolvedValue(serviceAccount);
+        getServiceAccountSecretNames.mockReturnValue([name1, name2, name2]);
+
+        const name = 'name';
+        const toNamespace = 'toNamespace';
+        const fromNamespace = 'fromNamespace';
+        await classUnderTest.copyServiceAccount(name, fromNamespace, toNamespace);
+
+        expect(serviceAccounts_copy).toHaveBeenCalledWith(name, fromNamespace, toNamespace);
+        expect(secrets_copy).toHaveBeenCalledTimes(3);
+      });
+    })
+  })
+
+  describe('given getServiceAccountSecretNames()', () => {
+    describe('when serviceAccount is undefined', () => {
+      test('then return empty array', () => {
+        expect(classUnderTest.getServiceAccountSecretNames()).toEqual([]);
+      });
+    });
+
+    describe('when serviceAccount is empty object', () => {
+      test('then return empty array', () => {
+        expect(classUnderTest.getServiceAccountSecretNames({} as any)).toEqual([]);
+      });
+    });
+
+    describe('when serviceAccount has secrets and imagePullSecrets', () => {
+      test('then return secret names', () => {
+        const name1 = 'secret1';
+        const name2 = 'secret2';
+        const name3 = 'secret3';
+
+        const serviceAccount: ServiceAccount = {
+          metadata: {
+            name: 'serviceAccount',
+          },
+          secrets: [{name: name1}],
+          imagePullSecrets: [{name: name2}, {name: name3}]
+        };
+
+        expect(classUnderTest.getServiceAccountSecretNames(serviceAccount))
+          .toEqual([name1, name2, name3]);
+      });
+    });
+
+    describe('when serviceAccount has secrets and imagePullSecrets with overlapping names', () => {
+      test('then return unique set of secret names', () => {
+        const name1 = 'secret1';
+        const name2 = 'secret2';
+        const name3 = 'secret3';
+
+        const serviceAccount: ServiceAccount = {
+          metadata: {
+            name: 'serviceAccount',
+          },
+          secrets: [{name: name1}, {name: name2}],
+          imagePullSecrets: [{name: name2}, {name: name3}]
+        };
+
+        expect(classUnderTest.getServiceAccountSecretNames(serviceAccount))
+          .toEqual([name1, name2, name3]);
       });
     });
   });

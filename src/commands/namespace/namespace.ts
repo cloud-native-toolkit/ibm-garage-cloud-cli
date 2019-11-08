@@ -4,6 +4,8 @@ import {KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
 import {KubeMetadata, ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
 import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
 import {KubeNamespace} from '../../api/kubectl/namespace';
+import {KubeRole} from '../../api/kubectl/role';
+import {KubeRoleBinding} from '../../api/kubectl/role-binding';
 
 export abstract class Namespace {
   async abstract create(toNamespace: string, fromNamespace: string, notifyStatus?: (status: string) => void): Promise<string>;
@@ -21,6 +23,10 @@ export class NamespaceImpl implements Namespace{
   private configMaps: KubeConfigMap;
   @Inject
   private serviceAccounts: KubeServiceAccount;
+  @Inject
+  private roles: KubeRole;
+  @Inject
+  private roleBindings: KubeRoleBinding;
 
   async create(toNamespace: string, fromNamespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
     notifyStatus('Checking for existing namespace: ' + toNamespace);
@@ -41,6 +47,8 @@ export class NamespaceImpl implements Namespace{
     await this.copyConfigMaps(toNamespace, fromNamespace);
     notifyStatus('Copying Secrets');
     await this.copySecrets(toNamespace, fromNamespace);
+    notifyStatus('Copying Jenkins credentials');
+    await this.copyJenkinsCredentials(fromNamespace, toNamespace);
 
     return toNamespace;
   }
@@ -169,5 +177,46 @@ export class NamespaceImpl implements Namespace{
       }))
       .filter((secret: Secret) => !!secret.metadata.name.match(pullSecretPattern))
       .map((secret: Secret) => ({name: secret.metadata.name}));
+  }
+
+  async copyJenkinsCredentials(fromNamespace: string, toNamespace: string) {
+    await this.copyServiceAccount('jenkins', fromNamespace, toNamespace);
+
+    await this.roles.copy('jenkins-schedule-agents', fromNamespace, toNamespace);
+
+    await this.roleBindings.copy('jenkins-schedule-agents', fromNamespace, toNamespace);
+  }
+
+  async copyServiceAccount(name: string, fromNamespace: string, toNamespace: string) {
+    const serviceAccount: ServiceAccount = await this.serviceAccounts.copy(
+      name,
+      fromNamespace,
+      toNamespace,
+    );
+
+    const secretNames: string[] = this.getServiceAccountSecretNames(serviceAccount);
+
+    await Promise.all(secretNames.map(secretName => this.secrets.copy(
+      secretName,
+      fromNamespace,
+      toNamespace,
+    )));
+  }
+
+  getServiceAccountSecretNames(serviceAccount: ServiceAccount = {} as any): string[] {
+
+    const serviceAccountSecrets: Array<{name: string}> = []
+      .concat(...(serviceAccount.secrets || []))
+      .concat(...(serviceAccount.imagePullSecrets || []));
+
+    return serviceAccountSecrets
+      .map(val => val.name)
+      .reduce((result: string[], current: string) => {
+        if (!result.includes(current)) {
+          result.push(current);
+        }
+
+        return result;
+      }, [])
   }
 }
