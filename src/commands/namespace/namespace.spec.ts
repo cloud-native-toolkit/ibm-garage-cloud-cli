@@ -4,6 +4,7 @@ import Mock = jest.Mock;
 import {mockField, providerFromValue, setField} from '../../testHelper';
 import {KubeSecret, Secret} from '../../api/kubectl';
 import {KubeNamespace} from '../../api/kubectl/namespace';
+import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -11,7 +12,22 @@ describe('namespace', () => {
   });
 
   let classUnderTest: NamespaceImpl;
+  let serviceAccounts_get: Mock;
+  let serviceAccounts_update: Mock;
+  let secrets_list: Mock;
   beforeEach(() => {
+    serviceAccounts_get = jest.fn();
+    serviceAccounts_update = jest.fn();
+    Container.bind(KubeServiceAccount).provider(providerFromValue({
+      get: serviceAccounts_get,
+      update: serviceAccounts_update,
+    }));
+
+    secrets_list = jest.fn();
+    Container.bind(KubeSecret).provider(providerFromValue({
+      list: secrets_list,
+    }));
+
     classUnderTest = Container.get(Namespace);
   });
 
@@ -285,6 +301,65 @@ describe('namespace', () => {
     });
   });
 
+  describe('given setupServiceAccountWithPullSecrets()', () => {
+    const serviceAccount = {val: 'value'};
+
+    let containsPullSecretsMatchingPattern: Mock;
+    let updateServiceAccountWithPullSecretsMatchingPattern: Mock;
+    beforeEach(() => {
+      containsPullSecretsMatchingPattern = mockField(classUnderTest, 'containsPullSecretsMatchingPattern');
+      updateServiceAccountWithPullSecretsMatchingPattern = mockField(classUnderTest, 'updateServiceAccountWithPullSecretsMatchingPattern');
+
+      serviceAccounts_get.mockResolvedValue(serviceAccount);
+    });
+
+    describe('when service account contains pull secrets', () => {
+      beforeEach(() => {
+        containsPullSecretsMatchingPattern.mockReturnValue(true);
+      });
+
+      test('then do not update the secrets', async () => {
+        const namespace = 'ns';
+
+        await classUnderTest.setupServiceAccountWithPullSecrets(namespace);
+
+        expect(containsPullSecretsMatchingPattern).toHaveBeenCalledWith(serviceAccount, '.*icr-io');
+        expect(updateServiceAccountWithPullSecretsMatchingPattern).not.toHaveBeenCalled();
+        expect(serviceAccounts_update).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('when service account does not contain pull secrets', () => {
+      beforeEach(() => {
+        containsPullSecretsMatchingPattern.mockReturnValue(false);
+      });
+
+      test('then do not update the secrets', async () => {
+        const namespace = 'ns';
+
+        const updatedServiceAccount = {val: 'value2'};
+        updateServiceAccountWithPullSecretsMatchingPattern.mockResolvedValue(updatedServiceAccount)
+
+        await classUnderTest.setupServiceAccountWithPullSecrets(namespace);
+
+        const pullSecretPattern = '.*icr-io';
+        expect(containsPullSecretsMatchingPattern).toHaveBeenCalledWith(
+          serviceAccount,
+          pullSecretPattern
+        );
+        expect(updateServiceAccountWithPullSecretsMatchingPattern).toHaveBeenCalledWith(
+          serviceAccount,
+          pullSecretPattern
+        );
+        expect(serviceAccounts_update).toHaveBeenCalledWith(
+          'default',
+          {body: updatedServiceAccount},
+          namespace,
+        );
+      });
+    });
+  });
+
   describe('given containsPullSecretsMatchingPattern()', () => {
     describe('when imagePullSecrets is undefined', () => {
       test('then return false', async () => {
@@ -322,6 +397,60 @@ describe('namespace', () => {
         );
 
         expect(actualResult).toEqual(false);
+      });
+    });
+  });
+
+  describe('given updateServiceAccountWithPullSecretsMatchingPattern()', () => {
+    let listMatchingSecrets: Mock;
+    beforeEach(() => {
+      listMatchingSecrets = mockField(classUnderTest, 'listMatchingSecrets');
+    });
+
+    describe('when called', () => {
+      test('then add matching secrets to list', async () => {
+        const secrets = [{name: 'secret1'}, {name: 'secret2'}];
+        listMatchingSecrets.mockResolvedValue(secrets);
+
+        const serviceAccount: ServiceAccount = {
+          kind: 'ServiceAccount',
+          metadata: {
+            name: 'default'
+          },
+          imagePullSecrets: [{name: 'original-secret'}]
+        };
+        const pullSecretPattern = 'pattern';
+        const actualResult: ServiceAccount = await classUnderTest.updateServiceAccountWithPullSecretsMatchingPattern(
+          serviceAccount,
+          pullSecretPattern,
+        );
+
+        expect(actualResult.imagePullSecrets).toEqual([{name: 'secret1'}, {name: 'secret2'}, {name: 'original-secret'}]);
+      });
+    });
+  });
+
+  describe('given listMatchingSecrets()', () => {
+    describe('when secrets match', () => {
+      test('then return secret names', async () => {
+        const name1 = 'icr-io';
+        const name2 = 'us-icr-io';
+        const name3 = 'de-icr-io';
+        secrets_list.mockResolvedValue([
+          {metadata: {name: name1}},
+          {metadata: {name: name2}},
+          {metadata: {name: name3}},
+          {metadata: {name: 'another-secret'}},
+        ]);
+
+        const actualResult: Array<{name: string}> = await classUnderTest.listMatchingSecrets(
+          '.*icr-io',
+          'test'
+        );
+
+        console.log('Actual result: ', actualResult);
+        expect(actualResult)
+          .toEqual([{name: name1}, {name: name2}, {name: name3}]);
       });
     });
   });

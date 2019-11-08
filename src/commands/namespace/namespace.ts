@@ -150,25 +150,24 @@ export class NamespaceImpl implements Namespace{
 
   async updateServiceAccountWithPullSecretsMatchingPattern(serviceAccount: ServiceAccount, pullSecretPattern: string): Promise<ServiceAccount> {
 
-    const pullSecretRegex = new RegExp(pullSecretPattern, 'g');
-
-    const pullSecrets: Array<{name: string}> = (await this.secrets
-      .list({
-        namespace: serviceAccount.metadata.namespace,
-        filter: (secret: Secret) => pullSecretRegex.test(secret.metadata.name),
-      }))
-      .map((secret: Secret) => ({name: secret.metadata.name}));
-
-    const mapImagePullSecrets = (imagePullSecrets: Array<{name: string}> = []) => {
-      return imagePullSecrets.slice().concat(...pullSecrets);
-    };
+    const pullSecrets: Array<{name: string}> = await this.listMatchingSecrets(pullSecretPattern, serviceAccount.metadata.namespace);
 
     return Object.assign(
       {},
       serviceAccount,
       {
-        imagePullSecrets: mapImagePullSecrets(serviceAccount.imagePullSecrets)
+        imagePullSecrets: pullSecrets.slice().concat(serviceAccount.imagePullSecrets)
       }
     );
+  }
+
+  async listMatchingSecrets(pullSecretPattern: string, namespace): Promise<Array<{name: string}>> {
+
+    return (await this.secrets
+      .list({
+        namespace,
+      }))
+      .filter((secret: Secret) => !!secret.metadata.name.match(pullSecretPattern))
+      .map((secret: Secret) => ({name: secret.metadata.name}));
   }
 }

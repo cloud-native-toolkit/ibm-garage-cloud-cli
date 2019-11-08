@@ -8,16 +8,16 @@ import ora from 'ora';
 
 export const defineNamespace: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
 
+  const commandWithArg: string = `${command} <namespace>`;
+
   return {
-    command,
+    command: commandWithArg,
     describe: 'Create a namespace (if it doesn\'t exist) and prepare it with the necessary configuration',
     builder: (yargs: Argv<any>) => {
       return yargs
-        .option('namespace', {
-          alias: 'n',
-          describe: 'the namespace that will be created/used',
+        .positional('namespace', {
           require: true,
-          type: 'string',
+          describe: 'The namespace that will be created and/or prepared',
         })
         .option('templateNamespace', {
           alias: 't',

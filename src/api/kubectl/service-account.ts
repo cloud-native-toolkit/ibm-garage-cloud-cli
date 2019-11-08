@@ -4,7 +4,6 @@ import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernet
 import {KubeClient} from './client';
 
 export interface ServiceAccount extends KubeResource {
-  type: string;
   imagePullSecrets?: Array<{name: string}>;
   secrets?: Array<{name: string}>;
 }
