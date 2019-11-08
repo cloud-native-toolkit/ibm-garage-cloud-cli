@@ -113,20 +113,21 @@ describe('namespace', () => {
         });
       });
 
-      test('then should setup pull secrets from default namespace', async () => {
+      test('then should setup pull secrets from tools namespace', async () => {
         const namespace = 'test';
+        const fromNamespace = 'fromNamespace';
 
-        await classUnderTest.create(namespace);
+        await classUnderTest.create(namespace, fromNamespace);
 
-        expect(setupPullSecrets).toHaveBeenCalledWith(namespace, 'default');
+        expect(setupPullSecrets).toHaveBeenCalledWith(namespace, fromNamespace);
       });
 
-      test('then should setup tls secrets from default namespace', async () => {
+      test('then should setup tls secrets from tools namespace', async () => {
         const namespace = 'test';
+        const fromNamespace = 'ns';
+        await classUnderTest.create(namespace, fromNamespace);
 
-        await classUnderTest.create(namespace);
-
-        expect(setupTlsSecrets).toHaveBeenCalledWith(namespace, 'default');
+        expect(setupTlsSecrets).toHaveBeenCalledWith(namespace, fromNamespace);
       });
 
       test('then should setup service account with pull secrets', async () => {
@@ -343,22 +344,6 @@ describe('namespace', () => {
       serviceAccounts_get.mockResolvedValue(serviceAccount);
     });
 
-    describe('when service account contains pull secrets', () => {
-      beforeEach(() => {
-        containsPullSecretsMatchingPattern.mockReturnValue(true);
-      });
-
-      test('then do not update the secrets', async () => {
-        const namespace = 'ns';
-
-        await classUnderTest.setupServiceAccountWithPullSecrets(namespace);
-
-        expect(containsPullSecretsMatchingPattern).toHaveBeenCalledWith(serviceAccount, '.*icr-io');
-        expect(updateServiceAccountWithPullSecretsMatchingPattern).not.toHaveBeenCalled();
-        expect(serviceAccounts_update).not.toHaveBeenCalled();
-      });
-    });
-
     describe('when service account does not contain pull secrets', () => {
       beforeEach(() => {
         containsPullSecretsMatchingPattern.mockReturnValue(false);
@@ -373,10 +358,6 @@ describe('namespace', () => {
         await classUnderTest.setupServiceAccountWithPullSecrets(namespace);
 
         const pullSecretPattern = '.*icr-io';
-        expect(containsPullSecretsMatchingPattern).toHaveBeenCalledWith(
-          serviceAccount,
-          pullSecretPattern
-        );
         expect(updateServiceAccountWithPullSecretsMatchingPattern).toHaveBeenCalledWith(
           serviceAccount,
           pullSecretPattern
@@ -455,7 +436,7 @@ describe('namespace', () => {
           pullSecretPattern,
         );
 
-        expect(actualResult.imagePullSecrets).toEqual([{name: 'secret1'}, {name: 'secret2'}, {name: 'original-secret'}]);
+        expect(actualResult.imagePullSecrets).toEqual([{name: 'original-secret'}, {name: 'secret1'}, {name: 'secret2'}]);
       });
     });
   });
@@ -463,13 +444,19 @@ describe('namespace', () => {
   describe('given listMatchingSecrets()', () => {
     describe('when secrets match', () => {
       test('then return secret names', async () => {
-        const name1 = 'icr-io';
-        const name2 = 'us-icr-io';
-        const name3 = 'de-icr-io';
+        const name1 = 'au-icr-io';
+        const name2 = 'de-icr-io';
+        const name3 = 'icr-io';
+        const name4 = 'jp-icr-io';
+        const name5 = 'uk-icr-io';
+        const name6 = 'us-icr-io';
         secrets_list.mockResolvedValue([
           {metadata: {name: name1}},
           {metadata: {name: name2}},
           {metadata: {name: name3}},
+          {metadata: {name: name4}},
+          {metadata: {name: name5}},
+          {metadata: {name: name6}},
           {metadata: {name: 'another-secret'}},
         ]);
 
@@ -480,7 +467,14 @@ describe('namespace', () => {
 
         console.log('Actual result: ', actualResult);
         expect(actualResult)
-          .toEqual([{name: name1}, {name: name2}, {name: name3}]);
+          .toEqual([
+            {name: name1},
+            {name: name2},
+            {name: name3},
+            {name: name4},
+            {name: name5},
+            {name: name6},
+          ]);
       });
     });
   });

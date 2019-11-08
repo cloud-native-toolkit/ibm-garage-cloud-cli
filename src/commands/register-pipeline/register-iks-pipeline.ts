@@ -22,7 +22,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl: string }> {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.jenkinsNamespace);
 
@@ -33,21 +33,30 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     const headers = options.generateCrumb ? await this.generateJenkinsCrumbHeader(jenkinsAccess) : {};
 
     try {
-      const response: Response = await
-        post(`${jenkinsAccess.url}/createItem?name=${jobName}`)
-          .auth(jenkinsAccess.username, jenkinsAccess.api_token)
-          .set(headers)
-          .set('User-Agent', `${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`)
-          .set('Content-Type', 'text/xml')
-          .send(await this.buildJenkinsJobConfig(gitParams, credentialsName));
+      const jobUrl = jenkinsAccess.url;
+      // const jobUrl = `{jenkinsAccess.url}/job/${options.pipelineNamespace}`;
+      const response: Response = await this.buildJenkinsItem(
+        jobUrl,
+        jobName,
+        jenkinsAccess.username,
+        jenkinsAccess.api_token,
+        headers,
+        await this.buildJenkinsPipelineConfig(gitParams, credentialsName, options.pipelineNamespace),
+      );
 
       if (response.status !== 200 && response.status !== 201) {
         throw new Error(`Unable to create Jenkins job: ${response.text}`);
       }
 
-      return {jenkinsUrl: jenkinsAccess.url, jenkinsUser: jenkinsAccess.username, jenkinsPassword: jenkinsAccess.api_token, jobName};
+      return {
+        jenkinsUrl: jenkinsAccess.url,
+        jenkinsUser: jenkinsAccess.username,
+        jenkinsPassword: jenkinsAccess.api_token,
+        jobName,
+        webhookUrl: ''
+      };
     } catch (err) {
-      console.error('Error creating job', err);
+      console.error('Error creating job', err.message);
       throw err;
     }
   }
@@ -78,10 +87,26 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     return result as any;
   }
 
-  async buildJenkinsJobConfig(gitParams: GitParams, credentialsName: string): Promise<string> {
-    const data: Buffer = await this.fs.readFile(path.join(__dirname, '../../../etc/jenkins-config-template.xml'));
+  async buildJenkinsItem(url: string, jobName: string, username: string, apiToken: string, headers: object, content: string): Promise<Response> {
+    return post(`${url}/createItem?name=${jobName}`)
+        .auth(username, apiToken)
+        .set(headers)
+        .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`)
+        .set('Content-Type', 'text/xml')
+        .send(content);
+  }
+
+  async buildJenkinsFolderConfig(): Promise<string> {
+    const data: Buffer = await this.fs.readFile(path.join(__dirname, '../../../etc/jenkins-folder-template.xml'));
+
+    return data.toString();
+  }
+
+  async buildJenkinsPipelineConfig(gitParams: GitParams, credentialsName: string, namespace: string): Promise<string> {
+    const data: Buffer = await this.fs.readFile(path.join(__dirname, '../../../etc/jenkins-pipeline-template.xml'));
 
     return data.toString()
+      .replace(new RegExp('{{NAMESPACE}}', 'g'), namespace)
       .replace(new RegExp('{{GIT_REPO}}', 'g'), gitParams.url)
       .replace(new RegExp('{{GIT_CREDENTIALS}}', 'g'), credentialsName)
       .replace(new RegExp('{{GIT_BRANCH}}', 'g'), gitParams.branch);

@@ -49,6 +49,16 @@
       </com.cloudbees.jenkins.GitHubPushTrigger>
     </triggers>
   </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  <hudson.model.ParametersDefinitionProperty>
+    <parameterDefinitions>
+      <hudson.model.StringParameterDefinition>
+        <name>NAMESPACE</name>
+        <description></description>
+        <defaultValue>{{NAMESPACE}}</defaultValue>
+        <trim>false</trim>
+      </hudson.model.StringParameterDefinition>
+    </parameterDefinitions>
+  </hudson.model.ParametersDefinitionProperty>
 </properties>
 <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.73">
   <scm class="hudson.plugins.git.GitSCM" plugin="git@3.11.0">

@@ -6,4 +6,5 @@ export class CreateWebhookOptions {
   gitUrl: string;
   gitUsername: string;
   gitToken: string;
+  webhookUrl?: string;
 }

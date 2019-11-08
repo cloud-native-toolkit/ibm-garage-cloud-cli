@@ -8,4 +8,5 @@ export class RegisterPipelineOptions {
   gitPat?: string;
   values?: string;
   generateCrumb?: boolean = false;
+  serverUrl?: string;
 }

@@ -82,6 +82,7 @@ describe('register-iks-pipeline', () => {
 <value1>{{GIT_REPO}}</value1>
 <value2>{{GIT_CREDENTIALS}}</value2>
 <value3>{{GIT_BRANCH}}</value3>
+<value4>{{NAMESPACE}}</value4>
 </test>`);
       });
 
@@ -94,10 +95,11 @@ describe('register-iks-pipeline', () => {
           branch: 'master'
         };
         const credentialsName = 'credentialsName';
+        const namespace = 'big-namespace1';
 
         test('replace {{GIT_REPO}} with gitParams.url', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
+          const result = await classUnderTest.buildJenkinsPipelineConfig(gitParams, credentialsName, namespace);
 
           expect(result).not.toContain('{{GIT_REPO}}');
           expect(result).toContain(gitParams.url);
@@ -105,7 +107,7 @@ describe('register-iks-pipeline', () => {
 
         test('replace {{GIT_CREDENTIALS}} with credentialsName', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
+          const result = await classUnderTest.buildJenkinsPipelineConfig(gitParams, credentialsName, namespace);
 
           expect(result).not.toContain('{{GIT_CREDENTIALS}}');
           expect(result).toContain(credentialsName);
@@ -113,15 +115,23 @@ describe('register-iks-pipeline', () => {
 
         test('replace {{GIT_BRANCH}} with gitParams.branch', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
+          const result = await classUnderTest.buildJenkinsPipelineConfig(gitParams, credentialsName, namespace);
 
           expect(result).not.toContain('{{GIT_BRANCH}}');
           expect(result).toContain(gitParams.branch);
         });
 
+        test('replace {{NAMESPACE}} with gitParams.branch', async () => {
+
+          const result = await classUnderTest.buildJenkinsPipelineConfig(gitParams, credentialsName, namespace);
+
+          expect(result).not.toContain('{{NAMESPACE}}');
+          expect(result).toContain(namespace);
+        });
+
         test('replace all {{xxx}} references with values', async () => {
 
-          const result = await classUnderTest.buildJenkinsJobConfig(gitParams, credentialsName);
+          const result = await classUnderTest.buildJenkinsPipelineConfig(gitParams, credentialsName, namespace);
 
           expect(result).not.toMatch(/{{.*}}/);
         });

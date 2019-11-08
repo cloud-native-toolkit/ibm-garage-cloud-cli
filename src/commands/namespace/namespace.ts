@@ -36,9 +36,9 @@ export class NamespaceImpl implements Namespace{
     }
 
     notifyStatus('Setting up pull secrets');
-    await this.setupPullSecrets(toNamespace, 'default');
+    await this.setupPullSecrets(toNamespace, fromNamespace);
     notifyStatus('Setting up tls secrets');
-    await this.setupTlsSecrets(toNamespace, 'default');
+    await this.setupTlsSecrets(toNamespace, fromNamespace);
 
     notifyStatus('Adding pull secrets to serviceAccount');
     await this.setupServiceAccountWithPullSecrets(toNamespace);
@@ -47,8 +47,11 @@ export class NamespaceImpl implements Namespace{
     await this.copyConfigMaps(toNamespace, fromNamespace);
     notifyStatus('Copying Secrets');
     await this.copySecrets(toNamespace, fromNamespace);
-    notifyStatus('Copying Jenkins credentials');
-    await this.copyJenkinsCredentials(fromNamespace, toNamespace);
+
+    try {
+      notifyStatus('Copying Jenkins credentials');
+      await this.copyJenkinsCredentials(fromNamespace, toNamespace);
+    } catch (err) {}
 
     return toNamespace;
   }
@@ -132,18 +135,16 @@ export class NamespaceImpl implements Namespace{
     const serviceAccount: ServiceAccount = await this.serviceAccounts.get(serviceAccountName, namespace);
 
     const pullSecretPattern = '.*icr-io';
-    if (!this.containsPullSecretsMatchingPattern(serviceAccount, pullSecretPattern)) {
-      const serviceAccountWithPullSecrets: ServiceAccount = await this.updateServiceAccountWithPullSecretsMatchingPattern(
-        serviceAccount,
-        pullSecretPattern,
-      );
+    const serviceAccountWithPullSecrets: ServiceAccount = await this.updateServiceAccountWithPullSecretsMatchingPattern(
+      serviceAccount,
+      pullSecretPattern,
+    );
 
-      return this.serviceAccounts.update(
-        serviceAccountName,
-        {body: serviceAccountWithPullSecrets},
-        namespace,
-      );
-    }
+    return this.serviceAccounts.update(
+      serviceAccountName,
+      {body: serviceAccountWithPullSecrets},
+      namespace,
+    );
   }
 
   containsPullSecretsMatchingPattern(serviceAccount: ServiceAccount, pattern: string): boolean {
@@ -164,7 +165,13 @@ export class NamespaceImpl implements Namespace{
       {},
       serviceAccount,
       {
-        imagePullSecrets: pullSecrets.slice().concat(serviceAccount.imagePullSecrets)
+        imagePullSecrets: pullSecrets.reduce((secrets: Array<{name: string}>, secret: {name: string}) => {
+          if (!secrets.includes(secret)) {
+            secrets.push(secret);
+          }
+
+          return secrets;
+        }, serviceAccount.imagePullSecrets.slice())
       }
     );
   }

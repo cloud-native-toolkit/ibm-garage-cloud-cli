@@ -1,5 +1,4 @@
 import {Inject} from 'typescript-ioc';
-import path = require('path');
 import {prompt, Questions} from 'inquirer';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
@@ -9,9 +8,21 @@ import {FsPromises} from '../../util/file-util';
 import * as openshift from '../../api/openshift';
 import {OpenshiftCommands} from '../../api/openshift';
 import {RegisterPipelineType} from './register-pipeline-type';
+import path = require('path');
+const openshiftRestClient = require('openshift-rest-client').OpenshiftClient;
 
 interface Prompt {
   shouldUpdate: boolean;
+}
+
+interface GitTrigger {
+  secret: string;
+}
+
+interface BuildTrigger {
+  type: 'GitHub' | 'GitLab';
+  github?: GitTrigger;
+  gitlab?: GitTrigger;
 }
 
 export class RegisterOpenshiftPipeline implements RegisterPipelineType {
@@ -29,10 +40,18 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl: string }> {
 
     try {
-      const buildConfig = this.generateBuildConfig(credentialsName, gitParams.url, gitParams.branch);
+      const secret = 'secret101';
+      const buildConfig = this.generateBuildConfig(
+        credentialsName,
+        gitParams.url,
+        gitParams.branch,
+        options.pipelineNamespace,
+        gitParams.type,
+        secret,
+      );
 
       const fileName = await this.fsPromises.writeFile(
         path.join(process.cwd(), './pipeline-build-config.json'),
@@ -43,13 +62,38 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
       const host: string = await this.getRouteHosts(options.pipelineNamespace || 'tools', 'jenkins');
 
-      return {jenkinsUrl: host ? `https://${host}` : '', jobName: gitParams.name, jenkinsUser: '', jenkinsPassword: ''};
+      const webhookUrl = await this.buildWebhookUrl(
+        options.serverUrl,
+        options.pipelineNamespace,
+        buildConfig.metadata.name,
+        secret,
+        gitParams.type,
+      );
+
+      return {
+        jenkinsUrl: host ? `https://${host}` : '',
+        jobName: gitParams.name,
+        webhookUrl,
+        jenkinsUser: '',
+        jenkinsPassword: ''
+      };
     } catch (err) {
       console.log('error registering', err);
     }
   }
 
-  generateBuildConfig(name: string, uri: string, branch: string = 'master', jenkinsFile: string = 'Jenkinsfile') {
+  async buildWebhookUrl(serverUrl: string, namespace: string, jobName: string, secret: string, gitType: string) {
+    if (!serverUrl) {
+      console.log('Skipping webhook since serverUrl is empty');
+      return '';
+    }
+
+    const type = gitType === 'gitlab' ? 'gitlab' : 'github';
+
+    return `${serverUrl}/apis/build.openshift.io/v1/namespaces/${namespace}/buildconfigs/${jobName}/webhooks/${secret}/${type}`;
+  }
+
+  generateBuildConfig(name: string, uri: string, branch: string = 'master', namespace: string, gitType: string = 'github', secret: string, jenkinsFile: string = 'Jenkinsfile') {
     return {
       apiVersion: 'v1',
       kind: 'BuildConfig',
@@ -57,6 +101,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
         name
       },
       spec: {
+        triggers: [this.buildGitTrigger(gitType, secret)],
         source: {
           git: {
             uri,
@@ -68,12 +113,34 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
             jenkinsfilePath: jenkinsFile,
             env: [{
               name: 'CLOUD_NAME',
-              value: 'openshift'
+              value: 'openshift',
+            }, {
+              name: 'NAMESPACE',
+              value: namespace,
             }]
           }
         }
       }
     };
+  }
+
+  buildGitTrigger(gitType: string, secret: string): BuildTrigger {
+
+    if (gitType === 'gitlab') {
+      return {
+        type: 'GitLab',
+        gitlab: {
+          secret,
+        }
+      };
+    } else {
+      return {
+        type: 'GitHub',
+        github: {
+          secret: 'secret201',
+        }
+      };
+    }
   }
 
   async createBuildPipeline(pipelineName: string, fileName: string, namespace: string = 'dev') {

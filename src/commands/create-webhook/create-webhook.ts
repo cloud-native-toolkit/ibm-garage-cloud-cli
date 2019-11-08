@@ -10,6 +10,18 @@ export enum GitEvents {
 
 type GitHookContentType = 'json' | 'form';
 
+export class GitSlug {
+  protocol: string;
+  host: string;
+  owner: string;
+  repo: string;
+}
+
+export class GitConfig extends GitSlug {
+  url: string;
+  type: string;
+}
+
 export enum GitHookUrlVerification {
   performed = '0',
   notPerformed = '1'
@@ -44,6 +56,7 @@ interface GitlabParams {
   jenkinsUser: string;
   jenkinsPassword: string;
   jobName: string;
+  webhookUrl?: string;
 }
 
 interface GitAuthResponse {
@@ -67,7 +80,9 @@ interface GitAuthResponse {
 
 export abstract class CreateWebhook {
   async abstract createWebhook(options: CreateWebhookOptions): Promise<string>;
+  abstract extractGitConfig(gitUrl: string): GitConfig;
 }
+
 
 export enum CreateWebhookErrorTypes {
   alreadyExists = 'alreadyExists',
@@ -115,19 +130,18 @@ export class CreateWebhookImpl implements CreateWebhook {
 
   async createWebhook(options: CreateWebhookOptions): Promise<string> {
 
-    const gitSlug = this.parseGitSlug(options.gitUrl);
-    const apiUrl: {url: string, type: string} = this.gitApiUrl(gitSlug);
+    const gitConfig: GitConfig = this.extractGitConfig(options.gitUrl);
 
     try {
       const response: Response = await post(this.buildGitUrl(options))
-        .set(apiUrl.type === 'github'
+        .set(gitConfig.type === 'github'
           ? {'Authorization': `token ${options.gitToken}`}
           : {'Private-Token': options.gitToken})
         .set('User-Agent', `${options.gitUsername} via ibm-garage-cloud cli`)
-        .accept(apiUrl.type === 'github' ? 'application/vnd.github.v3+json' : 'application/json')
-        .send(apiUrl.type === 'gitlab'
-          ? this.buildGitlabHookData(Object.assign({}, options, gitSlug))
-          : this.buildGitWebhookData(options.jenkinsUrl));
+        .accept(gitConfig.type === 'github' ? 'application/vnd.github.v3+json' : 'application/json')
+        .send(gitConfig.type === 'gitlab'
+          ? this.buildGitlabHookData(Object.assign({}, options, gitConfig))
+          : this.buildGitWebhookData(options.jenkinsUrl, options.webhookUrl));
 
       return response.body.id;
     } catch (err) {
@@ -152,7 +166,18 @@ export class CreateWebhookImpl implements CreateWebhook {
     return `${apiUrl.url}/${apiUrl.type === 'gitlab' ? 'projects' : 'repos'}/${gitSlug.owner}${apiUrl.type === 'gitlab' ? '%2F' : '/'}${gitSlug.repo}/hooks`;
   }
 
-  parseGitSlug(gitUrl: string): {protocol: string; host: string; owner: string; repo: string} {
+  extractGitConfig(gitUrl: string): GitConfig {
+    const gitSlug: GitSlug = this.parseGitSlug(gitUrl);
+    const apiUrl: {url: string, type: string} = this.gitApiUrl(gitSlug);
+
+    return Object.assign(
+      {},
+      gitSlug,
+      apiUrl,
+    );
+  }
+
+  parseGitSlug(gitUrl: string): GitSlug {
     const results: string[] = new RegExp('(https{0,1}):\/\/([^\/]+)\/([^\/]+)\/([^\/]+)').exec(gitUrl);
 
     if (!results || results.length < 5) {
@@ -170,13 +195,17 @@ export class CreateWebhookImpl implements CreateWebhook {
         : {url: `${protocol}://${host}/api/v3`, type: 'ghe'});
   }
 
-  buildGitWebhookData(jenkinsUrl) {
+  buildGitWebhookData(jenkinsUrl: string, webhookUrl?: string) {
+    const url = webhookUrl ? webhookUrl : `${jenkinsUrl}/github-webhook/`;
+
+    console.log('Creating webhook to url: ', url);
+
     const pushGitHook: GitHookData = {
       name: 'web',
       events: [GitEvents.push],
       active: true,
       config: {
-        url: `${jenkinsUrl}/github-webhook/`,
+        url,
         content_type: 'json',
         insecure_ssl: GitHookUrlVerification.performed,
       }
@@ -184,7 +213,7 @@ export class CreateWebhookImpl implements CreateWebhook {
     return pushGitHook;
   }
 
-  buildGitlabHookData({owner, repo, jenkinsUrl, jenkinsUser, jenkinsPassword, jobName}: GitlabParams): GitlabHookData {
+  buildGitlabHookData({owner, repo, jenkinsUrl, jenkinsUser, jenkinsPassword, jobName, webhookUrl}: GitlabParams): GitlabHookData {
     const urlParts = /(.*):\/\/(.*)\/*/.exec(jenkinsUrl);
     const protocol = urlParts[1];
     const host = urlParts[2];
@@ -193,9 +222,15 @@ export class CreateWebhookImpl implements CreateWebhook {
       ? `${jenkinsUser}:${jenkinsPassword}@`
       : '';
 
+    const url = webhookUrl
+      ? webhookUrl
+      : `${protocol}://${credentials}${host}/project/${jobName}`;
+
+    console.log('Creating webhook to url: ', url);
+
     return {
       id: `${owner}%2F${repo}`,
-      url: `${protocol}://${credentials}${host}/project/${jobName}`,
+      url,
       push_events: true,
       enable_ssl_verification: (protocol === 'https'),
     } as any;

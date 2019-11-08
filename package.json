@@ -69,6 +69,7 @@
     "kubernetes-client": "^8.3.0",
     "lodash": "^4.17.15",
     "open": "^6.3.0",
+    "openshift-rest-client": "^3.0.0",
     "ora": "^3.4.0",
     "puppeteer": "^1.18.0",
     "superagent": "^5.1.0",
