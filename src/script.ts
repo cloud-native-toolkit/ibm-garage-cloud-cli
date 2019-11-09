@@ -14,6 +14,7 @@ import {defineCredentialsCommand} from './commands/credentials/define-command';
 import {defineIngressCommand} from './commands/ingress/define-command';
 import {defineToolConfigCommand} from './commands/tool-config/define-command';
 import {defineNamespace} from './commands/namespace/define-command';
+import {defineDashboard} from './commands/dashboard/define-command';
 
 scriptName('igc')
   .usage('IBM Garage Cloud CLI')
@@ -31,6 +32,9 @@ scriptName('igc')
   }))
   .command(defineCreateWebhookCommand({
     command: 'git-webhook',
+  }))
+  .command(defineDashboard({
+    command: 'dashboard',
   }))
   .command(defineBuildImageCommand({
     command: 'build',
