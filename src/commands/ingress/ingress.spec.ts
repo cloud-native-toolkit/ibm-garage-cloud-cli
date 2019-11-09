@@ -12,11 +12,11 @@ describe('ingress', () => {
   describe('given GetIngress', () => {
     let classUnderTest: GetIngressImpl;
 
-    let mock_getAllIngressHosts: Mock;
+    let mock_getAllUrls: Mock;
 
     beforeEach(() => {
-      mock_getAllIngressHosts = jest.fn();
-      Container.bind(KubeIngress).provider(providerFromValue({getAllHosts: mock_getAllIngressHosts}));
+      mock_getAllUrls = jest.fn();
+      Container.bind(KubeIngress).provider(providerFromValue({getAllUrls: mock_getAllUrls}));
 
       classUnderTest = Container.get(GetIngress);
     });
@@ -24,16 +24,17 @@ describe('ingress', () => {
     describe('given getIngressHosts()', () => {
 
       describe('when called', () => {
-        const hosts = {items: ['jenkins']};
+        const hosts = [{name: 'jenkins', urls: ['jenkins', 'jenkins1']}];
         const namespace = "dev";
 
         beforeEach(() => {
-          mock_getAllIngressHosts.mockResolvedValue(hosts);
+          mock_getAllUrls.mockResolvedValue(hosts);
         });
 
-        test('returns values from getAllIngressHosts', async () => {
-          expect(await classUnderTest.getIngress(namespace)).toEqual(hosts);
-          expect(mock_getAllIngressHosts.mock.calls[0][0]).toEqual(namespace);
+        test('returns values from ingress.getAllUrls', async () => {
+          expect(await classUnderTest.getIngress(namespace)).toEqual([{name: 'jenkins', url: 'jenkins'}]);
+
+          expect(mock_getAllUrls).toHaveBeenCalledWith(namespace);
         });
 
       });
