@@ -42,8 +42,27 @@ export class KubeIngress extends AbstractKubernetesResourceManager<Ingress> {
     super(props);
   }
 
+  async getAllUrls(namespace: string): Promise<Array<{name: string, urls: string[]}>> {
+    const ingresses: Ingress[] = await this.list({namespace});
+
+    const values: Array<{name: string, urls: string[]}> = ingresses.map(ingress => this.mapIngress(ingress));
+
+    return values;
+  }
+
   async getUrls(namespace: string, ingressName: string): Promise<string[]> {
     const ingress: Ingress = await this.get(ingressName, namespace);
+
+    const {urls} = this.mapIngress(ingress);
+
+    if (urls.length === 0) {
+      throw new Error('no hosts found');
+    }
+
+    return urls;
+  }
+
+  mapIngress(ingress: Ingress): {name: string, urls: string[]} {
 
     const httpsUrls: string[] = _.flatMap((ingress.spec.tls || [])
       .map(tls => tls.hosts.map(host => `https://${host}`)));
@@ -55,11 +74,20 @@ export class KubeIngress extends AbstractKubernetesResourceManager<Ingress> {
 
     const urls = [].concat(...httpsUrls).concat(...httpUrls);
 
-    if (urls.length === 0) {
-      throw new Error('no hosts found');
-    }
+    return {
+      name: this.getLabel(ingress),
+      urls
+    };
+  }
 
-    return urls;
+  getLabel(ingress: Ingress): string {
+    const labels = [
+      _.get(ingress, ['metadata', 'labels', 'app.kubernetes.io/name']),
+      _.get(ingress, ['metadata', 'labels', 'app']),
+      _.get(ingress, ['metadata', 'name']),
+    ];
+
+    return labels.filter(value => !!value)[0];
   }
 
   async getHosts(namespace: string, ingressName: string): Promise<string[]> {

@@ -1,11 +1,17 @@
 import {Arguments, Argv, CommandModule} from 'yargs';
 import ora from 'ora';
+import {Container} from 'typescript-ioc';
+import {prompt, Questions} from 'inquirer';
+import * as open from 'open';
 
 import {DefaultOptionBuilder, YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 import {CommandLineOptions} from '../../model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import {GetIngress} from './ingress';
-import {Container} from 'typescript-ioc';
+
+interface SelectedIngress {
+  selection: string;
+}
 
 export const defineIngressCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
@@ -20,8 +26,13 @@ export const defineIngressCommand: YargsCommandDefinition = <T>({command}: Yargs
       .quiet()
       .debug()
       .build()
-      ,
-    handler: async (argv: Arguments<{namespace: string; yaml: boolean} & CommandLineOptions>) => {
+      .option('print', {
+        requiresArg: false,
+        describe: 'Flag indicating that values should simply be printed',
+        type: 'boolean',
+        default: false,
+      }),
+    handler: async (argv: Arguments<{namespace: string; yaml: boolean; print: boolean} & CommandLineOptions>) => {
       let spinner;
 
       function statusCallback(status: string) {
@@ -38,18 +49,43 @@ export const defineIngressCommand: YargsCommandDefinition = <T>({command}: Yargs
         const command: GetIngress = Container.get(GetIngress);
 
         // Retrieve the results
-        const result = await command.getIngress(argv.namespace, statusCallback);
+        const result: Array<{name: string, url: string}> = await command.getIngress(argv.namespace, statusCallback);
 
         if (spinner) {
           spinner.stop();
         }
-        console.log("Host(s):");
-        console.log(result.map(element => {
-          return "http://"+element;
-        }));
-        
 
-        process.exit(0);
+        const choices = result.map(ingress => ({name: `${ingress.name} - ${ingress.url}`, value: ingress.url}));
+        function printResults() {
+          choices.forEach(choice => {
+            console.log('  ' + choice.name);
+          });
+        }
+
+        if (argv.print) {
+          console.log(`Ingresses in the '${argv.namespace}' namespace`);
+          printResults();
+          process.exit(0);
+        }
+
+        const input: SelectedIngress = await prompt([{
+          type: 'rawlist',
+          choices: [{
+            key: 'x',
+            name: 'Exit',
+            value: 'exit'
+          } as { key?: string, name: string, value: string }].concat(...choices),
+          name: 'selection',
+          message: `Ingresses in the '${argv.namespace}' namespace. Select an ingress to launch the default browser or 'Exit'.`,
+          default: true,
+          suffix: '\n'
+        }]);
+
+        if (input.selection !== 'exit') {
+          await open(input.selection);
+        } else {
+          printResults();
+        }
       } catch (err) {
         if (spinner) {
           spinner.stop();
