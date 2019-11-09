@@ -72,6 +72,8 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
       await this.createJenkinsPipeline(pipelineOptions);
 
+      await this.startJenkinsPipeline(Object.assign({}, pipelineOptions, {namespace: options.pipelineNamespace}));
+
       return {
         jenkinsUrl: jenkinsAccess.url,
         jenkinsUser: jenkinsAccess.username,
@@ -194,6 +196,18 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     const result: Prompt = await prompt(questions);
 
     return result.shouldUpdate;
+  }
+
+  async startJenkinsPipeline({url, name, username, api_token, namespace, headers = {}}: {url: string, name: string, username: string, api_token: string, namespace: string, headers: object}) {
+    // curl -X POST http://developer:developer@localhost:8080/job/test/buildWithParameter
+    // --data-urlencode json='{"parameter": [{"name":"paramA", "value":"123"}]}'
+    return post(`${url}/job/${name}/buildWithParameters`)
+      .query({
+        NAMESPACE: namespace,
+      })
+      .auth(username, api_token)
+      .set(headers)
+      .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`);
   }
 
   async readFilePromise(filename: string): Promise<Buffer> {

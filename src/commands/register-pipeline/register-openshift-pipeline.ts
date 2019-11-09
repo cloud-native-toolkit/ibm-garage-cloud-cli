@@ -78,7 +78,6 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
         jenkinsPassword: ''
       };
     } catch (err) {
-      console.log('error registering', err);
     }
   }
 
