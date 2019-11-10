@@ -62,6 +62,11 @@ export const defineIngressCommand: YargsCommandDefinition = <T>({command}: Yargs
           });
         }
 
+        if (choices.length === 0) {
+          console.log(`No ingresses found for the '${argv.namespace}' namespace`);
+          process.exit(0);
+        }
+
         if (argv.print) {
           console.log(`Ingresses in the '${argv.namespace}' namespace`);
           printResults();

@@ -33,7 +33,8 @@ export const defineDashboard: YargsCommandDefinition = <T>({command}: YargsComma
           await open(urls[0]);
         }
       } catch (err) {
-        console.log('Error getting dashboard ingress');
+        spinner.stop();
+        console.log('Error getting dashboard ingress.\n  Make sure the kubernetes environment has been initialized.\n');
         process.exit(1);
       } finally {
         spinner.stop();
