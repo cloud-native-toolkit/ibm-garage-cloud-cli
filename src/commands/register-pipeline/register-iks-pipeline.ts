@@ -23,7 +23,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
   setupDefaultOptions(): Partial<RegisterPipelineOptions> {
     return {
       jenkinsNamespace: 'tools',
-      pipelineNamespace: 'tools',
+      pipelineNamespace: 'dev',
     };
   }
 
