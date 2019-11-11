@@ -27,7 +27,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl: string }> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.jenkinsNamespace);
 
@@ -79,7 +79,6 @@ export class RegisterIksPipeline implements RegisterPipelineType {
         jenkinsUser: jenkinsAccess.username,
         jenkinsPassword: jenkinsAccess.api_token,
         jobName,
-        webhookUrl: ''
       };
     } catch (err) {
       console.error('Error creating job', err);
