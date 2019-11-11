@@ -9,7 +9,6 @@ import * as openshift from '../../api/openshift';
 import {OpenshiftCommands} from '../../api/openshift';
 import {RegisterPipelineType} from './register-pipeline-type';
 import path = require('path');
-const openshiftRestClient = require('openshift-rest-client').OpenshiftClient;
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -70,10 +69,11 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
         gitParams.type,
       );
 
+      const jenkinsUrl = host ? `https://${host}` : '';
       return {
-        jenkinsUrl: host ? `https://${host}` : '',
+        jenkinsUrl,
         jobName: gitParams.name,
-        webhookUrl,
+        webhookUrl: '',
         jenkinsUser: '',
         jenkinsPassword: ''
       };

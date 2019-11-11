@@ -12,7 +12,7 @@ export class GitParams {
 }
 
 export abstract class GitSecret {
-  async abstract create(gitParams: GitParams, namespace: string, additionalParams: any): Promise<string>;
+  async abstract create(gitParams: GitParams, namespaces: string | string[], additionalParams: any): Promise<string>;
 }
 
 @Provides(GitSecret)
@@ -20,16 +20,18 @@ export class GitSecretImpl implements GitSecret {
   @Inject
   readonly kubeSecret: KubeSecret;
 
-  async create(gitParams: GitParams, namespace: string = 'tools', additionalParams: any = {}): Promise<string> {
+  async create(gitParams: GitParams, namespaces: string | string[] = ['tools'], additionalParams: any = {}): Promise<string> {
     const gitSecret = this.buildGitSecretBody(gitParams, additionalParams);
 
-    const secret: Secret = await this.kubeSecret.createOrUpdate(
+    const namespaceValues = Array.isArray(namespaces) ? namespaces : [namespaces];
+
+    await Promise.all(namespaceValues.map(namespace => this.kubeSecret.createOrUpdate(
       gitParams.name,
       {body: gitSecret},
       namespace,
-    );
+    )));
 
-    return secret.metadata.name;
+    return gitParams.name;
   }
 
   buildGitSecretBody(gitParams: GitParams, additionalParams: any = {}): Secret {

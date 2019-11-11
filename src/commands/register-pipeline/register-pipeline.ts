@@ -67,9 +67,15 @@ export class RegisterPipelineImpl {
 
     await this.setupNamespace(options.pipelineNamespace, options.jenkinsNamespace, notifyStatus);
 
-    notifyStatus('Creating secret with git credentials');
+    notifyStatus('Creating secret(s) with git credentials');
 
-    const credentialsName = await this.gitSecret.create(gitParams, options.pipelineNamespace, await this.readValuesFile(options.values));
+    const credentialsName = await this.gitSecret.create(
+      gitParams,
+      [
+        options.pipelineNamespace,
+        options.jenkinsNamespace
+      ],
+      await this.readValuesFile(options.values));
 
     notifyStatus('Registering pipeline: ' + credentialsName);
 

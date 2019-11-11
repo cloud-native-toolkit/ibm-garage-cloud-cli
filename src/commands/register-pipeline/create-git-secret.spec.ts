@@ -52,7 +52,7 @@ describe('create-git-secret', () => {
 
         const actualResult = await classUnderTest.create(gitParams, namespace, additionalParams);
 
-        expect(actualResult).toEqual(name);
+        expect(actualResult).toEqual(gitParams.name);
 
         expect(mock_buildGitSecretBody).toHaveBeenCalledWith(gitParams, additionalParams);
         expect(mock_createOrUpdateSecret).toHaveBeenCalledWith(gitParams.name, {body: gitSecretBody}, namespace);
