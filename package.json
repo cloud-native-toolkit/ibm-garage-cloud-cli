@@ -1,6 +1,6 @@
 {
   "name": "@garage-catalyst/ibm-garage-cloud-cli",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "CLI that wraps IBM Cloud CLI to simplify build and deploy image functions",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -71,7 +71,6 @@
     "open": "^6.3.0",
     "openshift-rest-client": "^3.0.0",
     "ora": "^3.4.0",
-    "puppeteer": "^1.18.0",
     "superagent": "^5.1.0",
     "tslib": "^1.10.0",
     "typescript-ioc": "^1.2.5",

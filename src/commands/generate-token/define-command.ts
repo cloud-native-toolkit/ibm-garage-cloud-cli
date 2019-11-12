@@ -7,14 +7,16 @@ import {
   YargsCommandDefinition,
   YargsCommandDefinitionArgs
 } from '../../util/yargs-support';
-import {GenerateToken, generateToken, GenerateTokenOptions} from '../generate-token';
-import {CommandLineOptions} from '../../model';
 import {Container} from 'typescript-ioc';
+
+import {GenerateToken, GenerateTokenOptions} from '../generate-token';
+import {GenerateTokenImpl} from '../generate-token/generate-token-impl';
+import {CommandLineOptions} from '../../model';
 
 export const defineGenerateTokenCommand: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   const generateTokenCommand: GenerateToken = Container.get(GenerateToken);
 
-  if (!generateTokenCommand.isAvailable()) {
+  if (!generateTokenCommand || !generateTokenCommand.isAvailable || !generateTokenCommand.isAvailable()) {
     return;
   }
 

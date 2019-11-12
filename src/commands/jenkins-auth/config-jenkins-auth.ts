@@ -37,7 +37,7 @@ export class JenkinsAuthImpl implements JenkinsAuth {
   private generateToken: GenerateToken;
 
   isAvailable(): boolean {
-    return this.generateToken.isAvailable();
+    return this.generateToken && this.generateToken.isAvailable && this.generateToken.isAvailable();
   }
 
   async configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {

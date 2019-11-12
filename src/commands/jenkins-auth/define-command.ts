@@ -10,11 +10,12 @@ import {
 } from '../../util/yargs-support';
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {JenkinsAuth} from './config-jenkins-auth';
+import {GenerateTokenImpl} from '../generate-token/generate-token-impl';
 
 export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   const jenkinsAuth: JenkinsAuth = Container.get(JenkinsAuth);
 
-  if (!jenkinsAuth.isAvailable()) {
+  if (!jenkinsAuth || !jenkinsAuth.isAvailable || !jenkinsAuth.isAvailable()) {
     return;
   }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import {scriptName} from 'yargs';
+import {CommandModule, scriptName} from 'yargs';
 
 import {defineBuildImageCommand} from './commands/build-image/define-command';
 import {defineDeployImageCommand} from './commands/deploy-image/define-command';
@@ -16,50 +16,58 @@ import {defineToolConfigCommand} from './commands/tool-config/define-command';
 import {defineNamespace} from './commands/namespace/define-command';
 import {defineDashboard} from './commands/dashboard/define-command';
 
-scriptName('igc')
+
+const yarg = scriptName('igc')
   .usage('IBM Garage Cloud CLI')
   .usage('')
   .usage('Usage: $0 <command> [args]')
-  .command(defineJenkinsAuth({
+  .demandCommand();
+
+const commands: Array<CommandModule | undefined> = [
+  defineJenkinsAuth({
     command: 'jenkins-auth',
-  }))
-  .command(defineGenerateTokenCommand({
+  }),
+  defineGenerateTokenCommand({
     command: 'gen-token'
-  }))
-  .command(defineRegisterPipelineCommand({
+  }),
+  defineRegisterPipelineCommand({
     command: 'pipeline',
     aliases: ['register'],
-  }))
-  .command(defineCreateWebhookCommand({
+  }),
+  defineCreateWebhookCommand({
     command: 'git-webhook',
-  }))
-  .command(defineDashboard({
+  }),
+  defineDashboard({
     command: 'dashboard',
-  }))
-  .command(defineBuildImageCommand({
+  }),
+  defineBuildImageCommand({
     command: 'build',
-  }))
-  .command(defineDeployImageCommand({
+  }),
+  defineDeployImageCommand({
     command: 'deploy',
-  }))
-  .command(defineLaunchToolsCommand({
+  }),
+  defineLaunchToolsCommand({
     command: 'tools',
-  }))
-  .command(defineGetVlanCommand({
+  }),
+  defineGetVlanCommand({
     command: 'vlan',
-  }))
-  .command(defineCredentialsCommand({
+  }),
+  defineCredentialsCommand({
     command: 'credentials',
-  }))
-  .command(defineIngressCommand({
+  }),
+  defineIngressCommand({
     command: 'ingress',
-  }))
-  .command(defineToolConfigCommand({
+  }),
+  defineToolConfigCommand({
     command: 'tool-config',
-  }))
-  .command(defineNamespace({
+  }),
+  defineNamespace({
     command: 'namespace',
-  }))
-  .demandCommand()
-  .help()
+  }),
+];
+commands
+  .filter(command => !!command)
+  .forEach(command => yarg.command(command));
+
+yarg.help()
   .argv;
