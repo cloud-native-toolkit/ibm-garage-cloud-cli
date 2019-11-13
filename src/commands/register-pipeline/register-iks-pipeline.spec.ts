@@ -92,7 +92,9 @@ describe('register-iks-pipeline', () => {
           url: 'chdkktdoogyyd943djd',
           username: 'username',
           password: 'password',
-          branch: 'master'
+          branch: 'master',
+          org: 'org',
+          repo: 'repo',
         };
         const credentialsName = 'credentialsName';
         const namespace = 'big-namespace1';

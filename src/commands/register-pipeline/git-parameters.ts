@@ -72,8 +72,9 @@ export class GetGitParametersImpl implements GetGitParameters {
     const answers: GitQuestion = await questionBuilder.prompt();
 
     const result = Object.assign(
+      {},
+      parsedGitUrl,
       {
-        url: parsedGitUrl.url,
         name: `${parsedGitUrl.org}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
       },
       answers,

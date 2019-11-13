@@ -50,6 +50,9 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
         options.pipelineNamespace,
         gitParams.type,
         secret,
+        {
+          app: gitParams.repo,
+        }
       );
 
       const fileName = await this.fsPromises.writeFile(
@@ -91,12 +94,13 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
     return `${serverUrl}/apis/build.openshift.io/v1/namespaces/${namespace}/buildconfigs/${jobName}/webhooks/${secret}/${type}`;
   }
 
-  generateBuildConfig(name: string, uri: string, branch: string = 'master', namespace: string, gitType: string = 'github', secret: string, jenkinsFile: string = 'Jenkinsfile') {
+  generateBuildConfig(name: string, uri: string, branch: string = 'master', namespace: string, gitType: string = 'github', secret: string, labels: object = {}, jenkinsFile: string = 'Jenkinsfile') {
     return {
       apiVersion: 'v1',
       kind: 'BuildConfig',
       metadata: {
-        name
+        name,
+        labels,
       },
       spec: {
         triggers: [this.buildGitTrigger(gitType, secret)],

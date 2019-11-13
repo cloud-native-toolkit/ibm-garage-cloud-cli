@@ -5,6 +5,8 @@ import {Container, Inject, Provides} from 'typescript-ioc';
 export class GitParams {
   name: string;
   url: string;
+  org: string;
+  repo: string;
   username: string;
   password: string;
   branch: string;

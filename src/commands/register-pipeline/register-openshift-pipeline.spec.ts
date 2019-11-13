@@ -36,11 +36,13 @@ describe('register-openshift-pipeline', () => {
 
     describe('registerPipeline()', () => {
       const name = 'name';
+      const org = 'org';
+      const repo = 'repo';
       const url = 'url';
       const username = 'username';
       const password = 'password';
       const branch = 'branch';
-      const gitParams: GitParams = {name, url, username, password, branch};
+      const gitParams: GitParams = {name, url, username, password, branch, org, repo};
 
       let mock_generateBuildConfig;
       let unset_generateBuildConfig;

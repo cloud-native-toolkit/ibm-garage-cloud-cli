@@ -66,13 +66,17 @@ describe('create-git-secret', () => {
       const username = 'username';
       const password = 'password';
       const branch = 'branch';
+      const org = 'org';
+      const repo = 'repo';
 
       const gitParams: GitParams = {
         name,
         url,
         username,
         password,
-        branch
+        branch,
+        org,
+        repo,
       };
 
       test('metadata.name=gitParams.name', () => {
