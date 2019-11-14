@@ -2,13 +2,13 @@ import {Inject} from 'typescript-ioc';
 import {prompt, Questions} from 'inquirer';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {GitParams} from './create-git-secret';
 import {ChildProcess} from '../../util/child-process';
 import {FsPromises} from '../../util/file-util';
 import * as openshift from '../../api/openshift';
 import {OpenshiftCommands} from '../../api/openshift';
 import {RegisterPipelineType} from './register-pipeline-type';
 import path = require('path');
+import {GitParams} from '../git-secret';
 
 interface Prompt {
   shouldUpdate: boolean;

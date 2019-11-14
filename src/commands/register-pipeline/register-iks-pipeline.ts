@@ -4,11 +4,11 @@ import {Response, get, post} from 'superagent';
 import {prompt, Questions} from 'inquirer';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {GitParams} from './create-git-secret';
 import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
 import {KubeSecret} from '../../api/kubectl';
 import {RegisterPipelineType} from './register-pipeline-type';
 import {FsPromises} from '../../util/file-util';
+import {GitParams} from '../git-secret';
 
 interface Prompt {
   shouldUpdate: boolean;

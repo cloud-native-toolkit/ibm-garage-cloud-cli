@@ -3,11 +3,11 @@ import Mock = jest.Mock;
 
 jest.mock('inquirer');
 
-import {GitParams} from './create-git-secret';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
 import {setField, providerFromValue} from '../../testHelper';
 import {FsPromises} from '../../util/file-util';
 import {OpenshiftCommands} from '../../api/openshift';
+import {GitParams} from '../git-secret';
 
 describe('register-openshift-pipeline', () => {
   test('canary verifies test infrastructure', () => {

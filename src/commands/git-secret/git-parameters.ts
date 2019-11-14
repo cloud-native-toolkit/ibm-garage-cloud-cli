@@ -1,12 +1,12 @@
-import {prompt, Question, Questions} from 'inquirer';
+import {prompt, Question} from 'inquirer';
 import {Provides} from 'typescript-ioc';
 
-import {RegisterPipelineOptions} from './register-pipeline-options.model';
+import {GitParams} from './git-params.model';
+import {GitParametersOptions} from './git-parameters-options.model';
 import {execPromise, ExecResult} from '../../util/child-process';
-import {GitParams} from './create-git-secret';
 
 export abstract class GetGitParameters {
-  async abstract getGitParameters(options?: RegisterPipelineOptions): Promise<GitParams>;
+  async abstract getGitParameters(options?: GitParametersOptions, notifyStatus?: (s: string) => void): Promise<GitParams>;
 }
 
 export class QuestionBuilder<T> {
@@ -44,7 +44,7 @@ export class GetGitParametersImpl implements GetGitParameters {
     'git@': 'git@(.*):(.*)/(.*).git'
   };
 
-  async getGitParameters(options: RegisterPipelineOptions = {}): Promise<GitParams> {
+  async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
     const parsedGitUrl: {url: string; org: string; repo: string} = this.parseGitUrl(await this.getRemoteGitUrl(options.workingDir));
     const currentBranch: string = await this.getCurrentBranch(options.workingDir);
@@ -75,7 +75,7 @@ export class GetGitParametersImpl implements GetGitParameters {
       {},
       parsedGitUrl,
       {
-        name: `${parsedGitUrl.org}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
+        name: options.name || `${parsedGitUrl.org}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
       },
       answers,
     );

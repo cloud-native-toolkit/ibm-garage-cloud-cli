@@ -1,7 +1,9 @@
-import {GitParams, GitSecret, GitSecretImpl} from './create-git-secret';
 import {Container} from 'typescript-ioc';
+
+import {GitSecret, GitSecretImpl} from './git-secret';
 import {KubeSecret} from '../../api/kubectl';
 import {setField, providerFromValue} from '../../testHelper';
+import {GitParams} from './git-params.model';
 import Mock = jest.Mock;
 
 describe('create-git-secret', () => {
@@ -78,6 +80,12 @@ describe('create-git-secret', () => {
         org,
         repo,
       };
+      const secretData = {
+        url,
+        username,
+        password,
+        branch,
+      };
 
       test('metadata.name=gitParams.name', () => {
         const secret = classUnderTest.buildGitSecretBody(gitParams);
@@ -98,10 +106,10 @@ describe('create-git-secret', () => {
         expect(secret.type).toEqual('kubernetes.io/basic-auth');
       });
 
-      test('should have type=kubernetes.io/basic-auth', () => {
+      test('should have data from gitParams', () => {
         const secret = classUnderTest.buildGitSecretBody(gitParams);
 
-        expect(secret.stringData).toEqual(gitParams);
+        expect(secret.stringData).toEqual(secretData);
       });
     });
   });

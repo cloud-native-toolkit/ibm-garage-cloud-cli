@@ -15,6 +15,7 @@ import {defineIngressCommand} from './commands/ingress/define-command';
 import {defineToolConfigCommand} from './commands/tool-config/define-command';
 import {defineNamespace} from './commands/namespace/define-command';
 import {defineDashboard} from './commands/dashboard/define-command';
+import {defineGitSecretCommand} from './commands/git-secret/define-command';
 
 
 const yarg = scriptName('igc')
@@ -63,6 +64,9 @@ const commands: Array<CommandModule | undefined> = [
   }),
   defineNamespace({
     command: 'namespace',
+  }),
+  defineGitSecretCommand({
+    command: 'git-secret',
   }),
 ];
 commands

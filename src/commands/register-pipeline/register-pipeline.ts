@@ -1,4 +1,3 @@
-import {parse} from 'dot-properties';
 import {Inject, Provides} from 'typescript-ioc';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
@@ -10,14 +9,13 @@ import {
   isCreateWebhookError
 } from '../create-webhook';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
-import {GitParams, GitSecret} from './create-git-secret';
 import {RegisterIksPipeline} from './register-iks-pipeline';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
 import {FsPromises} from '../../util/file-util';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
-import {GetGitParameters} from './git-parameters';
 import {RegisterPipelineType} from './register-pipeline-type';
 import {Namespace} from '../namespace/namespace';
+import {CreateGitSecret, GitParams} from '../git-secret';
 
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -39,9 +37,7 @@ export abstract class RegisterPipeline {
 @Provides(RegisterPipeline)
 export class RegisterPipelineImpl {
   @Inject
-  private getGitParameters: GetGitParameters;
-  @Inject
-  private gitSecret: GitSecret;
+  private createGitSecret: CreateGitSecret;
   @Inject
   private createWebhook: CreateWebhook;
   @Inject
@@ -54,8 +50,6 @@ export class RegisterPipelineImpl {
   private openshiftPipeline: RegisterOpenshiftPipeline;
   @Inject
   private namespaceBuilder: Namespace;
-  @Inject
-  private fs: FsPromises;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
@@ -63,21 +57,22 @@ export class RegisterPipelineImpl {
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
-    const gitParams: GitParams = await this.getGitParameters.getGitParameters(options);
+    notifyStatus('Creating secret(s) with git credentials');
+
+    const gitParams: GitParams = await this.createGitSecret.getGitParameters(options, notifyStatus);
 
     await this.setupNamespace(options.pipelineNamespace, options.jenkinsNamespace, notifyStatus);
 
-    notifyStatus('Creating secret(s) with git credentials');
-
-    const credentialsName = await this.gitSecret.create(
+    await this.createGitSecret.createGitSecret(
       gitParams,
       [
         options.pipelineNamespace,
-        options.jenkinsNamespace
+        options.jenkinsNamespace,
       ],
-      await this.readValuesFile(options.values));
+      options.values,
+    );
 
-    notifyStatus('Registering pipeline: ' + credentialsName);
+    notifyStatus('Registering pipeline: ' + gitParams.name);
 
     const gitConfig: GitConfig = this.createWebhook.extractGitConfig(gitParams.url);
 
@@ -85,7 +80,7 @@ export class RegisterPipelineImpl {
       clusterType,
       options,
       Object.assign({}, gitParams, {type: gitConfig.type}),
-      credentialsName
+      gitParams.name
     );
 
     if (!options.skipWebhook) {
@@ -117,24 +112,6 @@ export class RegisterPipelineImpl {
 
   getPipelineType(clusterType: string): RegisterPipelineType {
     return clusterType === 'openshift' ? this.openshiftPipeline : this.iksPipeline;
-  }
-
-  async readValuesFile(valuesFileName?: string): Promise<any> {
-    if (!valuesFileName) {
-      return {}
-    }
-
-    try {
-      const data: Buffer = await this.fs.readFile(valuesFileName);
-
-      try {
-        return JSON.parse(data.toString());
-      } catch (err) {
-        return parse(data);
-      }
-    } catch (err) {}
-
-    return {};
   }
 
   async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
