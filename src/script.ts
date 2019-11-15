@@ -16,6 +16,7 @@ import {defineToolConfigCommand} from './commands/tool-config/define-command';
 import {defineNamespace} from './commands/namespace/define-command';
 import {defineDashboard} from './commands/dashboard/define-command';
 import {defineGitSecretCommand} from './commands/git-secret/define-command';
+import {defineYqCommand} from './commands/yq/defineCommand';
 
 
 const yarg = scriptName('igc')
@@ -68,6 +69,9 @@ const commands: Array<CommandModule | undefined> = [
   defineGitSecretCommand({
     command: 'git-secret',
   }),
+  defineYqCommand({
+    command: 'yq',
+  })
 ];
 commands
   .filter(command => !!command)
