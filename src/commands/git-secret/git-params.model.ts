@@ -8,4 +8,5 @@ export class GitParams {
   password: string;
   branch: string;
   type?: string;
+  host?: string;
 }

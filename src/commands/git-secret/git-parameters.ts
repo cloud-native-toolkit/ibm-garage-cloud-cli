@@ -46,7 +46,7 @@ export class GetGitParametersImpl implements GetGitParameters {
 
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
-    const parsedGitUrl: {url: string; org: string; repo: string} = this.parseGitUrl(await this.getRemoteGitUrl(options.workingDir));
+    const parsedGitUrl: {url: string; host: string; org: string; repo: string} = this.parseGitUrl(await this.getRemoteGitUrl(options.workingDir));
     const currentBranch: string = await this.getCurrentBranch(options.workingDir);
 
     console.log(`  Project git repo: ${parsedGitUrl.url}`);
@@ -83,7 +83,7 @@ export class GetGitParametersImpl implements GetGitParameters {
     return result;
   }
 
-  parseGitUrl(url: string): {url: string; org: string; repo: string} {
+  parseGitUrl(url: string): {url: string; host: string; org: string; repo: string} {
     const pattern = this.GIT_URL_PATTERNS[url.substring(0, 4)];
 
     if (!pattern) {
@@ -103,6 +103,7 @@ export class GetGitParametersImpl implements GetGitParameters {
 
     return {
       url: `https://${host}/${org}/${repo}.git`,
+      host,
       org,
       repo
     };

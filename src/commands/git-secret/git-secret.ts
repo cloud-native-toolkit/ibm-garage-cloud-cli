@@ -60,7 +60,7 @@ export class GitSecretImpl implements GitSecret {
       stringData: Object.assign(
         {},
         additionalParams,
-        _.pick(gitParams, ['url', 'username', 'password', 'branch'])
+        _.pick(gitParams, ['url', 'host', 'username', 'password', 'branch'])
       ),
     };
   }

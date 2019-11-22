@@ -103,20 +103,22 @@ describe('git-parameters', () => {
       describe('when https github url', () => {
         const org = 'org';
         const repo = 'repo';
-        const url = `https://github.com/${org}/${repo}.git`;
+        const host = 'github.com';
+        const url = `https://${host}/${org}/${repo}.git`;
 
         test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo});
+          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo, host});
         })
       });
 
       describe('when https ibm GHE url', () => {
         const org = 'org';
         const repo = 'repo';
-        const url = `https://github.ibm.com/${org}/${repo}.git`;
+        const host = 'github.ibm.com';
+        const url = `https://${host}/${org}/${repo}.git`;
 
-        test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo});
+        test('should return {url, host, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo, host});
         })
       });
 
@@ -127,8 +129,8 @@ describe('git-parameters', () => {
         const url = `https://${host}/${org}/${repo}.git`;
         const originalUrl = `https://github.com/${org}/${repo}`;
 
-        test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({url, org, repo});
+        test('should return {url, host, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({url, org, repo, host});
         })
       });
 
@@ -139,8 +141,8 @@ describe('git-parameters', () => {
         const url = `https://${host}/${org}/${repo}.git`;
         const sshUrl = `git@${host}:${org}/${repo}.git`;
 
-        test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(sshUrl)).toEqual({url, org, repo});
+        test('should return {url, host, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(sshUrl)).toEqual({url, org, repo, host});
         })
       });
 
@@ -151,8 +153,8 @@ describe('git-parameters', () => {
         const url = `https://${host}/${org}/${repo}.git`;
         const originalUrl = `git@${host}:${org}/${repo}.git`;
 
-        test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({org, repo, url});
+        test('should return {url, host, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({org, repo, url, host});
         });
       });
 
