@@ -85,6 +85,8 @@ describe('create-git-secret', () => {
         username,
         password,
         branch,
+        org,
+        repo,
       };
 
       test('metadata.name=gitParams.name', () => {
