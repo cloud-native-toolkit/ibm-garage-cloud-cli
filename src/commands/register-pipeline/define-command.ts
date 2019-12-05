@@ -6,18 +6,19 @@ import {CommandLineOptions} from '../../model';
 import {checkKubeconfig} from '../../util/kubernetes';
 import {ErrorSeverity, isCommandError} from '../../util/errors';
 import {Container} from 'typescript-ioc';
-import {RegisterPipeline} from './register-pipeline';
+import {RegisterJenkinsPipeline, RegisterPipeline} from './register-jenkins-pipeline';
+import {RegisterTektonPipeline} from './register-tekton-pipeline';
 
 export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>({command, aliases = []}: YargsCommandDefinitionArgs): CommandModule<T> => {
   return {
     command,
     aliases,
-    describe: 'Register a pipeline for the current code repository in Jenkins',
+    describe: 'Register a pipeline for the current code repository',
     builder: (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
       .quiet()
       .debug()
       .build()
-      .option('jenkinsNamespace', {
+      .option('templateNamespace', {
         type: 'string',
         alias: 'j',
         describe: 'the namespace where Jenkins is running',
@@ -42,13 +43,31 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>({comman
       .option('values', {
         description: 'optional file with additional values to add to the secret'
       })
+      .option('tekton', {
+        conflicts: 'jenkins',
+        description: 'register a tekton pipeline',
+        type: 'boolean',
+      })
+      .option('jenkins', {
+        conflicts: 'tekton',
+        description: 'register a jenkins pipeline',
+        type: 'boolean',
+      })
+      .option('pipelineName', {
+        description: 'the name of the Tekton pipeline to use',
+        type: 'string',
+      })
       .option('generateCrumb', {
         alias: 'c',
         description: 'flag indicating that a crumb is required to complete the registration',
         default: false,
       }),
-    handler: async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions>) => {
+    handler: async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean}>) => {
       let spinner;
+
+      if (argv.debug) {
+        console.log('Input values: ', argv);
+      }
 
       function statusCallback(status: string) {
         // if (!spinner) {
@@ -62,7 +81,10 @@ export const defineRegisterPipelineCommand: YargsCommandDefinition = <T>({comman
       try {
         await checkKubeconfig();
 
-        const command: RegisterPipeline = Container.get(RegisterPipeline);
+        const command: RegisterPipeline = argv.tekton
+          ? Container.get(RegisterTektonPipeline)
+          : Container.get(RegisterJenkinsPipeline);
+
         await command.registerPipeline(argv, statusCallback);
 
         if (spinner) {

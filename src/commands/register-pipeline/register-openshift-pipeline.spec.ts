@@ -84,7 +84,7 @@ describe('register-openshift-pipeline', () => {
         mock_createBuildPipeline.mockResolvedValue({});
         mock_getRouteHosts.mockResolvedValue([jenkinsHost]);
 
-        const result = await classUnderTest.registerPipeline({jenkinsNamespace, pipelineNamespace}, gitParams, 'name');
+        const result = await classUnderTest.registerPipeline({templateNamespace: jenkinsNamespace, pipelineNamespace}, gitParams, 'name');
 
         expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
 

@@ -2,7 +2,7 @@ import {Container} from 'typescript-ioc';
 
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {setField, providerFromValue} from '../../testHelper';
-import {RegisterPipeline, RegisterPipelineImpl} from './register-pipeline';
+import {RegisterPipeline, RegisterJenkinsPipeline} from './register-jenkins-pipeline';
 import {FsPromises} from '../../util/file-util';
 import {RegisterPipelineType} from './register-pipeline-type';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
@@ -15,7 +15,7 @@ describe('register-pipeline', () => {
   });
 
   describe('given RegisterPipeline', () => {
-    let classUnderTest: RegisterPipelineImpl;
+    let classUnderTest: RegisterJenkinsPipeline;
 
     let mock_getConfigMapData: Mock;
     let mock_getSecretData: Mock;

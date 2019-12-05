@@ -12,7 +12,8 @@ const provider: Provider = {
   get: () => {
     return new KubeServiceAccount({
       client: Container.get(KubeClient),
-      kind: 'serviceaccounts',
+      name: 'serviceaccounts',
+      kind: 'ServiceAccount',
     });
   }
 };

@@ -19,6 +19,13 @@ export function buildMockKubeClient(): KubeClient {
           },
         },
       },
+      'tekton.dev': {
+        v1alpha1: {
+          pipeline: ['get', 'post', 'put'],
+          pipelineresource: ['get', 'post', 'put'],
+          task: ['get', 'post', 'put'],
+        }
+      }
     },
   });
 }

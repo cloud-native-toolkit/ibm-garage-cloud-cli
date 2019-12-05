@@ -6,6 +6,8 @@ import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-acco
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import {KubeRole} from '../../api/kubectl/role';
 import {KubeRoleBinding} from '../../api/kubectl/role-binding';
+import {KubeTektonTask} from "../../api/kubectl/tekton-task";
+import {KubeTektonPipeline} from "../../api/kubectl/tekton-pipeline";
 
 export abstract class Namespace {
   async abstract create(toNamespace: string, fromNamespace: string, notifyStatus?: (status: string) => void): Promise<string>;
@@ -21,6 +23,10 @@ export class NamespaceImpl implements Namespace{
   private secrets: KubeSecret;
   @Inject
   private configMaps: KubeConfigMap;
+  @Inject
+  private tektonTasks: KubeTektonTask;
+  @Inject
+  private tektonPipelines: KubeTektonPipeline;
   @Inject
   private serviceAccounts: KubeServiceAccount;
   @Inject
@@ -47,6 +53,10 @@ export class NamespaceImpl implements Namespace{
     await this.copyConfigMaps(toNamespace, fromNamespace);
     notifyStatus('Copying Secrets');
     await this.copySecrets(toNamespace, fromNamespace);
+    notifyStatus('Copying Tekton tasks');
+    await this.copyTasks(toNamespace, fromNamespace);
+    notifyStatus('Copying Tekton pipelines');
+    await this.copyPipelines(toNamespace, fromNamespace);
 
     try {
       notifyStatus('Copying Jenkins credentials');
@@ -128,6 +138,22 @@ export class NamespaceImpl implements Namespace{
     const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
 
     return this.secrets.copyAll({namespace: fromNamespace, qs}, toNamespace);
+  }
+
+  async copyTasks(toNamespace: string, fromNamespace: string): Promise<any> {
+    if (toNamespace === fromNamespace) {
+      return;
+    }
+
+    return this.tektonTasks.copyAll({namespace: fromNamespace}, toNamespace);
+  }
+
+  async copyPipelines(toNamespace: string, fromNamespace: string): Promise<any> {
+    if (toNamespace === fromNamespace) {
+      return;
+    }
+
+    return this.tektonPipelines.copyAll({namespace: fromNamespace}, toNamespace);
   }
 
   async setupServiceAccountWithPullSecrets(namespace: string): Promise<any> {

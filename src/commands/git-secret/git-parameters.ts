@@ -1,33 +1,12 @@
-import {prompt, Question} from 'inquirer';
 import {Provides} from 'typescript-ioc';
 
 import {GitParams} from './git-params.model';
 import {GitParametersOptions} from './git-parameters-options.model';
 import {execPromise, ExecResult} from '../../util/child-process';
+import {QuestionBuilder, QuestionBuilderImpl} from '../../util/question-builder';
 
 export abstract class GetGitParameters {
   async abstract getGitParameters(options?: GitParametersOptions, notifyStatus?: (s: string) => void): Promise<GitParams>;
-}
-
-export class QuestionBuilder<T> {
-  private readonly _questions: Array<Question<T>> = [];
-  private readonly _values: T = {} as any;
-
-  question(question: Question<T>, value?: string): QuestionBuilder<T> {
-    if (!value) {
-      this._questions.push(question);
-    } else {
-      this._values[question.name] = value;
-    }
-
-    return this;
-  }
-
-  async prompt(): Promise<T> {
-    const promptValues = this._questions.length > 0 ? await prompt(this._questions) : {};
-
-    return Object.assign({}, this._values, promptValues);
-  }
 }
 
 interface GitQuestion {
@@ -51,11 +30,11 @@ export class GetGitParametersImpl implements GetGitParameters {
 
     console.log(`  Project git repo: ${parsedGitUrl.url}`);
 
-    const questionBuilder = new QuestionBuilder<GitQuestion>()
+    const questionBuilder: QuestionBuilder<GitQuestion> = new QuestionBuilderImpl()
       .question({
         type: 'input',
         name: 'username',
-        message: `Provide the username:`,
+        message: 'Provide the username:',
       }, options.gitUsername)
       .question({
         type: 'password',

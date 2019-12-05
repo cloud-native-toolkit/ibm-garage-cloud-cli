@@ -64,6 +64,8 @@ describe('namespace', () => {
     let copySecrets: Mock;
     let setupServiceAccountWithPullSecrets: Mock;
     let copyJenkinsCredentials: Mock;
+    let copyTasks: Mock;
+    let copyPipelines: Mock;
     beforeEach(() => {
       kubeNamespace_create = jest.fn();
       kubeNamespace_exists = jest.fn();
@@ -79,6 +81,8 @@ describe('namespace', () => {
       copySecrets = mockField(classUnderTest, 'copySecrets');
       setupServiceAccountWithPullSecrets = mockField(classUnderTest, 'setupServiceAccountWithPullSecrets');
       copyJenkinsCredentials = mockField(classUnderTest, 'copyJenkinsCredentials');
+      copyTasks = mockField(classUnderTest, 'copyTasks');
+      copyPipelines = mockField(classUnderTest, 'copyPipelines');
     });
 
     describe('when called', () => {
@@ -152,6 +156,22 @@ describe('namespace', () => {
         await classUnderTest.create(namespace);
 
         expect(copySecrets).toHaveBeenCalledWith(namespace, 'tools');
+      });
+
+      test('then should copy tekton tasks', async () => {
+        const namespace = 'test';
+
+        await classUnderTest.create(namespace);
+
+        expect(copyTasks).toHaveBeenCalledWith(namespace, 'tools');
+      });
+
+      test('then should copy tekton pipelines', async () => {
+        const namespace = 'test';
+
+        await classUnderTest.create(namespace);
+
+        expect(copyPipelines).toHaveBeenCalledWith(namespace, 'tools');
       });
 
       test('then should copy the jenkins credentials', async () => {

@@ -22,14 +22,14 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
   setupDefaultOptions(): Partial<RegisterPipelineOptions> {
     return {
-      jenkinsNamespace: 'tools',
+      templateNamespace: 'tools',
       pipelineNamespace: 'dev',
     };
   }
 
   async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
 
-    const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.jenkinsNamespace);
+    const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.templateNamespace);
 
     const jobName = gitParams.name;
 

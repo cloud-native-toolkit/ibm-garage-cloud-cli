@@ -29,10 +29,11 @@ export const defineNamespace: YargsCommandDefinition = <T>({command}: YargsComma
     handler: async (argv: Arguments<NamespaceOptionsModel>) => {
       const namespaceBuilder: Namespace = Container.get(Namespace);
 
-      const spinner = ora('Setting up namespace: ' + argv.namespace).start();
+//      const spinner = ora('Setting up namespace: ' + argv.namespace).start();
 
       function statusCallback(status: string) {
-        spinner.text = status;
+//        spinner.text = status;
+        console.log(status);
       }
 
       try {
@@ -41,7 +42,7 @@ export const defineNamespace: YargsCommandDefinition = <T>({command}: YargsComma
         console.log('Error preparing namespace', err);
         process.exit(1);
       } finally {
-        spinner.stop();
+        //spinner.stop();
       }
     },
   }

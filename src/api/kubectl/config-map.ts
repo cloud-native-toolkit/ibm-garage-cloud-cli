@@ -3,15 +3,16 @@ import {Container, Provided, Provider} from 'typescript-ioc';
 import {KubeClient} from './client';
 import {Secret} from './secrets';
 
-export interface ConfigMap extends KubeResource{
-  data?: any;
+export interface ConfigMap<T = any> extends KubeResource{
+  data?: T;
 }
 
 const provider: Provider = {
   get: () => {
     return new KubeConfigMap({
       client: Container.get(KubeClient),
-      kind: 'configmaps',
+      name: 'configmaps',
+      kind: 'ConfigMap',
     });
   }
 };

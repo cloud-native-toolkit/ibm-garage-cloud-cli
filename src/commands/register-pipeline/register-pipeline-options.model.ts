@@ -1,6 +1,6 @@
 
 export class RegisterPipelineOptions {
-  jenkinsNamespace?: string;
+  templateNamespace?: string;
   pipelineNamespace?: string;
   skipWebhook?: boolean;
   workingDir?: string;
@@ -9,4 +9,5 @@ export class RegisterPipelineOptions {
   values?: string;
   generateCrumb?: boolean = false;
   serverUrl?: string;
+  pipelineName?: string;
 }

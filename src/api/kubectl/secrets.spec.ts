@@ -23,7 +23,7 @@ describe('secrets', () => {
 
   describe('given type', () => {
     test('should be `secrets`', () => {
-      expect(classUnderTest.kind).toEqual('secrets');
+      expect(classUnderTest.name).toEqual('secrets');
     });
   });
 

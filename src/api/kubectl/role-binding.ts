@@ -25,7 +25,8 @@ const provider: Provider = {
       client: Container.get(KubeClient),
       group: 'rbac.authorization.k8s.io',
       version: 'v1',
-      kind: 'rolebindings'
+      name: 'rolebindings',
+      kind: 'RoleBinding',
     });
   }
 };

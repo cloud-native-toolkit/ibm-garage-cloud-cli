@@ -25,7 +25,8 @@ export const testV1Provider: Provider = {
   get: () => {
     return new TestV1KubernetesResource({
       client: Container.get(KubeClient),
-      kind: 'secret'
+      name: 'secret',
+      kind: 'Secret',
     })
   }
 };
@@ -41,7 +42,8 @@ export const testV1Beta1Provider: Provider = {
       client: Container.get(KubeClient),
       group: 'extension',
       version: 'v1beta1',
-      kind: 'ingress',
+      name: 'ingress',
+      kind: 'Ingress',
     })
   }
 };
@@ -79,7 +81,7 @@ describe('kubernetes-resource-manager', () => {
       });
 
       test('kind should be `secret`', () => {
-        expect(classUnderTest.kind).toEqual('secret');
+        expect(classUnderTest.name).toEqual('secret');
       });
 
       test('client should not be undefined', () => {
@@ -95,7 +97,7 @@ describe('kubernetes-resource-manager', () => {
 
       describe('when namespace not provided', () => {
         test('then query secrets in `default` namespace', async () => {
-          expect(classUnderTest.kind).toEqual('secret');
+          expect(classUnderTest.name).toEqual('secret');
 
           await classUnderTest.list();
 
@@ -268,35 +270,43 @@ describe('kubernetes-resource-manager', () => {
       let processedBody = {value: 'val'};
 
       let exists: Mock;
+      let mock_get: Mock;
       let mock_put: Mock;
       let mock_post: Mock;
+      let processName: Mock;
       let processInputs: Mock;
 
       beforeEach(() => {
         exists = mockField(classUnderTest, 'exists');
+        processName = mockField(classUnderTest, 'processName');
         processInputs = mockField(classUnderTest, 'processInputs');
-        processInputs.mockReturnValue({processedName, processedBody});
 
+        processName.mockReturnValue(processedName);
+        processInputs.mockReturnValue(processedBody);
+
+        mock_get = (mockClient.api.v1.namespaces as any).secrets.get;
         mock_put = (mockClient.api.v1.namespaces as any).secrets.put;
         mock_post = (mockClient.api.v1.namespaces as any).secrets.post;
       });
 
       describe('when secret exists', () => {
+        const expectedResult = 'result';
         beforeEach(() => {
           exists.mockResolvedValue(true);
+
+          mock_get.mockResolvedValue({body: expectedResult});
+          mock_put.mockResolvedValue({body: expectedResult});
         });
 
         test('update secret with put()', async () => {
-          const expectedResult = 'result';
-
-          mock_put.mockResolvedValue({body: expectedResult});
 
           const actualResult = await classUnderTest.createOrUpdate(secretName, secretBody, namespace);
 
           expect(actualResult).toEqual(expectedResult);
 
           expect(exists).toHaveBeenCalledTimes(1);
-          expect(processInputs).toHaveBeenCalledWith(secretName, secretBody);
+          expect(processName).toHaveBeenCalledWith(secretName);
+          expect(processInputs).toHaveBeenCalledWith(processedName, secretBody.body, expectedResult);
           expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
           expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(processedName);
           expect(mock_put).toHaveBeenCalledWith(processedBody);
@@ -304,19 +314,12 @@ describe('kubernetes-resource-manager', () => {
 
         describe('and when namespace not provided', () => {
           test('then default the namespace to `default`', async () => {
-            const expectedResult = 'result';
-
-            mock_put.mockResolvedValue({body: expectedResult});
 
             const actualResult = await classUnderTest.createOrUpdate(secretName, secretBody);
 
             expect(actualResult).toEqual(expectedResult);
 
-            expect(exists).toHaveBeenCalledTimes(1);
-            expect(processInputs).toHaveBeenCalledWith(secretName, secretBody);
             expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
-            expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(processedName);
-            expect(mock_put).toHaveBeenCalledWith(processedBody);
           });
         });
       });
@@ -335,7 +338,8 @@ describe('kubernetes-resource-manager', () => {
 
           expect(actualResult).toEqual(expectedResult);
 
-          expect(processInputs).toHaveBeenCalledWith(secretName, secretBody);
+          expect(processName).toHaveBeenCalledWith(secretName);
+          expect(processInputs).toHaveBeenCalledWith(processedName, secretBody.body);
           expect(exists).toHaveBeenCalledTimes(1);
           expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
           expect(mock_post).toHaveBeenCalledWith(processedBody);
@@ -482,6 +486,8 @@ describe('kubernetes-resource-manager', () => {
           const name = 'test-name-valid';
           const body: KubeBody<KubeResource> = {
             body: {
+              apiVersion: 'v1',
+              kind: 'Secret',
               metadata: {
                 name,
                 labels: {
@@ -491,34 +497,13 @@ describe('kubernetes-resource-manager', () => {
             }
           };
 
-          expect(classUnderTest.processInputs(name, body))
-            .toEqual({processedName: name, processedBody: body});
+          expect(classUnderTest.processInputs(name, body.body))
+            .toEqual(body);
         });
       });
+    });
 
-      describe('when name contains upper case values', () => {
-        test('then return same value with lower case name', async () => {
-          const name = 'tesT-name-valid';
-          const labels = {
-            test: 'value'
-          };
-          const body: KubeBody<KubeResource> = {
-            body: {
-              metadata: {
-                name,
-                labels,
-              }
-            }
-          };
-
-          expect(classUnderTest.processInputs(name, body))
-            .toEqual({
-              processedName: name.toLowerCase(),
-              processedBody: {body: {metadata: {name: name.toLowerCase(), labels}}}
-            });
-        });
-      });
-
+    describe('given proessName()', () => {
       describe('when name contains an underscore', () => {
         test('then return same value with lower case name', async () => {
           const name = 'test_name_valid';
@@ -534,11 +519,8 @@ describe('kubernetes-resource-manager', () => {
             }
           };
 
-          expect(classUnderTest.processInputs(name, body))
-            .toEqual({
-              processedName: name.replace(new RegExp('_', 'g'), '-'),
-              processedBody: {body: {metadata: {name: name.replace(new RegExp('_', 'g'), '-'), labels}}}
-            });
+          expect(classUnderTest.processName(name))
+            .toEqual(name.replace(new RegExp('_', 'g'), '-'));
         });
       });
     });

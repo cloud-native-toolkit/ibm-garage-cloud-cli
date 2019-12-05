@@ -13,7 +13,8 @@ const provider: Provider = {
   get: () => {
     return new KubeSecret({
       client: Container.get(KubeClient),
-      kind: 'secrets',
+      name: 'secrets',
+      kind: 'Secret',
     });
   }
 };

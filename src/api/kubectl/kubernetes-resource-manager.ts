@@ -1,4 +1,3 @@
-import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
 import {KubeClient} from './client';
 
@@ -72,23 +71,57 @@ export interface Props {
   group?: string;
   version?: string;
   kind: string;
+  name: string;
   client: KubeClient;
+  crd?: boolean;
+}
+
+interface CustomResourceDefinition extends KubeResource {
+  spec: object;
+  status?: object;
+}
+
+async function registerCrdSchema(client: KubeClient, name: string): Promise<boolean> {
+  const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
+
+  if (!crd || !crd.body) {
+    return false;
+  }
+
+  client.addCustomResourceDefinition({
+    metadata: {
+      annotations: crd.body.metadata.annotations,
+      name: crd.body.metadata.name
+    },
+    spec: crd.body.spec
+  });
+
+  return true;
 }
 
 export class AbstractKubernetesResourceManager<T extends KubeResource> implements KubernetesResourceManager<T> {
   public client: KubeClient;
   public group?: string;
   version: string;
+  name: string;
   kind: string;
+  crdPromise: Promise<boolean>;
 
   constructor(props: Props) {
     this.client = props.client;
     this.group = props.group;
     this.version = props.version || 'v1';
+    this.name = props.name;
     this.kind = props.kind;
 
-    if (!this.kind) {
+    if (!this.name || !this.kind) {
       throw new Error('kind must be defined');
+    }
+
+    if (props.crd) {
+      this.crdPromise = registerCrdSchema(this.client, `${this.name}.${this.group}`);
+    } else {
+      this.crdPromise = Promise.resolve(true);
     }
   }
 
@@ -98,49 +131,68 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     const getOptions: Query<T> = this.buildQuery(options);
 
-    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
-    const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
+    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
-    const items: T[] = _.get(result, 'body.items', [])
-      .filter(options.filter || (() => true))
-      .map(options.map || (val => val));
+    if (kubeResource) {
+      const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
 
-    return items;
+      const items: T[] = _.get(result, 'body.items', [])
+          .filter(options.filter || (() => true))
+          .map(options.map || (val => val));
+
+      return items;
+    } else {
+      return [];
+    }
   }
 
   buildQuery(options: ListOptions<T>): Query<T> {
     return {qs: options.qs};
   }
 
-  async createOrUpdate(name: string, body: KubeBody<T>, namespace: string = 'default'): Promise<T> {
+  async createOrUpdate(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
-    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
-    const {processedName, processedBody} = this.processInputs(name, body);
+    if (kubeResource) {
+      const processedName = this.processName(name);
 
-    const result: KubeBody<T> = (await this.exists(processedName, namespace))
-      ? await kubeResource(processedName).put(processedBody)
-      : await kubeResource.post(processedBody);
+      if (await this.exists(processedName, namespace)) {
+        const current: T = await this.get(processedName, namespace);
 
-    return result.body;
+        const processedBody = this.processInputs(processedName, input.body, current);
+
+        return kubeResource(processedName).put(processedBody).then(result => result.body);
+      } else {
+        const processedBody = this.processInputs(processedName, input.body);
+
+        return kubeResource.post(processedBody).then(result => result.body);
+      }
+    } else {
+      return {} as any;
+    }
   }
 
-  async create(name: string, body: KubeBody<T>, namespace: string = 'default'): Promise<T> {
+  async create(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
-    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
-    const {processedBody} = this.processInputs(name, body);
+    const processedName = this.processName(name);
+    const processedBody = this.processInputs(processedName, input.body);
 
     const result: KubeBody<T> = await kubeResource.post(processedBody);
 
     return result.body;
   }
 
-  async update(name: string, body: KubeBody<T>, namespace: string = 'default'): Promise<T> {
+  async update(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
-    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
-    const {processedName, processedBody} = this.processInputs(name, body);
+    const current: T = await this.get(name, namespace);
+
+    const processedName = this.processName(name);
+    const processedBody = this.processInputs(processedName, input.body, current);
 
     const result: KubeBody<T> = await kubeResource(processedName).put(processedBody);
 
@@ -148,7 +200,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
   }
 
   async exists(name: string, namespace: string = 'default'): Promise<boolean> {
-    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     try {
       const result = await kubeResource(name).get();
@@ -156,13 +208,14 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
       if (result) {
         return true;
       }
-    } catch (err) {}
+    } catch (err) {
+    }
 
     return false;
   }
 
   async get(name: string, namespace: string = 'default'): Promise<T> {
-    const kubeResource = this.resourceNode(this.group, this.version, this.kind, namespace);
+    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     const result = await kubeResource(name).get();
 
@@ -215,37 +268,57 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     return Object.assign({}, obj, {metadata});
   }
 
-  resourceNode(group: string | undefined, version: string, kind: string, namespace: string) {
+  async resourceNode(group: string | undefined, version: string, kind: string, namespace: string) {
 
-    const node = !group
-      ? this.client.api[version].namespace(namespace)[kind] :
-      this.client.apis[group][version].namespace(namespace)[kind];
+    await this.crdPromise;
 
-    return node;
+    const versionPath: string[] = !group
+      ? ['api', version]
+      : ['apis', group, version];
+
+    const versionNode = _.get(this.client, versionPath);
+
+    if (versionNode) {
+      return _.get(versionNode.namespace(namespace), kind);
+    } else {
+      console.log(
+        'Node not found for path: ',
+        versionPath,
+        Object.keys(_.get(this.client, versionPath[0])),
+        Object.keys(_.get(this.client, versionPath.slice(0, 2)) || {}));
+      return;
+    }
   }
 
-  processInputs(name: string, body: KubeBody<T>): {processedName: string, processedBody: KubeBody<T>} {
+  processName(name: string): string {
+    return name.toLowerCase().replace(new RegExp('_', 'g'), '-');
+  }
 
-    const processedName = name.toLowerCase().replace(new RegExp('_', 'g'), '-');
+  processInputs(name: string, input: T, current?: T): KubeBody<T> {
+
     const processedBody: KubeBody<T> = {
       body: Object.assign(
-        {},
-        body.body,
+        {
+          kind: this.kind,
+          apiVersion: this.group ? `${this.group}/${this.version}` : this.version,
+        },
+        current,
+        input,
         {
           metadata: Object.assign(
             {},
-            body.body.metadata,
+            input.metadata,
             {
-              name: processedName,
-            } as KubeMetadata
+              name,
+            } as KubeMetadata,
+            current
+              ? {resourceVersion: current.metadata.resourceVersion} as KubeMetadata
+              : {},
           ),
         },
       ),
     };
 
-    return {
-      processedName,
-      processedBody,
-    };
+    return processedBody;
   }
 }

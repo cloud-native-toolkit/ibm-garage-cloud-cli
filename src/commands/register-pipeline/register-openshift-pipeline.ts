@@ -34,7 +34,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
   setupDefaultOptions(): Partial<RegisterPipelineOptions> {
     return {
-      jenkinsNamespace: 'tools',
+      templateNamespace: 'tools',
       pipelineNamespace: 'dev',
     };
   }

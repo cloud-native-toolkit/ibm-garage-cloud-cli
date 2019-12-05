@@ -31,7 +31,8 @@ const provider: Provider = {
       client: Container.get(KubeClient),
       group: 'extension',
       version: 'v1beta1',
-      kind: 'ingress',
+      name: 'ingress',
+      kind: 'Ingress',
     });
   }
 };
