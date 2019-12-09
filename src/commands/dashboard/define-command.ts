@@ -5,6 +5,8 @@ import * as open from 'open';
 import {YargsCommandDefinition, YargsCommandDefinitionArgs} from '../../util/yargs-support';
 import {KubeIngress} from '../../api/kubectl/ingress';
 import ora from 'ora';
+import {KubeConfigMap} from '../../api/kubectl';
+import {GetDashboardUrl} from './get-dashboard-url';
 
 export const defineDashboard: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
 
@@ -15,7 +17,7 @@ export const defineDashboard: YargsCommandDefinition = <T>({command}: YargsComma
       return yargs;
     },
     handler: async (argv: Arguments<any>) => {
-      const kubeIngress: KubeIngress = Container.get(KubeIngress);
+      const getDashboardUrl: GetDashboardUrl = Container.get(GetDashboardUrl);
 
       const spinner = ora('Looking up dashboard ingress').start();
 
@@ -24,13 +26,13 @@ export const defineDashboard: YargsCommandDefinition = <T>({command}: YargsComma
           spinner.text = status;
         }
 
-        const urls: string[] = await kubeIngress.getUrls('tools', 'catalyst-dashboard');
+        const url: string = await getDashboardUrl.getUrl('tools');
 
-        if (urls.length > 0) {
+        if (url) {
           spinner.stop();
 
-          console.log('Opening dashboard: ' + urls[0]);
-          await open(urls[0]);
+          console.log('Opening dashboard: ' + url);
+          await open(url);
         }
       } catch (err) {
         spinner.stop();
