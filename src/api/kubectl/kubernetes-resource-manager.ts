@@ -82,21 +82,25 @@ interface CustomResourceDefinition extends KubeResource {
 }
 
 async function registerCrdSchema(client: KubeClient, name: string): Promise<boolean> {
-  const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
+  try {
+    const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
 
-  if (!crd || !crd.body) {
+    if (!crd || !crd.body) {
+      return false;
+    }
+
+    client.addCustomResourceDefinition({
+      metadata: {
+        annotations: crd.body.metadata.annotations,
+        name: crd.body.metadata.name
+      },
+      spec: crd.body.spec
+    });
+
+    return true;
+  } catch (err) {
     return false;
   }
-
-  client.addCustomResourceDefinition({
-    metadata: {
-      annotations: crd.body.metadata.annotations,
-      name: crd.body.metadata.name
-    },
-    spec: crd.body.spec
-  });
-
-  return true;
 }
 
 export class AbstractKubernetesResourceManager<T extends KubeResource> implements KubernetesResourceManager<T> {
@@ -280,13 +284,6 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     if (versionNode) {
       return _.get(versionNode.namespace(namespace), kind);
-    } else {
-      console.log(
-        'Node not found for path: ',
-        versionPath,
-        Object.keys(_.get(this.client, versionPath[0])),
-        Object.keys(_.get(this.client, versionPath.slice(0, 2)) || {}));
-      return;
     }
   }
 
