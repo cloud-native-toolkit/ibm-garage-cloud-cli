@@ -55,6 +55,7 @@ describe('register-tekton-pipeline', () => {
   });
 
   describe('given registerPipeline()', () => {
+    let getClusterType: Mock;
     let setupNamespace: Mock;
     let createServiceAccount: Mock;
     let createGitPipelineResource: Mock;
@@ -62,6 +63,7 @@ describe('register-tekton-pipeline', () => {
     let getPipelineName: Mock;
     let createPipelineRun: Mock;
     beforeEach(() => {
+      getClusterType = mockField(classUnderTest, 'getClusterType');
       setupNamespace = mockField(classUnderTest, 'setupNamespace');
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
       createGitPipelineResource = mockField(classUnderTest, 'createGitPipelineResource');
@@ -79,14 +81,25 @@ describe('register-tekton-pipeline', () => {
       const gitName = 'gitName';
       const imageName = 'imageName';
       const pipelineName = 'pipelineName';
+      const clusterType = 'clusterType';
+      const serviceAccount = 'serviceAccount';
 
       const gitParams = {repo: repoName};
 
       beforeEach(() => {
+        getClusterType.mockResolvedValue({clusterType});
         (createGitSecret.getGitParameters as Mock).mockResolvedValue(gitParams);
+        createServiceAccount.mockResolvedValue(serviceAccount);
         createGitPipelineResource.mockResolvedValue(gitName);
         createImagePipelineResource.mockResolvedValue(imageName);
         getPipelineName.mockResolvedValue(pipelineName);
+      });
+
+      test('should get cluster type', async () => {
+        let options = {pipelineNamespace, templateNamespace};
+        await classUnderTest.registerPipeline(options, notifyStatus);
+
+        expect(getClusterType).toHaveBeenCalledWith(templateNamespace);
       });
 
       test('should get git parameters', async () => {
@@ -105,7 +118,7 @@ describe('register-tekton-pipeline', () => {
       test('should setup serviceAccount', async () => {
         await classUnderTest.registerPipeline({pipelineNamespace, templateNamespace}, notifyStatus);
 
-        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, 'pipeline', notifyStatus);
+        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, clusterType, notifyStatus);
       });
 
       test('should create git pipeline resource', async () => {
@@ -138,7 +151,7 @@ describe('register-tekton-pipeline', () => {
           gitSource: gitName,
           dockerImage: imageName,
           pipelineName,
-          serviceAccount: 'pipeline',
+          serviceAccount,
         });
       });
 

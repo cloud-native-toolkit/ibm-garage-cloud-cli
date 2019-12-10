@@ -4,7 +4,7 @@ import {CreateGitSecret, GitParams} from '../git-secret';
 import {Namespace} from '../namespace';
 import {KubeTektonPipelineResource, TektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
 import {KubeBody} from '../../api/kubectl/kubernetes-resource-manager';
-import {ConfigMap, KubeConfigMap} from '../../api/kubectl';
+import {ConfigMap, KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {RegisterPipeline, RegisterPipelineOptions} from './index';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
 import {KubeTektonPipeline, TektonPipeline} from '../../api/kubectl/tekton-pipeline';
@@ -48,17 +48,24 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     configMap: KubeConfigMap;
     @Inject
     serviceAccount: CreateServiceAccount;
+    @Inject
+    kubeConfigMap: KubeConfigMap;
+    @Inject
+    kubeSecret: KubeSecret;
 
-    async registerPipeline(options: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
+    async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
+
+        const {clusterType} = await this.getClusterType(cliOptions.templateNamespace);
+
+        const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
+
         notifyStatus('Getting git parameters');
         const gitParams: GitParams = await this.createGitSecret.getGitParameters(options);
 
         notifyStatus(`Setting up ${options.pipelineNamespace} namespace`);
         await this.setupNamespace(options.pipelineNamespace, options.templateNamespace, notifyStatus);
 
-        const serviceAccount = 'pipeline';
-        notifyStatus(`Creating ${serviceAccount} service account`);
-        await this.createServiceAccount(options.pipelineNamespace, serviceAccount, notifyStatus);
+        const serviceAccount = await this.createServiceAccount(options.pipelineNamespace, clusterType, notifyStatus);
 
         notifyStatus('Creating Git PipelineResource');
         const gitSource = await this.createGitPipelineResource(options, gitParams);
@@ -81,6 +88,30 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         }
     }
 
+    async getClusterType(namespace = 'tools'): Promise<{clusterType: 'openshift' | 'kubernetes', serverUrl?: string}> {
+        try {
+            const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes', SERVER_URL?: string }>(
+              'ibmcloud-config',
+              namespace,
+            );
+
+            return {clusterType: configMap.CLUSTER_TYPE, serverUrl: configMap.SERVER_URL};
+        } catch (configMapError) {
+
+            console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
+
+            try {
+                const secret = await this.kubeSecret.getData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
+
+                return {clusterType: secret.cluster_type ? secret.cluster_type : 'kubernetes'};
+            } catch (secretError) {
+                console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
+
+                return {clusterType: 'kubernetes'};
+            }
+        }
+    }
+
     async setupNamespace(toNamespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
         if (toNamespace === fromNamespace) {
             return;
@@ -89,8 +120,14 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
     }
 
-    async createServiceAccount(namespace: string, name: string, notifyStatus: (text: string) => void): Promise<string> {
+    async createServiceAccount(namespace: string, clusterType: string, notifyStatus: (text: string) => void): Promise<string> {
 
+        if (clusterType !== 'openshift') {
+            return 'default';
+        }
+
+        const name = 'pipeline';
+        notifyStatus(`Creating service account: ${name}`);
         await this.serviceAccount.create(namespace, name, ['privileged'], ['edit']);
 
         return name;
@@ -259,6 +296,18 @@ export class RegisterTektonPipeline implements RegisterPipeline {
               }
           },
           pipelineNamespace,
+        );
+    }
+
+    setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', cliOptions: RegisterPipelineOptions) {
+        const defaultOptions: RegisterPipelineOptions = {
+          templateNamespace: 'tools',
+          pipelineNamespace: 'dev',
+        };
+
+        return Object.assign(
+          defaultOptions,
+          cliOptions,
         );
     }
 }
