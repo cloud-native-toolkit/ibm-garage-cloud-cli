@@ -96,12 +96,12 @@ export class CredentialsImpl implements Credentials {
     const listOptions: ListOptions<any> = {namespace, qs};
 
     const results: Array<Array<object>> = await Promise.all([
-      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
-      this.kubeSecret.listData(listOptions, ['jenkins-access']),
       Promise.all([
         this.getArgoCdCredentials(namespace),
         this.getJenkinsCredentials(namespace),
       ]),
+      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
+      this.kubeSecret.listData(listOptions, ['jenkins-access']),
     ]);
 
     return this.group(_.assign({}, ...(_.flatten(results))));
