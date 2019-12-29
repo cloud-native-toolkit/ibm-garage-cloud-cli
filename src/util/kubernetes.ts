@@ -1,9 +1,11 @@
 import * as readline from "readline";
 import * as opn from 'open';
-import {buildKubeClient} from '../api/kubectl/client';
+import {Container} from 'typescript-ioc';
+
+import {KubeClient} from '../api/kubectl/client';
 
 export async function checkKubeconfig() {
-  const kubeClient = buildKubeClient();
+  const kubeClient: KubeClient = Container.get(KubeClient);
 
   try {
     await kubeClient.api.v1.pods.get();

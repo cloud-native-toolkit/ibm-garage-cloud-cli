@@ -22,7 +22,7 @@ const noopNotifyStatus: (status: string) => void = () => {};
 
 const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {
   WEBHOOK: {name: 'WEBHOOK', severity: ErrorSeverity.WARNING}
-}
+};
 
 class WebhookError extends CommandError {
   constructor(message: string) {

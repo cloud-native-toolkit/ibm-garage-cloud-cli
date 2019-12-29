@@ -5,11 +5,10 @@ import {
   KubeResourceList,
   Props
 } from './kubernetes-resource-manager';
-import {AsyncKubeClient, KubeClient} from './client';
-import {buildMockKubeClient} from './testHelper';
 import {Container, Provided, Provider} from 'typescript-ioc';
 import {mockField, providerFromValue, setField} from '../../testHelper';
 import {Secret} from './secrets';
+import {KindClient, KindInstance, KubeKindBuilder} from './kind-builder';
 import Mock = jest.Mock;
 
 class TestResource implements KubeResource {
@@ -24,7 +23,7 @@ class TestResource implements KubeResource {
 export const testV1Provider: Provider = {
   get: () => {
     return new TestV1KubernetesResource({
-      client: Container.get(AsyncKubeClient),
+      client: Container.get(KubeKindBuilder),
       name: 'secret',
       kind: 'Secret',
     })
@@ -39,7 +38,7 @@ class TestV1KubernetesResource extends AbstractKubernetesResourceManager<TestRes
 export const testV1Beta1Provider: Provider = {
   get: () => {
     return new TestV1Beta1KubernetesResource({
-      client: Container.get(AsyncKubeClient),
+      client: Container.get(KubeKindBuilder),
       group: 'extension',
       version: 'v1beta1',
       name: 'ingress',
@@ -61,12 +60,31 @@ describe('kubernetes-resource-manager', () => {
   });
 
   let classUnderTest: AbstractKubernetesResourceManager<TestResource>;
-  let mockClient: KubeClient;
+  let kindClient: KindClient<any>;
+  let kindInstance: KindInstance<any>;
+  let getResourceNode: Mock;
   beforeEach(() => {
-    mockClient = buildMockKubeClient();
 
-    Container.bind(AsyncKubeClient)
-      .provider(providerFromValue(new AsyncKubeClient(mockClient)));
+    kindInstance = {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+    };
+
+    kindClient = Object.assign(
+      jest.fn().mockReturnValue(kindInstance),
+      {
+        get: jest.fn(),
+        post: jest.fn(),
+      }
+    );
+
+    getResourceNode = jest.fn().mockResolvedValue(kindClient);
+
+    Container.bind(KubeKindBuilder)
+      .provider(providerFromValue({
+        getResourceNode,
+      }));
     classUnderTest = Container.get(TestV1KubernetesResource);
   });
 
@@ -92,7 +110,7 @@ describe('kubernetes-resource-manager', () => {
     describe('given list()', () => {
       let mock_get: Mock;
       beforeEach(() => {
-        mock_get = (mockClient.api.v1.namespaces as any).secrets.get;
+        mock_get = kindClient.get as Mock;
       });
 
       describe('when namespace not provided', () => {
@@ -101,7 +119,8 @@ describe('kubernetes-resource-manager', () => {
 
           await classUnderTest.list();
 
-          expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
+          expect(getResourceNode).toHaveBeenCalled();
+          expect(getResourceNode.mock.calls[0][3]).toEqual('default');
         });
       });
 
@@ -114,7 +133,8 @@ describe('kubernetes-resource-manager', () => {
           const namespace = 'ns';
           await classUnderTest.list({namespace});
 
-          expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
+          expect(getResourceNode).toHaveBeenCalled();
+          expect(getResourceNode.mock.calls[0][3]).toEqual(namespace);
         });
 
         test('then return list of secrets', async () => {
@@ -125,8 +145,8 @@ describe('kubernetes-resource-manager', () => {
           const namespace = 'ns';
           const actualResult = await classUnderTest.list({namespace});
 
-          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledTimes(1);
-          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
+          expect(mock_get).toHaveBeenCalledTimes(1);
+          expect(mock_get).toHaveBeenCalledWith({});
           expect(actualResult).toEqual(expectedResult);
         });
       });
@@ -135,14 +155,14 @@ describe('kubernetes-resource-manager', () => {
         test('then filter the results with selector', async () => {
           const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
           const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
-          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+          mock_get.mockResolvedValue({body: listResult});
 
           const namespace = 'ns';
           const labelSelector = 'app=test';
           const actualResult = await classUnderTest.list({namespace, qs: {labelSelector}});
 
           expect(actualResult).toEqual(expectedResult);
-          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({qs: {labelSelector}});
+          expect(mock_get).toHaveBeenCalledWith({qs: {labelSelector}});
         });
       });
 
@@ -150,7 +170,7 @@ describe('kubernetes-resource-manager', () => {
         test('then apply filter to results', async () => {
           const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
           const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
-          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+          mock_get.mockResolvedValue({body: listResult});
 
           const filter = jest.fn();
           filter.mockReturnValue(true);
@@ -160,7 +180,7 @@ describe('kubernetes-resource-manager', () => {
 
           expect(actualResult).toEqual(expectedResult);
           expect(filter).toHaveBeenCalledTimes(2);
-          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
+          expect(mock_get).toHaveBeenCalledWith({});
         });
       });
 
@@ -168,7 +188,7 @@ describe('kubernetes-resource-manager', () => {
         test('then apply map to results', async () => {
           const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
           const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
-          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+          mock_get.mockResolvedValue({body: listResult});
 
           const map = jest.fn();
           map.mockImplementation(val => val);
@@ -178,7 +198,7 @@ describe('kubernetes-resource-manager', () => {
 
           expect(actualResult).toEqual(expectedResult);
           expect(map).toHaveBeenCalledTimes(2);
-          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
+          expect(mock_get).toHaveBeenCalledWith({});
         });
       });
 
@@ -186,7 +206,7 @@ describe('kubernetes-resource-manager', () => {
         test('then apply filter and map to results', async () => {
           const expectedResult: Secret[] = [{val: '1'}, {val: '2'}] as any;
           const listResult: Partial<KubeResourceList<Secret>> = {items: expectedResult};
-          (mockClient.api.v1.namespaces as any).secret.get.mockResolvedValue({body: listResult});
+          mock_get.mockResolvedValue({body: listResult});
 
           const filter = jest.fn();
           filter.mockReturnValue(true);
@@ -200,7 +220,7 @@ describe('kubernetes-resource-manager', () => {
           expect(actualResult).toEqual(expectedResult);
           expect(filter).toHaveBeenCalledTimes(2);
           expect(map).toHaveBeenCalledTimes(2);
-          expect((mockClient.api.v1.namespaces as any).secrets.get).toHaveBeenCalledWith({});
+          expect(mock_get).toHaveBeenCalledWith({});
         });
       });
     });
@@ -284,9 +304,9 @@ describe('kubernetes-resource-manager', () => {
         processName.mockReturnValue(processedName);
         processInputs.mockReturnValue(processedBody);
 
-        mock_get = (mockClient.api.v1.namespaces as any).secrets.get;
-        mock_put = (mockClient.api.v1.namespaces as any).secrets.put;
-        mock_post = (mockClient.api.v1.namespaces as any).secrets.post;
+        mock_get = mockField(classUnderTest, 'get');
+        mock_put = kindInstance.put as Mock;
+        mock_post = kindClient.post as Mock;
       });
 
       describe('when secret exists', () => {
@@ -294,7 +314,7 @@ describe('kubernetes-resource-manager', () => {
         beforeEach(() => {
           exists.mockResolvedValue(true);
 
-          mock_get.mockResolvedValue({body: expectedResult});
+          mock_get.mockResolvedValue(expectedResult);
           mock_put.mockResolvedValue({body: expectedResult});
         });
 
@@ -307,8 +327,9 @@ describe('kubernetes-resource-manager', () => {
           expect(exists).toHaveBeenCalledTimes(1);
           expect(processName).toHaveBeenCalledWith(secretName);
           expect(processInputs).toHaveBeenCalledWith(processedName, secretBody.body, expectedResult);
-          expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
-          expect((mockClient.api.v1.namespace as any).secret).toHaveBeenCalledWith(processedName);
+          expect(getResourceNode).toHaveBeenCalled();
+          expect(getResourceNode.mock.calls[0][3]).toEqual(namespace);
+          expect(kindClient).toHaveBeenCalledWith(processedName);
           expect(mock_put).toHaveBeenCalledWith(processedBody);
         });
 
@@ -319,7 +340,8 @@ describe('kubernetes-resource-manager', () => {
 
             expect(actualResult).toEqual(expectedResult);
 
-            expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
+            expect(getResourceNode).toHaveBeenCalled();
+            expect(getResourceNode.mock.calls[0][3]).toEqual('default');
           });
         });
       });
@@ -341,7 +363,8 @@ describe('kubernetes-resource-manager', () => {
           expect(processName).toHaveBeenCalledWith(secretName);
           expect(processInputs).toHaveBeenCalledWith(processedName, secretBody.body);
           expect(exists).toHaveBeenCalledTimes(1);
-          expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
+          expect(getResourceNode).toHaveBeenCalled();
+          expect(getResourceNode.mock.calls[0][3]).toEqual(namespace);
           expect(mock_post).toHaveBeenCalledWith(processedBody);
         });
       });
@@ -357,9 +380,9 @@ describe('kubernetes-resource-manager', () => {
       let mock_post: Mock;
 
       beforeEach(() => {
-        mock_get = (mockClient.api.v1.namespaces as any).secrets.get;
-        mock_put = (mockClient.api.v1.namespaces as any).secrets.put;
-        mock_post = (mockClient.api.v1.namespaces as any).secrets.post;
+        mock_get = kindInstance.get as Mock;
+        mock_put = kindInstance.put as Mock;
+        mock_post = kindClient.post as Mock;
       });
 
       describe('when resource exists', () => {
@@ -372,17 +395,20 @@ describe('kubernetes-resource-manager', () => {
 
         test('then return resource value for provided namespace', async () => {
           const namespace = 'ns';
-          expect(await classUnderTest.get(resourceName, namespace)).toEqual(resource);
+          const actualResult = await classUnderTest.get(resourceName, namespace);
 
-          expect(mockClient.api.v1.namespace).toHaveBeenCalledWith(namespace);
-          expect((mockClient.api.v1.namespace as any).secrets).toHaveBeenCalledWith(resourceName);
+          expect(actualResult).toEqual(resource);
+          expect(getResourceNode).toHaveBeenCalled();
+          expect(getResourceNode.mock.calls[0][3]).toEqual(namespace);
+          expect(kindClient).toHaveBeenCalledWith(resourceName);
         });
 
         test('then return resource value for `default` namespace when none provided', async () => {
           expect(await classUnderTest.get(resourceName)).toEqual(resource);
 
-          expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
-          expect((mockClient.api.v1.namespace as any).secrets).toHaveBeenCalledWith(resourceName);
+          expect(getResourceNode).toHaveBeenCalled();
+          expect(getResourceNode.mock.calls[0][3]).toEqual('default');
+          expect(kindClient).toHaveBeenCalledWith(resourceName);
         });
       });
 
@@ -400,8 +426,9 @@ describe('kubernetes-resource-manager', () => {
             .catch(err => {
               expect(err.message).toEqual(errorMessage);
 
-              expect(mockClient.api.v1.namespace).toHaveBeenCalledWith('default');
-              expect((mockClient.api.v1.namespace as any).secrets).toHaveBeenCalledWith(resourceName);
+              expect(getResourceNode).toHaveBeenCalled();
+              expect(getResourceNode.mock.calls[0][3]).toEqual('default');
+              expect(kindClient).toHaveBeenCalledWith(resourceName);
             });
         });
       });
@@ -503,7 +530,7 @@ describe('kubernetes-resource-manager', () => {
       });
     });
 
-    describe('given proessName()', () => {
+    describe('given processName()', () => {
       describe('when name contains an underscore', () => {
         test('then return same value with lower case name', async () => {
           const name = 'test_name_valid';

@@ -3,9 +3,10 @@ import {CommandLineOptions} from '../model';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {RegisterJenkinsPipeline, RegisterPipeline, RegisterPipelineOptions} from '../services/register-pipeline';
 import {checkKubeconfig} from '../util/kubernetes';
-import {Container} from 'typescript-ioc';
+import {Container, Scope} from 'typescript-ioc';
 import {RegisterTektonPipeline} from '../services/register-pipeline/register-tekton-pipeline';
 import {ErrorSeverity, isCommandError} from '../util/errors';
+import {DryRunKindBuilder, KubeKindBuilder} from '../api/kubectl/kind-builder';
 import {isPipelineError, PipelineErrorType} from '../services/register-pipeline/register-pipeline';
 import * as chalk from 'chalk';
 import {QuestionBuilder} from '../util/question-builder';
@@ -65,6 +66,10 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
 
   if (argv.debug) {
     console.log('Input values: ', argv);
+  }
+
+  if (argv.dryRun) {
+    Container.bind(KubeKindBuilder).scope(Scope.Singleton).to(DryRunKindBuilder);
   }
 
   function statusCallback(status: string) {
@@ -144,6 +149,12 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
         console.log('Error registering pipeline:', err);
       }
       process.exit(1);
+    }
+  } finally {
+    if (argv.dryRun) {
+      const kubeClient: DryRunKindBuilder = Container.get(KubeKindBuilder);
+
+      console.log('Steps: ', kubeClient.steps);
     }
   }
 };

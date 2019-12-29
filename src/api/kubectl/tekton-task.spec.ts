@@ -1,8 +1,8 @@
 import {Container} from 'typescript-ioc';
 
 import {mockKubeClientProvider} from './testHelper';
-import {KubeClient} from './client';
 import {KubeTektonTask} from "./tekton-task";
+import {KubeKindBuilder} from './kind-builder';
 
 describe('tekton-task', () => {
   test('canary verifies test infrastructure', () => {
@@ -14,7 +14,7 @@ describe('tekton-task', () => {
 
     beforeEach(() => {
       Container
-        .bind(KubeClient)
+        .bind(KubeKindBuilder)
         .provider(mockKubeClientProvider);
 
       classUnderTest = Container.get(KubeTektonTask);

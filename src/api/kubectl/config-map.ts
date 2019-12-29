@@ -1,7 +1,6 @@
 import {AbstractKubernetesResourceManager, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
 import {Container, Provided, Provider} from 'typescript-ioc';
-import {AsyncKubeClient, KubeClient} from './client';
-import {Secret} from './secrets';
+import {KubeKindBuilder} from './kind-builder';
 
 export interface ConfigMap<T = any> extends KubeResource{
   data?: T;
@@ -10,7 +9,7 @@ export interface ConfigMap<T = any> extends KubeResource{
 const provider: Provider = {
   get: () => {
     return new KubeConfigMap({
-      client: Container.get(AsyncKubeClient),
+      client: Container.get(KubeKindBuilder),
       name: 'configmaps',
       kind: 'ConfigMap',
     });

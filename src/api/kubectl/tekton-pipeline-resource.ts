@@ -1,7 +1,7 @@
 import {Container, Provided, Provider} from 'typescript-ioc';
 
-import {AsyncKubeClient, KubeClient} from './client';
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {KubeKindBuilder} from './kind-builder';
 
 export interface TektonPipelineResource extends KubeResource {
   spec: {
@@ -16,7 +16,7 @@ export interface TektonPipelineResource extends KubeResource {
 const provider: Provider = {
   get: () => {
     return new KubeTektonPipelineResource({
-      client: Container.get(AsyncKubeClient),
+      client: Container.get(KubeKindBuilder),
       group: 'tekton.dev',
       version: 'v1alpha1',
       name: 'pipelineresources',

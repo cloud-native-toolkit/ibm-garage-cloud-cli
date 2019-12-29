@@ -1,11 +1,11 @@
 import {Container} from 'typescript-ioc';
 
 import {encode as base64encode} from '../../util/base64';
-import {KubeClient} from './client';
 import {mockKubeClientProvider} from './testHelper';
 import {KubeSecret} from './secrets';
 import {setField} from '../../testHelper';
 import Mock = jest.Mock;
+import {KubeKindBuilder} from './kind-builder';
 
 describe('secrets', () => {
   test('canary verifies test infrastructure', () => {
@@ -15,7 +15,7 @@ describe('secrets', () => {
   let classUnderTest: KubeSecret;
   beforeEach(() => {
     Container
-      .bind(KubeClient)
+      .bind(KubeKindBuilder)
       .provider(mockKubeClientProvider);
 
     classUnderTest = Container.get(KubeSecret);

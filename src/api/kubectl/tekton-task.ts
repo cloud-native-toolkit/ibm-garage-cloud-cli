@@ -1,7 +1,7 @@
 import {Container, Provided, Provider} from 'typescript-ioc';
 
-import {AsyncKubeClient, KubeClient} from './client';
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {KubeKindBuilder} from './kind-builder';
 
 export interface TektonTask extends KubeResource {
   spec: {
@@ -24,7 +24,7 @@ export interface TektonTask extends KubeResource {
 const provider: Provider = {
   get: () => {
     return new KubeTektonTask({
-      client: Container.get(AsyncKubeClient),
+      client: Container.get(KubeKindBuilder),
       group: 'tekton.dev',
       version: 'v1alpha1',
       name: 'tasks',

@@ -3,7 +3,6 @@ import {Credentials, CredentialsImpl, Secrets} from './credentials';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import Mock = jest.Mock;
 import {setField, providerFromValue} from '../../testHelper';
-import {KubeClient} from '../../api/kubectl/client';
 import {buildMockKubeClient} from '../../api/kubectl/testHelper';
 import {ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
 

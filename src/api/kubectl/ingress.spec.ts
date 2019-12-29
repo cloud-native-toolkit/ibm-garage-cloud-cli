@@ -1,9 +1,9 @@
 import {buildMockKubeClient, mockKubeClientProvider} from './testHelper';
 import {Ingress, KubeIngress} from './ingress';
 import {Container} from 'typescript-ioc';
-import {KubeClient} from './client';
 import Mock = jest.Mock;
 import {setField} from '../../testHelper';
+import {KubeKindBuilder} from './kind-builder';
 
 describe('ingress', () => {
   test('canary verifies test infrastructure', () => {
@@ -15,7 +15,7 @@ describe('ingress', () => {
 
     beforeEach(() => {
       Container
-        .bind(KubeClient)
+        .bind(KubeKindBuilder)
         .provider(mockKubeClientProvider);
 
       classUnderTest = Container.get(KubeIngress);

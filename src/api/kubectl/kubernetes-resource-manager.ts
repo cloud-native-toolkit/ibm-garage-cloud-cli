@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import {AsyncKubeClient, KubeClient} from './client';
+import {KindClient, KubeKindBuilder} from './kind-builder';
 
 export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
 
@@ -72,40 +72,12 @@ export interface Props {
   version?: string;
   kind: string;
   name: string;
-  client: AsyncKubeClient;
+  client: KubeKindBuilder;
   crd?: boolean;
 }
 
-interface CustomResourceDefinition extends KubeResource {
-  spec: object;
-  status?: object;
-}
-
-async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): Promise<boolean> {
-  try {
-    const client: KubeClient = await wrappedClient.get();
-    const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
-
-    if (!crd || !crd.body) {
-      return false;
-    }
-
-    client.addCustomResourceDefinition({
-      metadata: {
-        annotations: crd.body.metadata.annotations,
-        name: crd.body.metadata.name
-      },
-      spec: crd.body.spec
-    });
-
-    return true;
-  } catch (err) {
-    return false;
-  }
-}
-
 export class AbstractKubernetesResourceManager<T extends KubeResource> implements KubernetesResourceManager<T> {
-  public client: AsyncKubeClient;
+  public client: KubeKindBuilder;
   public group?: string;
   version: string;
   name: string;
@@ -124,7 +96,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     }
 
     if (props.crd) {
-      this.crdPromise = registerCrdSchema(this.client, `${this.name}.${this.group}`);
+      this.crdPromise = this.client.registerCrdSchema(`${this.name}.${this.group}`);
     } else {
       this.crdPromise = Promise.resolve(true);
     }
@@ -136,7 +108,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     const getOptions: Query<T> = this.buildQuery(options);
 
-    const kubeResource: any = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: KindClient<T> = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     if (kubeResource) {
       const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
@@ -157,7 +129,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
   async createOrUpdate(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
-    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: KindClient<T> = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     if (kubeResource) {
       const processedName = this.processName(name);
@@ -180,7 +152,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
   async create(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
-    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: KindClient<T> = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     const processedName = this.processName(name);
     const processedBody = this.processInputs(processedName, input.body);
@@ -192,7 +164,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
   async update(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
-    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: KindClient<T> = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     const current: T = await this.get(name, namespace);
 
@@ -220,9 +192,9 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
   }
 
   async get(name: string, namespace: string = 'default'): Promise<T> {
-    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: KindClient<T> = await this.resourceNode(this.group, this.version, this.name, namespace);
 
-    const result = await kubeResource(name).get();
+    const result: KubeBody<T> = await kubeResource(name).get();
 
     return _.get(result, 'body');
   }
@@ -273,21 +245,11 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     return Object.assign({}, obj, {metadata});
   }
 
-  async resourceNode(group: string | undefined, version: string, kind: string, namespace: string) {
+  async resourceNode<T extends KubeResource>(group: string | undefined, version: string, kind: string, namespace: string): Promise<KindClient<T>> {
 
     await this.crdPromise;
 
-    const versionPath: string[] = !group
-      ? ['api', version]
-      : ['apis', group, version];
-
-    const client: KubeClient = await this.client.get();
-
-    const versionNode = _.get(client, versionPath);
-
-    if (versionNode) {
-      return _.get(versionNode.namespace(namespace), kind);
-    }
+    return this.client.getResourceNode<T>(group, version, kind, namespace);
   }
 
   processName(name: string): string {

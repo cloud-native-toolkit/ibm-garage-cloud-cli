@@ -1,5 +1,5 @@
-import {KubeRoleBinding, RoleBinding} from './role-binding';
 import {Container} from 'typescript-ioc';
+import {KubeRoleBinding, RoleBinding} from './role-binding';
 
 describe('role-binding', () => {
   test('canary verifies test infrastructure', () => {

@@ -1,9 +1,9 @@
 import {Inject, Provides} from 'typescript-ioc';
 import * as _ from 'lodash';
 
-import {KubeClient} from '../../api/kubectl/client';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
+import {KindClient, KubeKindBuilder} from '../../api/kubectl/kind-builder';
 
 export interface ComponentCredentials {
   user?: string;
@@ -88,7 +88,7 @@ export class CredentialsImpl implements Credentials {
   @Inject
   private kubeConfigMap: KubeConfigMap;
   @Inject
-  private kubeClient: KubeClient;
+  private kubeClient: KubeKindBuilder;
 
   async getCredentials(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secrets> {
 
@@ -124,7 +124,9 @@ export class CredentialsImpl implements Credentials {
 
   async getArgoCdCredentials(namespace: string): Promise<ArgoCdCredentials> {
     try {
-      const result = await this.kubeClient.api.v1.namespace(namespace).pods.get();
+      const podsClient: KindClient<any> = await this.kubeClient.getResourceNode('', 'v1', 'pod', namespace);
+      const result = await podsClient.get();
+      // const result = await this.kubeClient.api.v1.namespace(namespace).pods.get();
 
       const ARGOCD_PASSWORD = result.body.items
         .map(item => item.metadata.name)

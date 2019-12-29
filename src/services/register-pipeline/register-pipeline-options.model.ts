@@ -10,4 +10,5 @@ export class RegisterPipelineOptions {
   generateCrumb?: boolean = false;
   serverUrl?: string;
   pipelineName?: string;
+  dryRun?: boolean;
 }
