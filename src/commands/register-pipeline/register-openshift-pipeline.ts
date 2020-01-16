@@ -7,8 +7,8 @@ import {FsPromises} from '../../util/file-util';
 import * as openshift from '../../api/openshift';
 import {OpenshiftCommands} from '../../api/openshift';
 import {RegisterPipelineType} from './register-pipeline-type';
-import path = require('path');
 import {GitParams} from '../git-secret';
+import path = require('path');
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -99,7 +99,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
       apiVersion: 'v1',
       kind: 'BuildConfig',
       metadata: {
-        name,
+        name: name.toLowerCase(),
         labels,
       },
       spec: {
@@ -146,6 +146,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
   }
 
   async createBuildPipeline(pipelineName: string, fileName: string, namespace: string = 'dev') {
+
     try {
       await this.openShift.create(fileName, namespace);
     } catch (err) {

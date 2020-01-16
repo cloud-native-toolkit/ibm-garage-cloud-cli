@@ -45,7 +45,7 @@ export class GitSecretImpl implements GitSecret {
       apiVersion: 'v1',
       kind: 'Secret',
       metadata: {
-        name: gitParams.name,
+        name: gitParams.name.toLowerCase(),
         labels: {
           'jenkins.io/credentials-type': 'usernamePassword',
           app: gitParams.repo,
