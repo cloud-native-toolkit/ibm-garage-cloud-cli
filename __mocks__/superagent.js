@@ -16,6 +16,7 @@ let Request = {
   body: mockResponse,
 
   post: jest.fn().mockReturnThis(),
+  pipe: jest.fn(),
   get: jest.fn().mockReturnThis(),
   auth: jest.fn().mockReturnThis(),
   send: jest.fn().mockReturnThis(),

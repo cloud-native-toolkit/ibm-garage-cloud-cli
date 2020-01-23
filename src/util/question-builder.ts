@@ -13,14 +13,14 @@ export abstract class QuestionBuilder<T> {
 
 @Provides(QuestionBuilder)
 export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
-  private readonly _questions: Array<Question<T>> = [];
-  private readonly _values: T = {} as any;
+  readonly _questions: Array<Question<T>> = [];
+  readonly answers: T = {} as any;
 
   question(question: Question<T> | ListQuestion<T>, value?: string): QuestionBuilder<T> {
     if (!this.valueProvided(question, value)) {
       this._questions.push(question);
     } else {
-      this._values[question.name] = value;
+      this.answers[question.name] = value;
     }
 
     return this;
@@ -43,7 +43,9 @@ export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
   getChoiceValues(question: Question<T> | ListQuestion<T>): string[] {
     const choices = (((question as ListQuestion<T>).choices) as Array<ChoiceType<T>>) || [];
 
-    return choices.map(this.mapChoiceTypeToValue);
+    return choices
+      .map(this.mapChoiceTypeToValue)
+      .filter(value => value !== undefined);
   }
 
   mapChoiceTypeToValue(choice: ChoiceType<T>): string | undefined {
@@ -59,6 +61,6 @@ export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
   async prompt(): Promise<T> {
     const promptValues = this._questions.length > 0 ? await prompt(this._questions) : {};
 
-    return Object.assign({}, this._values, promptValues);
+    return Object.assign({}, this.answers, promptValues);
   }
 }

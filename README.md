@@ -46,12 +46,26 @@ Registers a project as a Jenkins pipeline by creating a Kubernetes secret to hol
 the Git authentication information, calling the Jenkins API, and creating a web-hook.
 This command is intended to be run within the repository directory of a project for 
 which a pipeline should be generated.
+
+The pipeline command supports both `jenkins` and `tekton` pipelines using the flags:
+
+- --jenkins or
+- --tekton
+ 
+Jenkins is the default if no value is provided. 
  
 ### tools
 
 Launches the `ibm-garage-cli-tools` docker image in an interactive
 terminal. This image provides commonly used infrastructure tools like,
 `terraform`, `kubectl`, etc.
+
+### enable
+
+"Enables" an existing project with the DevOps infrastructure. The CLI reads the available 
+pipelines from a pipeline repo and applies the selected pipeline. The default pipeline repo
+is `https://ibm-garage-cloud.github.io/garage-pipelines/` but a different one can be
+used by providing the `--repo` argument. 
  
 ## Development
 
