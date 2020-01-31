@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+
 import {KindClient, KubeKindBuilder} from './kind-builder';
 
 export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
@@ -114,8 +115,8 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
       const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
 
       const items: T[] = _.get(result, 'body.items', [])
-          .filter(options.filter || (() => true))
-          .map(options.map || (val => val));
+        .filter(options.filter || (() => true))
+        .map(options.map || (val => val));
 
       return items;
     } else {
@@ -191,7 +192,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     return false;
   }
 
-  async get(name: string, namespace: string = 'default'): Promise<T> {
+  async 'get'(name: string, namespace: string = 'default'): Promise<T> {
     const kubeResource: KindClient<T> = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     const result: KubeBody<T> = await kubeResource(name).get();

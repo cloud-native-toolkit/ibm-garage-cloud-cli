@@ -1,5 +1,6 @@
 import {exec, spawn, ExecOptions} from 'child_process';
-import {Container} from 'typescript-ioc';
+import {Container, Inject} from 'typescript-ioc';
+import {CommandTracker} from '../api/command-tracker/command-tracker';
 
 export interface ExecResult {
   stdout: string | Buffer;
@@ -7,8 +8,15 @@ export interface ExecResult {
 }
 
 export class ChildProcess {
+  @Inject
+  commandTracker: CommandTracker;
+
   async exec(command: string, options: ExecOptions = {}): Promise<ExecResult> {
     return new Promise((resolve, reject) => {
+      this.commandTracker.record({
+        command
+      });
+
       exec(
         command,
         options,
@@ -25,6 +33,12 @@ export class ChildProcess {
 
   async spawn(command: string, args: string[], env: any, verbose: boolean = true): Promise<string> {
     return new Promise<string>((resolve, reject) => {
+      this.commandTracker.record({
+        command,
+        arguments: args,
+        env
+      });
+
       const childProcess = spawn(command, args, env);
 
       if (verbose) {

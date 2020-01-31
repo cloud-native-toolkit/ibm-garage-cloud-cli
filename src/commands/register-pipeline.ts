@@ -1,14 +1,16 @@
 import {Arguments, Argv} from 'yargs';
+import {Container, Scope} from 'typescript-ioc';
+import * as chalk from 'chalk';
+
 import {CommandLineOptions} from '../model';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {RegisterJenkinsPipeline, RegisterPipeline, RegisterPipelineOptions} from '../services/register-pipeline';
 import {checkKubeconfig} from '../util/kubernetes';
-import {Container, Scope} from 'typescript-ioc';
 import {RegisterTektonPipeline} from '../services/register-pipeline/register-tekton-pipeline';
 import {ErrorSeverity, isCommandError} from '../util/errors';
 import {DryRunKindBuilder, KubeKindBuilder} from '../api/kubectl/kind-builder';
+import {CommandTracker} from '../api/command-tracker/command-tracker';
 import {isPipelineError, PipelineErrorType} from '../services/register-pipeline/register-pipeline';
-import * as chalk from 'chalk';
 import {QuestionBuilder} from '../util/question-builder';
 
 export const command = 'pipeline';
@@ -152,9 +154,9 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
     }
   } finally {
     if (argv.dryRun) {
-      const kubeClient: DryRunKindBuilder = Container.get(KubeKindBuilder);
+      const commandTracker: CommandTracker = Container.get(CommandTracker);
 
-      console.log('Steps: ', kubeClient.steps);
+      console.log('Commands: ', commandTracker.commands);
     }
   }
 };

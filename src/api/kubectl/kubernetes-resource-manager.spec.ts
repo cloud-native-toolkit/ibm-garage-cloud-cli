@@ -66,6 +66,7 @@ describe('kubernetes-resource-manager', () => {
   beforeEach(() => {
 
     kindInstance = {
+      kind: 'test',
       get: jest.fn(),
       post: jest.fn(),
       put: jest.fn(),

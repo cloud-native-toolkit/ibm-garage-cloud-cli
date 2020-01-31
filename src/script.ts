@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-
-import {CommandModule, scriptName} from 'yargs';
+import {scriptName} from 'yargs';
 
 const yarg = scriptName('igc')
   .usage('IBM Garage Cloud Native Toolkit CLI (https://cloudnativetoolkit.dev)')

@@ -2,8 +2,10 @@ import {KubeBody, KubeResource, KubeResourceList} from './kubernetes-resource-ma
 import {Inject, Provides} from 'typescript-ioc';
 import * as _ from 'lodash';
 import {AsyncKubeClient, KubeClient} from './client';
+import {CommandTracker} from '../command-tracker/command-tracker';
 
 export interface KindInstance<T extends KubeResource> {
+  readonly kind: string;
   get(options?: any): Promise<KubeBody<T>>;
   post(body: KubeBody<T>): Promise<KubeBody<T>>;
   put(body: KubeBody<T>): Promise<KubeBody<T>>;
@@ -70,35 +72,57 @@ export class DefaultKubeKindBuilder implements KubeKindBuilder {
   }
 }
 
-function recordKubePayload(steps: KubeResource[]) {
+function recordKubePayload(tracker: CommandTracker, command: string, namespace?: string) {
   return async <T extends KubeResource>(value: KubeBody<T>): Promise<KubeBody<T>> => {
     console.log('Adding step', value.body);
-    steps.push(value.body);
+
+    const args = [command];
+    if (namespace) {
+      args.push('-n');
+      args.push(namespace);
+    }
+
+    tracker.record({
+      command: 'kubectl',
+      arguments: args,
+      data: value.body
+    });
     return value;
   };
 }
 
 class KindInstanceWrapper<T extends KubeResource> implements KindInstance<T> {
-  constructor(private kindInstance: KindInstance<T>, private steps: KubeResource[]) {}
+  constructor(private kindInstance: KindInstance<T>, private namespace: string, private commandTracker: CommandTracker) {}
+
+  get kind(): string {
+    return this.kindInstance.kind;
+  }
 
   async get(options?: any): Promise<KubeBody<T>> {
-    console.log('Getting value with options', options, this.steps);
+    this.commandTracker.record({
+      command: 'kubectl',
+      arguments: [
+        'get',
+        this.kindInstance.kind,
+        '-n',
+        this.namespace,
+      ],
+    });
+
     return this.kindInstance.get(options);
   }
   async post(body: KubeBody<T>): Promise<KubeBody<T>> {
-    return recordKubePayload(this.steps)(body);
+    return recordKubePayload(this.commandTracker, 'apply', this.namespace)(body);
   }
   async put(body: KubeBody<T>): Promise<KubeBody<T>> {
-    return recordKubePayload(this.steps)(body);
+    return recordKubePayload(this.commandTracker, 'create', this.namespace)(body);
   }
 }
 
 export class DryRunKindBuilder extends DefaultKubeKindBuilder implements KubeKindBuilder {
 
-  private _steps: KubeResource[] = [];
-  get steps(): KubeResource[] {
-    return this._steps;
-  }
+  @Inject
+  commandTracker: CommandTracker;
 
   async getResourceNode<T extends KubeResource>(group: string | undefined, version: string, kind: string, namespace: string): Promise<KindClient<T>> {
 
@@ -111,11 +135,11 @@ export class DryRunKindBuilder extends DefaultKubeKindBuilder implements KubeKin
 
     return Object.assign(
       (name: string): KindInstance<T> => {
-        return new KindInstanceWrapper(originalKubeKind(name), this._steps);
+        return new KindInstanceWrapper(originalKubeKind(name), namespace, this.commandTracker);
       },
       {
         get: originalKubeKind.get.bind(originalKubeKind),
-        post: recordKubePayload(this._steps),
+        post: recordKubePayload(this.commandTracker, 'apply', namespace),
       });
   }
 }
