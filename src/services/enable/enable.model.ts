@@ -1,4 +1,4 @@
-export class EnableModel {
+export class EnablePipelineModel {
   repo: string;
   pipeline?: string;
 }

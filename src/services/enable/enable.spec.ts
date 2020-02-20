@@ -48,7 +48,7 @@ describe('enable', () => {
 
         test('then should get the pipeline path and apply the pipeline', async () => {
           const pipelinePath = 'pipeline-path';
-          getPipelinePath.mockResolvedValue(pipelinePath);
+          getPipelinePath.mockResolvedValue({pipelinePath});
           
           await classUnderTest.enable(options);
 
@@ -147,7 +147,7 @@ describe('enable', () => {
 
           const actualResult = await classUnderTest.promptForPipelineName(index);
 
-          expect(actualResult).toEqual(url);
+          expect(actualResult).toEqual({pipelineName: 'nodejs', pipelinePath: url});
         });
       });
     });

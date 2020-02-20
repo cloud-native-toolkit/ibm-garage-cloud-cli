@@ -4,14 +4,14 @@ import * as YAML from 'js-yaml';
 import * as tar from 'tar';
 import * as rimraf from 'rimraf';
 
-import {EnableModel} from './enable.model';
+import {EnablePipelineModel} from './enable.model';
 import {QuestionBuilder} from '../../util/question-builder';
 import {join} from 'path';
 import {existsSync, mkdirSync, readdir} from 'fs';
 import {FsPromises} from '../../util/file-util';
 
 export abstract class EnablePipeline {
-  async abstract enable(options: EnableModel): Promise<void>;
+  async abstract enable(options: EnablePipelineModel): Promise<EnablePipelineResult>;
 }
 
 export interface PipelineIndex {
@@ -26,28 +26,39 @@ export interface PipelineIndicies {
   }
 }
 
+export interface EnablePipelineResult {
+  repository: string;
+  pipelineName: string;
+  pipelinePath: string;
+  filesChanged: string[];
+}
+
 @Provides(EnablePipeline)
 export class EnablePipelineImpl implements EnablePipeline {
   private debug = false;
   @Inject
   fs: FsPromises;
 
-  async enable(options: EnableModel): Promise<void> {
+  async enable(options: EnablePipelineModel): Promise<EnablePipelineResult> {
     if (!options.repo) {
       throw new Error('value required for \'repo\'');
     }
 
-    const pipelinePath = await this.getPipelinePath(options);
+    const {pipelinePath, pipelineName} = await this.getPipelinePath(options);
 
-    await this.applyPipelineToCurrentDirectory(pipelinePath);
+    const filesChanged: string[] = await this.applyPipelineToCurrentDirectory(pipelinePath);
+
+    return {
+      repository: options.repo,
+      pipelineName,
+      pipelinePath,
+      filesChanged,
+    }
   }
 
-  async getPipelinePath(options: EnableModel): Promise<string> {
-    console.log('Looking up pipelines from repository: ' + options.repo);
+  async getPipelinePath(options: EnablePipelineModel): Promise<{pipelineName: string, pipelinePath: string}> {
 
     const index: PipelineIndicies = await this.getPipelineRepoIndex(options.repo);
-
-    this.log('Pipeline indicies: ', index);
 
     return await this.promptForPipelineName(index, options.pipeline);
   }
@@ -64,7 +75,7 @@ export class EnablePipelineImpl implements EnablePipeline {
     }
   }
 
-  async promptForPipelineName(index: PipelineIndicies = {pipelines: {}}, pipeline?: string): Promise<string> {
+  async promptForPipelineName(index: PipelineIndicies = {pipelines: {}}, pipeline?: string): Promise<{pipelineName: string, pipelinePath: string}> {
     if (!index.pipelines || Object.keys(index.pipelines).length === 0) {
       throw new Error('No pipelines found in repo');
     }
@@ -84,15 +95,17 @@ export class EnablePipelineImpl implements EnablePipeline {
 
     const match: PipelineIndex = index.pipelines[pipeline];
 
-    return match.url;
+    return {pipelinePath: match.url, pipelineName: pipeline};
   }
 
-  async applyPipelineToCurrentDirectory(pipelineUrl: string): Promise<void> {
+  async applyPipelineToCurrentDirectory(pipelineUrl: string): Promise<string[]> {
     const path = await this.downloadUrlToPath(pipelineUrl);
 
-    await this.copyFilesFromPath(path, process.cwd());
+    const filesChanged: string[] = await this.copyFilesFromPath(path, process.cwd());
 
-    await rimraf.sync(path);;
+    await rimraf.sync(path);
+
+    return filesChanged;
   }
 
   async downloadUrlToPath(pipelinePath: string): Promise<string> {
@@ -117,7 +130,7 @@ export class EnablePipelineImpl implements EnablePipeline {
     });
   }
 
-  async copyFilesFromPath(fromPath: string, toPath: string): Promise<void> {
+  async copyFilesFromPath(fromPath: string, toPath: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
       readdir(fromPath, (err, items) => {
         if (err) {
@@ -130,14 +143,14 @@ export class EnablePipelineImpl implements EnablePipeline {
     })
   }
 
-  async copyFiles(fromPath: string, toPath: string, items: string[]): Promise<void> {
+  async copyFiles(fromPath: string, toPath: string, items: string[]): Promise<string[]> {
 
-    for (let i = 0; i < items.length; i++) {
-      await this.copyFileWithPromptForOverwrite(fromPath, toPath, items[i]);
-    }
+    const changedFiles: string[] = await Promise.all(items.map(item => this.copyFileWithPromptForOverwrite(fromPath, toPath, item)));
+
+    return changedFiles.filter(fileName => !!fileName);
   }
 
-  async copyFileWithPromptForOverwrite(fromPath: string, toPath: string, fileName: string): Promise<void> {
+  async copyFileWithPromptForOverwrite(fromPath: string, toPath: string, fileName: string): Promise<string | undefined> {
     if (existsSync(join(toPath, fileName))) {
       const prompt: QuestionBuilder<{overwrite: true}> = Container.get(QuestionBuilder);
 
@@ -152,7 +165,9 @@ export class EnablePipelineImpl implements EnablePipeline {
       }
     }
 
-    return this.fs.copyFile(join(fromPath, fileName), join(toPath, fileName));
+    await this.fs.copyFile(join(fromPath, fileName), join(toPath, fileName));
+
+    return fileName;
   }
 
   log(val1: any, val2: any) {
