@@ -2,6 +2,7 @@ import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
 import ora = require('ora');
 import {GetDashboardUrl} from '../services/dashboard/get-dashboard-url';
+import * as open from 'open';
 
 export const command = 'dashboard';
 export const desc = 'Open the dashboard url in the default browser';
