@@ -145,7 +145,12 @@ export class EnablePipelineImpl implements EnablePipeline {
 
   async copyFiles(fromPath: string, toPath: string, items: string[]): Promise<string[]> {
 
-    const changedFiles: string[] = await Promise.all(items.map(item => this.copyFileWithPromptForOverwrite(fromPath, toPath, item)));
+    const changedFiles: string[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const changedFile = await this.copyFileWithPromptForOverwrite(fromPath, toPath, items[i]);
+
+      changedFiles.push(changedFile);
+    }
 
     return changedFiles.filter(fileName => !!fileName);
   }

@@ -27,15 +27,15 @@ exports.handler = async (argv: Arguments<EnablePipelineModel & CommandLineOption
 
   console.log('**Here\'s what happened**');
   console.log('');
-  console.log('1. A listing of available pipelines was retrieved from ' + chalk.bgGreen(result.repository));
-  console.log('2. You selected the ' + chalk.bgGreen(result.pipelineName) + ' pipeline');
+  console.log('1. A listing of available pipelines was retrieved from ' + chalk.green(result.repository));
+  console.log('2. You selected the ' + chalk.green(result.pipelineName) + ' pipeline');
   if (result.filesChanged.length > 0) {
     console.log('3. We added the following files to your repo:');
     result.filesChanged.forEach(file => {
-      console.log('  - ' + chalk.bgGreen(file));
+      console.log('  - ' + chalk.green(file));
     });
     console.log('');
-    console.log(chalk.bgYellow('Don\'t forget to commit the new files'));
+    console.log(chalk.yellow('Don\'t forget to commit the new files'));
   } else {
     console.log('');
     console.log('No files were changed in your repo');
