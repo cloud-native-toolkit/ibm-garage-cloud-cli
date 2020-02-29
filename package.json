@@ -23,6 +23,16 @@
       "pre-commit": "npm test"
     }
   },
+  "release-it": {
+    "git": {
+      "tagName": "v${version}"
+    },
+    "hooks": {
+      "before:init": ["npm test"],
+      "after:bump": "npm run build",
+      "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+    }
+  },
   "scripts": {
     "test": "jest --coverage",
     "tdd": "jest --watch",
@@ -35,7 +45,8 @@
     "watch": "npm-watch",
     "prestart": "npm run build",
     "start": "./dist/script.js",
-    "igc": "./dist/script.js"
+    "igc": "./dist/script.js",
+    "release": "release-it --verbose"
   },
   "devDependencies": {
     "@babel/core": "^7.4.3",
@@ -62,6 +73,7 @@
     "jest-plugin-context": "^2.9.0",
     "jest-sonar-reporter": "^2.0.0",
     "npm-watch": "^0.6.0",
+    "release-it": "^12.6.2",
     "ts-jest": "^24.0.2",
     "ts-node": "^8.0.3",
     "typescript": "^3.4.3"
