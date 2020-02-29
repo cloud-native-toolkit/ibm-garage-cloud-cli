@@ -119,6 +119,9 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
             }, {
               name: 'NAMESPACE',
               value: namespace,
+            }, {
+              name: 'BRANCH',
+              value: branch,
             }]
           }
         }

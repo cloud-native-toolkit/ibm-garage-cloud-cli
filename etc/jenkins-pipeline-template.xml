@@ -57,6 +57,12 @@
         <defaultValue>{{NAMESPACE}}</defaultValue>
         <trim>false</trim>
       </hudson.model.StringParameterDefinition>
+      <hudson.model.StringParameterDefinition>
+        <name>BRANCH</name>
+        <description></description>
+        <defaultValue>{{GIT_BRANCH}}</defaultValue>
+        <trim>false</trim>
+      </hudson.model.StringParameterDefinition>
     </parameterDefinitions>
   </hudson.model.ParametersDefinitionProperty>
 </properties>
