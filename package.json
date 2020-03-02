@@ -1,6 +1,6 @@
 {
   "name": "@ibmgaragecloud/cloud-native-toolkit-cli",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "CLI that provides functions to simplify interactions with containerized platforms and tools",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -28,7 +28,9 @@
       "tagName": "v${version}"
     },
     "hooks": {
-      "before:init": ["npm test"],
+      "before:init": [
+        "npm test"
+      ],
       "after:bump": "npm run build",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     }
