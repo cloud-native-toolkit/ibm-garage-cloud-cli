@@ -27,6 +27,9 @@
     "git": {
       "tagName": "v${version}"
     },
+    "github": {
+      "release": true
+    },
     "hooks": {
       "before:init": [
         "npm test"
