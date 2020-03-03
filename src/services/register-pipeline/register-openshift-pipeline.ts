@@ -1,5 +1,6 @@
 import {Inject} from 'typescript-ioc';
 import {prompt, Questions} from 'inquirer';
+import * as YAML from 'js-yaml';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {ChildProcess} from '../../util/child-process';
@@ -56,8 +57,8 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
       );
 
       const fileName = await this.fsPromises.writeFile(
-        path.join(process.cwd(), './pipeline-build-config.json'),
-        JSON.stringify(buildConfig)
+        path.join(process.cwd(), './pipeline-build-config.yaml'),
+        YAML.safeDump(buildConfig)
       );
 
       await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);

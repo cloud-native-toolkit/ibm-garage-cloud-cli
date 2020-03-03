@@ -1,5 +1,6 @@
 import {Container} from 'typescript-ioc';
 import Mock = jest.Mock;
+import * as YAML from 'js-yaml';
 
 jest.mock('inquirer');
 
@@ -88,7 +89,7 @@ describe('register-openshift-pipeline', () => {
 
         expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
 
-        expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.json`, JSON.stringify(buildConfig));
+        expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.yaml`, YAML.safeDump(buildConfig));
 
         expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, pipelineNamespace);
       });
