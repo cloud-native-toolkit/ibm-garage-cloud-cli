@@ -273,14 +273,13 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       gitSource,
       dockerImage,
       pipelineName,
-      serviceAccount
     }: {
       pipelineNamespace: string,
       name: string,
       gitSource: string,
       dockerImage: string,
       pipelineName: string,
-      serviceAccount: string
+      serviceAccount?: string,
     }) {
     const dateHex = Date.now().toString(16);
     const pipelineRunName = `${name}-run-${dateHex}`;
@@ -313,7 +312,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
                 },
               },
             ],
-            serviceAccount,
           },
         }
       },
