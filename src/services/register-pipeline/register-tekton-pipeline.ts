@@ -66,7 +66,16 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     notifyStatus(`Setting up ${options.pipelineNamespace} namespace`);
     await this.setupNamespace(options.pipelineNamespace, options.templateNamespace, notifyStatus);
 
-    const serviceAccount = await this.createServiceAccount(options.pipelineNamespace, clusterType, notifyStatus);
+    const secretName = await this.createGitSecret.createGitSecret(
+      gitParams,
+      [
+        options.pipelineNamespace,
+        options.templateNamespace,
+      ],
+      options.values,
+    );
+
+    const serviceAccount = await this.createServiceAccount(options.pipelineNamespace, clusterType, [secretName], notifyStatus);
 
     notifyStatus('Creating Git PipelineResource');
     const gitSource = await this.createGitPipelineResource(options, gitParams);
@@ -121,7 +130,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
   }
 
-  async createServiceAccount(namespace: string, clusterType: string, notifyStatus: (text: string) => void): Promise<string> {
+  async createServiceAccount(namespace: string, clusterType: string, secrets: string[] = [], notifyStatus: (text: string) => void): Promise<string> {
 
     const name = 'pipeline';
     notifyStatus(`Creating service account: ${name}`);
@@ -149,7 +158,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
       await this.serviceAccount.createKubernetes(namespace, name, rules);
     } else {
-      await this.serviceAccount.createOpenShift(namespace, name, ['privileged'], ['edit']);
+      await this.serviceAccount.createOpenShift(namespace, name, ['privileged'], ['edit'], secrets);
     }
 
     return name;
@@ -161,8 +170,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     const gitResourceParams = {
       url: gitParams.url,
       revision: gitParams.branch,
-      username: gitParams.username,
-      password: gitParams.password,
     };
 
     await this.pipelineResource.createOrUpdate(
@@ -273,6 +280,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       gitSource,
       dockerImage,
       pipelineName,
+      serviceAccount,
     }: {
       pipelineNamespace: string,
       name: string,
@@ -312,6 +320,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
                 },
               },
             ],
+            serviceAccountName: serviceAccount,
           },
         }
       },

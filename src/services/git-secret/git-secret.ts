@@ -25,9 +25,11 @@ export class GitSecretImpl implements GitSecret {
 
     notifyStatus('Creating secret: ' + gitParams.name);
 
+    const gitName = gitParams.name.replace(/[.]/g, '-').toLowerCase();
+
     await Promise.all(namespaceValues.map(namespace => {
       const promise = this.kubeSecret.createOrUpdate(
-        gitParams.name,
+        gitName,
         {body: gitSecret},
         namespace,
       );
@@ -37,7 +39,7 @@ export class GitSecretImpl implements GitSecret {
       return promise;
     }));
 
-    return gitParams.name;
+    return gitName;
   }
 
   buildGitSecretBody(gitParams: GitParams, additionalParams: any = {}): Secret {
@@ -53,7 +55,8 @@ export class GitSecretImpl implements GitSecret {
         annotations: {
           description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
           'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
-          'build.openshift.io/source-secret-match-uri-1': `${gitParams.url.replace(new RegExp('/[^/]*$'), '/*')}`
+          'build.openshift.io/source-secret-match-uri-1': `${gitParams.url.replace(new RegExp('/[^/]*$'), '/*')}`,
+          'tekton.dev/git-0': `https://${gitParams.host}`
         },
       },
       type: 'kubernetes.io/basic-auth',

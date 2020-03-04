@@ -14,7 +14,7 @@ export interface TektonPipelineRun extends KubeResource {
         name: string;
       };
     }>
-    serviceAccount?: string;
+    serviceAccountName?: string;
     timeout?: string;
   };
 }

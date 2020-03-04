@@ -1,4 +1,5 @@
 import {Inject, Provides} from 'typescript-ioc';
+import * as _ from 'lodash';
 
 import {ChildProcess} from '../../util/child-process';
 import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
@@ -6,7 +7,7 @@ import {KubeRole, Role, RoleRule} from '../../api/kubectl/role';
 import {KubeRoleBinding, RoleBinding} from '../../api/kubectl/role-binding';
 
 export abstract class CreateServiceAccount {
-  async abstract createOpenShift(namespace: string, name: string, sccs?: string[], roles?: string[]): Promise<string>;
+  async abstract createOpenShift(namespace: string, name: string, sccs?: string[], roles?: string[], secrets?: string[]): Promise<string>;
   async abstract createKubernetes(namespace: string, name: string, rules?: RoleRule[]): Promise<string>;
 }
 
@@ -21,7 +22,7 @@ export class CreateServiceAccountImpl implements CreateServiceAccount {
   @Inject
   childProcess: ChildProcess;
 
-  async createOpenShift(namespace: string, name: string, sccs: string[] = [], roles: string[] = []): Promise<string> {
+  async createOpenShift(namespace: string, name: string, sccs: string[] = [], roles: string[] = [], secrets: string[] = []): Promise<string> {
     if (!(await this.serviceAccount.exists(name, namespace))) {
       console.log(`Creating service account: ${namespace}/${name}`);
       await this.childProcess.exec(`oc create serviceaccount ${name} -n ${namespace}`);
@@ -33,6 +34,18 @@ export class CreateServiceAccountImpl implements CreateServiceAccount {
 
     for (const role of roles) {
       await this.childProcess.exec(`oc adm policy add-role-to-user ${role} -z ${name} -n ${namespace}`);
+    }
+
+    if (secrets.length > 0) {
+      const serviceAccount = await this.serviceAccount.get(name, namespace);
+
+      const existingSecrets = serviceAccount.secrets || [];
+      const newSecrets = _.difference(secrets.map(name => ({name: name.toLowerCase()})), existingSecrets);
+      if (newSecrets.length > 0) {
+        serviceAccount.secrets = existingSecrets.concat(newSecrets);
+
+        await this.serviceAccount.createOrUpdate(name, {body: serviceAccount}, namespace);
+      }
     }
 
     return name;

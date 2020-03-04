@@ -22,7 +22,8 @@ describe('register-tekton-pipeline', () => {
   let namespaceBuilder: Namespace;
   beforeEach(() => {
     createGitSecret = {
-      getGitParameters: jest.fn()
+      getGitParameters: jest.fn(),
+      createGitSecret: jest.fn(),
     } as any;
     Container.bind(CreateGitSecret)
       .provider(providerFromValue(createGitSecret));
@@ -118,7 +119,7 @@ describe('register-tekton-pipeline', () => {
       test('should setup serviceAccount', async () => {
         await classUnderTest.registerPipeline({pipelineNamespace, templateNamespace}, notifyStatus);
 
-        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, clusterType, notifyStatus);
+        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, clusterType, [undefined], notifyStatus);
       });
 
       test('should create git pipeline resource', async () => {
@@ -218,8 +219,6 @@ describe('register-tekton-pipeline', () => {
         expect(buildGitPipelineResourceBody).toHaveBeenCalledWith(`${gitParams.repo}-git`, {
           url: gitParams.url,
           revision: gitParams.branch,
-          username: gitParams.username,
-          password: gitParams.password,
         });
       });
     });
