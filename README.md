@@ -7,9 +7,15 @@ Command-line tool to simplify activities related to IBM Cloud.
 1. Install the latest CLI by running:
 
     ```
-    npm i -g @garage-catalyst/ibm-garage-cloud-cli
+    npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
     ```
 
+    **Note:** If you had previously installed the cli from @garagecatalyst, you will need to remove it first:
+
+    ```
+    npm rm -g @garage-catalyst/ibm-garage-cloud-cli
+    ```
+   
 2. Run the following to list the available commands:
 
     ```
