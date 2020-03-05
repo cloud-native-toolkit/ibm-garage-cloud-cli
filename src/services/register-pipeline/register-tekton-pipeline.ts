@@ -241,7 +241,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
           params: [
             {
               name: 'url',
-              value: url,
+              value: url.toLowerCase(),
             }
           ],
         },
