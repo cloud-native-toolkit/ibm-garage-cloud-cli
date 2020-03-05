@@ -165,7 +165,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   }
 
   async createGitPipelineResource({pipelineNamespace = 'dev'}: TektonPipelineOptions, gitParams: GitParams): Promise<string> {
-    const name = `${gitParams.repo}-git`;
+    const name = `${gitParams.repo}-git`.toLowerCase();
 
     const gitResourceParams = {
       url: gitParams.url,
@@ -204,7 +204,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   }
 
   async createImagePipelineResource({pipelineNamespace = 'dev', templateNamespace = 'tools'}: TektonPipelineOptions, params: { repo: string }): Promise<string> {
-    const name = `${params.repo}-image`;
+    const name = `${params.repo}-image`.toLowerCase();
     const imageUrl: string = await this.buildImageUrl({pipelineNamespace, templateNamespace}, params);
 
     await this.pipelineResource.createOrUpdate(
