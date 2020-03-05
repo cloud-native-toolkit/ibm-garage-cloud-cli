@@ -56,7 +56,7 @@ export class GitSecretImpl implements GitSecret {
           description: `secret providing credentials for git repo ${gitParams.url} used by the Jenkins pipeline`,
           'jenkins.io/credentials-description': `Git credentials for ${gitParams.url} stored in kubernetes secret`,
           'build.openshift.io/source-secret-match-uri-1': `${gitParams.url.replace(new RegExp('/[^/]*$'), '/*')}`,
-          'tekton.dev/git-0': `https://${gitParams.host}`
+          'tekton.dev/git-0': gitParams.url
         },
       },
       type: 'kubernetes.io/basic-auth',
