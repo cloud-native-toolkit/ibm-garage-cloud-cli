@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import {KubeClient} from './client';
+import {AsyncKubeClient, KubeClient} from './client';
 
 export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
 
@@ -72,7 +72,7 @@ export interface Props {
   version?: string;
   kind: string;
   name: string;
-  client: KubeClient;
+  client: AsyncKubeClient;
   crd?: boolean;
 }
 
@@ -81,8 +81,9 @@ interface CustomResourceDefinition extends KubeResource {
   status?: object;
 }
 
-async function registerCrdSchema(client: KubeClient, name: string): Promise<boolean> {
+async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): Promise<boolean> {
   try {
+    const client: KubeClient = await wrappedClient.get();
     const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
 
     if (!crd || !crd.body) {
@@ -104,7 +105,7 @@ async function registerCrdSchema(client: KubeClient, name: string): Promise<bool
 }
 
 export class AbstractKubernetesResourceManager<T extends KubeResource> implements KubernetesResourceManager<T> {
-  public client: KubeClient;
+  public client: AsyncKubeClient;
   public group?: string;
   version: string;
   name: string;
@@ -135,7 +136,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
 
     const getOptions: Query<T> = this.buildQuery(options);
 
-    const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: any = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     if (kubeResource) {
       const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
@@ -280,7 +281,9 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
       ? ['api', version]
       : ['apis', group, version];
 
-    const versionNode = _.get(this.client, versionPath);
+    const client: KubeClient = await this.client.get();
+
+    const versionNode = _.get(client, versionPath);
 
     if (versionNode) {
       return _.get(versionNode.namespace(namespace), kind);

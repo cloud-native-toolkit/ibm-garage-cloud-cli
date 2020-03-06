@@ -1,7 +1,7 @@
 import {Container, Provided, Provider} from 'typescript-ioc';
 
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
-import {KubeClient} from './client';
+import {AsyncKubeClient, KubeClient} from './client';
 
 export interface ServiceAccount extends KubeResource {
   imagePullSecrets?: Array<{name: string}>;
@@ -11,7 +11,7 @@ export interface ServiceAccount extends KubeResource {
 const provider: Provider = {
   get: () => {
     return new KubeServiceAccount({
-      client: Container.get(KubeClient),
+      client: Container.get(AsyncKubeClient),
       name: 'serviceaccounts',
       kind: 'ServiceAccount',
     });

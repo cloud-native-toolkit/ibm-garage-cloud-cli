@@ -1,4 +1,4 @@
-import {KubeClient} from './client';
+import {AsyncKubeClient, KubeClient} from './client';
 import {KubeBody, KubeResource} from './kubernetes-resource-manager';
 import {Container, Provided, Provider} from 'typescript-ioc';
 
@@ -8,21 +8,22 @@ export interface Namespace extends KubeResource {
 const provider: Provider = {
   get: () => {
     return new KubeNamespace({
-      client: Container.get(KubeClient)
+      client: Container.get(AsyncKubeClient)
     })
   }
 };
 
 @Provided(provider)
 export class KubeNamespace {
-  public client: KubeClient;
+  public client: AsyncKubeClient;
 
-  constructor(props: {client: KubeClient}) {
+  constructor(props: {client: AsyncKubeClient}) {
     this.client = props.client;
   }
 
   async create(name: string): Promise<Namespace> {
-    const result: KubeBody<Namespace> = await this.client.api.v1.namespace.post({body: {
+    const client: KubeClient = await this.client.get();
+    const result: KubeBody<Namespace> = await client.api.v1.namespace.post({body: {
       metadata: {
         name,
       },
@@ -33,7 +34,8 @@ export class KubeNamespace {
 
   async exists(name: string): Promise<boolean> {
     try {
-      const result = await this.client.api.v1.namespace(name).get();
+      const client: KubeClient = await this.client.get();
+      const result = await client.api.v1.namespace(name).get();
 
       if (result) {
         return true;

@@ -5,7 +5,7 @@ import {
   KubeResourceList,
   Props
 } from './kubernetes-resource-manager';
-import {KubeClient} from './client';
+import {AsyncKubeClient, KubeClient} from './client';
 import {buildMockKubeClient} from './testHelper';
 import {Container, Provided, Provider} from 'typescript-ioc';
 import {mockField, providerFromValue, setField} from '../../testHelper';
@@ -24,7 +24,7 @@ class TestResource implements KubeResource {
 export const testV1Provider: Provider = {
   get: () => {
     return new TestV1KubernetesResource({
-      client: Container.get(KubeClient),
+      client: Container.get(AsyncKubeClient),
       name: 'secret',
       kind: 'Secret',
     })
@@ -39,7 +39,7 @@ class TestV1KubernetesResource extends AbstractKubernetesResourceManager<TestRes
 export const testV1Beta1Provider: Provider = {
   get: () => {
     return new TestV1Beta1KubernetesResource({
-      client: Container.get(KubeClient),
+      client: Container.get(AsyncKubeClient),
       group: 'extension',
       version: 'v1beta1',
       name: 'ingress',
@@ -65,8 +65,8 @@ describe('kubernetes-resource-manager', () => {
   beforeEach(() => {
     mockClient = buildMockKubeClient();
 
-    Container.bind(KubeClient)
-      .provider(providerFromValue(mockClient));
+    Container.bind(AsyncKubeClient)
+      .provider(providerFromValue(new AsyncKubeClient(mockClient)));
     classUnderTest = Container.get(TestV1KubernetesResource);
   });
 

@@ -7,13 +7,14 @@ import ora from 'ora';
 import {CommandLineOptions} from '../model';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {checkKubeconfig} from '../util/kubernetes';
-import {GetIngress} from '../services/ingress/ingress';
+import {GetEndpoints} from '../services/endpoints';
 
 interface SelectedIngress {
   selection: string;
 }
 
-export const command = 'ingress';
+export const command = 'endpoints';
+export const aliases = ['ingress', 'endpoint', 'ingresses'];
 export const desc = 'List the current ingress hosts for deployed apps in a namespace';
 export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
   .clusterNamespace({
@@ -44,10 +45,10 @@ exports.handler =  async (argv: Arguments<{namespace: string; yaml: boolean; pri
   try {
     await checkKubeconfig();
 
-    const command: GetIngress = Container.get(GetIngress);
+    const command: GetEndpoints = Container.get(GetEndpoints);
 
     // Retrieve the results
-    const result: Array<{name: string, url: string}> = await command.getIngress(argv.namespace, statusCallback);
+    const result: Array<{name: string, url: string}> = await command.getEndpoints(argv.namespace, statusCallback);
 
     if (spinner) {
       spinner.stop();
@@ -61,12 +62,12 @@ exports.handler =  async (argv: Arguments<{namespace: string; yaml: boolean; pri
     }
 
     if (choices.length === 0) {
-      console.log(`No ingresses found for the '${argv.namespace}' namespace`);
+      console.log(`No endpoints found for the '${argv.namespace}' namespace`);
       process.exit(0);
     }
 
     if (argv.print) {
-      console.log(`Ingresses in the '${argv.namespace}' namespace`);
+      console.log(`Endpoints in the '${argv.namespace}' namespace`);
       printResults();
       process.exit(0);
     }
@@ -79,7 +80,7 @@ exports.handler =  async (argv: Arguments<{namespace: string; yaml: boolean; pri
         value: 'exit'
       } as { key?: string, name: string, value: string }].concat(...choices),
       name: 'selection',
-      message: `Ingresses in the '${argv.namespace}' namespace. Select an ingress to launch the default browser or 'Exit'.`,
+      message: `Endpoints in the '${argv.namespace}' namespace. Select an endpoint to launch the default browser or 'Exit'.`,
       default: true,
       suffix: '\n'
     }]);
