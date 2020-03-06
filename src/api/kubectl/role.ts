@@ -1,6 +1,6 @@
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
 import {Container, Provided, Provider} from 'typescript-ioc';
-import {KubeClient} from './client';
+import {AsyncKubeClient, KubeClient} from './client';
 
 export interface RoleRule {
   apiGroups: string[];
@@ -15,7 +15,7 @@ export interface Role extends KubeResource {
 const provider: Provider = {
   get: () => {
     return new KubeRole({
-      client: Container.get(KubeClient),
+      client: Container.get(AsyncKubeClient),
       group: 'rbac.authorization.k8s.io',
       version: 'v1',
       name: 'role',
