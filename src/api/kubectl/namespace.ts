@@ -5,6 +5,11 @@ import {Container, Provided, Provider} from 'typescript-ioc';
 export interface Namespace extends KubeResource {
 }
 
+export abstract class AbstractKubeNamespace<T extends KubeResource> {
+  abstract async create(name: string): Promise<T>;
+  abstract async exists(name: string): Promise<boolean>;
+}
+
 const provider: Provider = {
   get: () => {
     return new KubeNamespace({
@@ -14,7 +19,7 @@ const provider: Provider = {
 };
 
 @Provided(provider)
-export class KubeNamespace {
+export class KubeNamespace implements AbstractKubeNamespace<Namespace> {
   public client: AsyncKubeClient;
 
   constructor(props: {client: AsyncKubeClient}) {

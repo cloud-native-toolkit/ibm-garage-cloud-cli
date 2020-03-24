@@ -2,12 +2,12 @@ import {IBMCloudConfig, RegisterTektonPipeline} from './register-tekton-pipeline
 import {Container} from 'typescript-ioc';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {mockField, providerFromValue} from '../../testHelper';
-import Mock = jest.Mock;
 import {Namespace} from '../namespace';
 import {KubeTektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
 import {ConfigMap, KubeConfigMap} from '../../api/kubectl';
-import {buildOptionWithEnvDefault} from '../../util/yargs-support';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
+import Mock = jest.Mock;
+import {ClusterType} from '../../util/cluster-type';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -20,6 +20,7 @@ describe('register-tekton-pipeline', () => {
   let kubePipelineRun: KubeTektonPipelineRun;
   let kubeConfigMap: KubeConfigMap;
   let namespaceBuilder: Namespace;
+  let getClusterType: Mock;
   beforeEach(() => {
     createGitSecret = {
       getGitParameters: jest.fn(),
@@ -52,11 +53,14 @@ describe('register-tekton-pipeline', () => {
     Container.bind(KubeConfigMap)
       .provider(providerFromValue(kubeConfigMap));
 
+    getClusterType = jest.fn();
+    Container.bind(ClusterType)
+      .provider(providerFromValue({getClusterType}));
+
     classUnderTest = Container.get(RegisterTektonPipeline);
   });
 
   describe('given registerPipeline()', () => {
-    let getClusterType: Mock;
     let setupNamespace: Mock;
     let createServiceAccount: Mock;
     let createGitPipelineResource: Mock;
@@ -64,7 +68,6 @@ describe('register-tekton-pipeline', () => {
     let getPipelineName: Mock;
     let createPipelineRun: Mock;
     beforeEach(() => {
-      getClusterType = mockField(classUnderTest, 'getClusterType');
       setupNamespace = mockField(classUnderTest, 'setupNamespace');
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
       createGitPipelineResource = mockField(classUnderTest, 'createGitPipelineResource');
@@ -187,7 +190,7 @@ describe('register-tekton-pipeline', () => {
         const fromNamespace = 'fromNamespace';
         classUnderTest.setupNamespace(toNamespace, fromNamespace, notifyStatus);
 
-        expect(namespaceBuilder.create).toHaveBeenCalledWith(toNamespace, fromNamespace, notifyStatus);
+        expect(namespaceBuilder.create).toHaveBeenCalledWith(toNamespace, fromNamespace, 'default', notifyStatus);
       });
     });
   });

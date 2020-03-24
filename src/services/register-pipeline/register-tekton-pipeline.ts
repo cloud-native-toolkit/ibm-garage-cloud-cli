@@ -13,6 +13,7 @@ import inquirer, {objects} from 'inquirer';
 import ChoiceOption = inquirer.objects.ChoiceOption;
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 import {RoleRule} from '../../api/kubectl/role';
+import {ClusterType} from '../../util/cluster-type';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -53,10 +54,12 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   kubeConfigMap: KubeConfigMap;
   @Inject
   kubeSecret: KubeSecret;
+  @Inject
+  clusterType: ClusterType;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
-    const {clusterType} = await this.getClusterType(cliOptions.templateNamespace);
+    const {clusterType} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
 
@@ -98,36 +101,12 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     }
   }
 
-  async getClusterType(namespace = 'tools'): Promise<{ clusterType: 'openshift' | 'kubernetes', serverUrl?: string }> {
-    try {
-      const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes', SERVER_URL?: string }>(
-        'ibmcloud-config',
-        namespace,
-      );
-
-      return {clusterType: configMap.CLUSTER_TYPE, serverUrl: configMap.SERVER_URL};
-    } catch (configMapError) {
-
-      console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
-
-      try {
-        const secret = await this.kubeSecret.getData<{ cluster_type: 'openshift' | 'kubernetes' }>('ibmcloud-apikey', namespace);
-
-        return {clusterType: secret.cluster_type ? secret.cluster_type : 'kubernetes'};
-      } catch (secretError) {
-        console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
-
-        return {clusterType: 'kubernetes'};
-      }
-    }
-  }
-
   async setupNamespace(toNamespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
     if (toNamespace === fromNamespace) {
       return;
     }
 
-    await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
+    await this.namespaceBuilder.create(toNamespace, fromNamespace, 'default', notifyStatus);
   }
 
   async createServiceAccount(namespace: string, clusterType: string, secrets: string[] = [], notifyStatus: (text: string) => void): Promise<string> {
