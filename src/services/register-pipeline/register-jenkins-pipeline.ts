@@ -15,6 +15,7 @@ import {
   GitConfig,
   isCreateWebhookError
 } from '../create-webhook';
+import {ClusterType} from '../../util/cluster-type';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -48,10 +49,12 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
   private openshiftPipeline: RegisterOpenshiftPipeline;
   @Inject
   private namespaceBuilder: Namespace;
+  @Inject
+  private clusterType: ClusterType;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
-    const {clusterType, serverUrl} = await this.getClusterType(cliOptions.templateNamespace);
+    const {clusterType, serverUrl} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
@@ -118,30 +121,6 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     return pipeline.registerPipeline(options, gitParams, credentialsName);
   }
 
-  async getClusterType(namespace = 'tools'): Promise<{clusterType: 'openshift' | 'kubernetes', serverUrl?: string}> {
-    try {
-      const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes', SERVER_URL?: string }>(
-        'ibmcloud-config',
-        namespace,
-      );
-
-      return {clusterType: configMap.CLUSTER_TYPE, serverUrl: configMap.SERVER_URL};
-    } catch (configMapError) {
-
-      console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
-
-      try {
-        const secret = await this.kubeSecret.getData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
-
-        return {clusterType: secret.cluster_type ? secret.cluster_type : 'kubernetes'};
-      } catch (secretError) {
-        console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
-
-        return {clusterType: 'kubernetes'};
-      }
-    }
-  }
-
   buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string; jenkinsUser: string; jenkinsPassword: string, jobName: string, webhookUrl?: string}): CreateWebhookOptions {
 
     return Object.assign(
@@ -159,6 +138,6 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       return;
     }
 
-    await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
+    await this.namespaceBuilder.create(toNamespace, fromNamespace, 'default', notifyStatus);
   }
 }

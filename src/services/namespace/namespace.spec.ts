@@ -7,6 +7,7 @@ import {KubeNamespace} from '../../api/kubectl/namespace';
 import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
 import {KubeRole} from '../../api/kubectl/role';
 import {KubeRoleBinding} from '../../api/kubectl/role-binding';
+import {ClusterType} from '../../util/cluster-type';
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -14,21 +15,41 @@ describe('namespace', () => {
   });
 
   let classUnderTest: NamespaceImpl;
+
+  let getClusterType: Mock;
+  let kubeNamespace_exists: Mock;
+  let kubeNamespace_create: Mock;
   let serviceAccounts_get: Mock;
   let serviceAccounts_update: Mock;
   let serviceAccounts_copy: Mock;
+  let serviceAccounts_exists: Mock;
   let secrets_list: Mock;
   let secrets_copy: Mock;
   let roles_copy: Mock;
   let roleBindings_copy: Mock;
   beforeEach(() => {
+    getClusterType = jest.fn();
+    Container.bind(ClusterType).provider(providerFromValue({
+      getClusterType
+    }));
+
+    kubeNamespace_create = jest.fn();
+    kubeNamespace_exists = jest.fn();
+
+    Container.bind(KubeNamespace).provider(providerFromValue({
+      create: kubeNamespace_create,
+      exists: kubeNamespace_exists,
+    }));
+
     serviceAccounts_get = jest.fn();
     serviceAccounts_update = jest.fn();
     serviceAccounts_copy = jest.fn();
+    serviceAccounts_exists = jest.fn();
     Container.bind(KubeServiceAccount).provider(providerFromValue({
       get: serviceAccounts_get,
       update: serviceAccounts_update,
       copy: serviceAccounts_copy,
+      exists: serviceAccounts_exists,
     }));
 
     secrets_list = jest.fn();
@@ -56,8 +77,6 @@ describe('namespace', () => {
   });
 
   describe('given create()', () => {
-    let kubeNamespace_exists: Mock;
-    let kubeNamespace_create: Mock;
     let setupPullSecrets: Mock;
     let setupTlsSecrets: Mock;
     let copyConfigMaps: Mock;
@@ -67,14 +86,6 @@ describe('namespace', () => {
     let copyTasks: Mock;
     let copyPipelines: Mock;
     beforeEach(() => {
-      kubeNamespace_create = jest.fn();
-      kubeNamespace_exists = jest.fn();
-
-      Container.bind(KubeNamespace).provider(providerFromValue({
-        create: kubeNamespace_create,
-        exists: kubeNamespace_exists,
-      }));
-
       setupPullSecrets = mockField(classUnderTest, 'setupPullSecrets');
       setupTlsSecrets = mockField(classUnderTest, 'setupTlsSecrets');
       copyConfigMaps = mockField(classUnderTest, 'copyConfigMaps');
@@ -85,7 +96,10 @@ describe('namespace', () => {
       copyPipelines = mockField(classUnderTest, 'copyPipelines');
     });
 
-    describe('when called', () => {
+    describe('when clusterType is kubernetes', () => {
+      beforeEach(() => {
+        getClusterType.mockResolvedValue('kubernetes');
+      });
 
       test('then should return the namespace name', async () => {
         const namespace = 'test';
@@ -126,20 +140,13 @@ describe('namespace', () => {
         expect(setupPullSecrets).toHaveBeenCalledWith(namespace, fromNamespace);
       });
 
-      test('then should setup tls secrets from tools namespace', async () => {
-        const namespace = 'test';
-        const fromNamespace = 'ns';
-        await classUnderTest.create(namespace, fromNamespace);
-
-        expect(setupTlsSecrets).toHaveBeenCalledWith(namespace, fromNamespace);
-      });
-
       test('then should setup service account with pull secrets', async () => {
         const namespace = 'test';
 
-        await classUnderTest.create(namespace);
+        const serviceAccountName = 'test-sa';
+        await classUnderTest.create(namespace, 'tools', serviceAccountName);
 
-        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace);
+        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace, serviceAccountName);
       });
 
       test('then should copy config maps in catalyst-tools group', async () => {
@@ -274,86 +281,9 @@ describe('namespace', () => {
     });
   });
 
-  describe('given setupTlsSecretsFromDefaultNamespace()', () => {
-    let copyAll: Mock;
-    let buildTlsSecretListOptions: Mock;
-    beforeEach(() => {
-      copyAll = jest.fn();
-      Container.bind(KubeSecret).provider(providerFromValue({
-        copyAll,
-      }));
-
-      buildTlsSecretListOptions = mockField(classUnderTest, 'buildTlsSecretListOptions');
-    });
-
-    describe('when called', () => {
-      test('then copy secrets matching tls secret list options from default namespace into provided namespace', async () => {
-        const options = {val: 'value'};
-        buildTlsSecretListOptions.mockReturnValue(options);
-
-        const namespace = 'test';
-        await classUnderTest.setupTlsSecrets(namespace);
-
-        expect(copyAll).toHaveBeenCalledWith(options, namespace);
-        expect(buildTlsSecretListOptions).toHaveBeenCalledWith('default');
-      });
-    });
-  });
-
-  describe('given buildTlsSecretListOptions()', () => {
-    describe('when namespace is provide', () => {
-      test('then return namespace', async () => {
-        const namespace = 'ns';
-        expect(classUnderTest.buildTlsSecretListOptions(namespace).namespace)
-          .toEqual(namespace);
-      });
-
-      test('then map should be undefined', async () => {
-        expect(classUnderTest.buildTlsSecretListOptions('ns').map)
-          .toBeUndefined();
-      });
-    });
-
-    describe('given {filter}', () => {
-      let filter: (secret: Secret) => boolean;
-      beforeEach(() => {
-        filter = classUnderTest.buildTlsSecretListOptions('default').filter;
-      });
-
-      describe('when data is not defined', () => {
-        test('then return false', async () => {
-          expect(filter({} as any)).toEqual(false);
-        });
-      });
-
-      describe('when .data.tls\\.key is defined', () => {
-        test('then return true', async () => {
-          expect(filter({metadata: {name: 'test'}, data: {'tls.key': 'value'}} as any)).toEqual(true);
-        });
-
-        describe('and when secret name is router-certs', () => {
-          test('then return false', async () => {
-            expect(filter({metadata: {name: 'router-certs'}, data: {'tls.key': 'value'}} as any)).toEqual(false);
-          });
-        });
-
-        describe('and when secret name is router-wildcard-certs', () => {
-          test('then return false', async () => {
-            expect(filter({metadata: {name: 'router-wildcard-certs'}, data: {'tls.key': 'value'}} as any)).toEqual(false);
-          });
-        });
-      });
-
-      describe('when .data.tls\\.key is not defined', () => {
-        test('then return false', async () => {
-          expect(filter({data: {value: 'value'}} as any)).toEqual(false);
-        });
-      });
-    });
-  });
-
   describe('given setupServiceAccountWithPullSecrets()', () => {
     const serviceAccount = {val: 'value'};
+    const serviceAccountName = 'my-serviceaccount';
 
     let containsPullSecretsMatchingPattern: Mock;
     let updateServiceAccountWithPullSecretsMatchingPattern: Mock;
@@ -361,6 +291,7 @@ describe('namespace', () => {
       containsPullSecretsMatchingPattern = mockField(classUnderTest, 'containsPullSecretsMatchingPattern');
       updateServiceAccountWithPullSecretsMatchingPattern = mockField(classUnderTest, 'updateServiceAccountWithPullSecretsMatchingPattern');
 
+      serviceAccounts_exists.mockResolvedValue(true);
       serviceAccounts_get.mockResolvedValue(serviceAccount);
     });
 
@@ -375,7 +306,7 @@ describe('namespace', () => {
         const updatedServiceAccount = {val: 'value2'};
         updateServiceAccountWithPullSecretsMatchingPattern.mockResolvedValue(updatedServiceAccount)
 
-        await classUnderTest.setupServiceAccountWithPullSecrets(namespace);
+        await classUnderTest.setupServiceAccountWithPullSecrets(namespace, serviceAccountName);
 
         const pullSecretPattern = '.*icr-io';
         expect(updateServiceAccountWithPullSecretsMatchingPattern).toHaveBeenCalledWith(
@@ -383,7 +314,7 @@ describe('namespace', () => {
           pullSecretPattern
         );
         expect(serviceAccounts_update).toHaveBeenCalledWith(
-          'default',
+          serviceAccountName,
           {body: updatedServiceAccount},
           namespace,
         );
