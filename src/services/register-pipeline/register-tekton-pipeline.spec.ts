@@ -8,6 +8,7 @@ import {ConfigMap, KubeConfigMap} from '../../api/kubectl';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
 import Mock = jest.Mock;
 import {ClusterType} from '../../util/cluster-type';
+import {KubeNamespace} from '../../api/kubectl/namespace';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -21,6 +22,7 @@ describe('register-tekton-pipeline', () => {
   let kubeConfigMap: KubeConfigMap;
   let namespaceBuilder: Namespace;
   let getClusterType: Mock;
+  let kubeNamespace_exists: Mock;
   beforeEach(() => {
     createGitSecret = {
       getGitParameters: jest.fn(),
@@ -57,6 +59,10 @@ describe('register-tekton-pipeline', () => {
     Container.bind(ClusterType)
       .provider(providerFromValue({getClusterType}));
 
+    kubeNamespace_exists = jest.fn();
+    Container.bind(KubeNamespace)
+      .provider(providerFromValue({exists: kubeNamespace_exists}));
+
     classUnderTest = Container.get(RegisterTektonPipeline);
   });
 
@@ -74,10 +80,11 @@ describe('register-tekton-pipeline', () => {
       createPipelineRun = mockField(classUnderTest, 'createPipelineRun');
     });
 
-    describe('when called', () => {
-      const pipelineNamespace = 'test';
-      const templateNamespace = 'tools;';
-      const notifyStatus = (text: string) => undefined;
+    const pipelineNamespace = 'test';
+    const templateNamespace = 'tools;';
+    const notifyStatus = (text: string) => undefined;
+
+    describe('when namespace exists', () => {
 
       const repoName = 'repoName';
       const gitName = 'gitName';
@@ -90,6 +97,7 @@ describe('register-tekton-pipeline', () => {
 
       beforeEach(() => {
         getClusterType.mockResolvedValue({clusterType});
+        kubeNamespace_exists.mockResolvedValue(true);
         (createGitSecret.getGitParameters as Mock).mockResolvedValue(gitParams);
         createServiceAccount.mockResolvedValue(serviceAccount);
         createGitPipelineResource.mockResolvedValue(gitName);
@@ -162,6 +170,22 @@ describe('register-tekton-pipeline', () => {
           expect(createPipelineRun).not.toHaveBeenCalled();
         });
       })
+    });
+
+    describe('when namespace does not exist', () => {
+      beforeEach(() => {
+        getClusterType.mockResolvedValue({clusterType: 'clusterType'});
+        kubeNamespace_exists.mockResolvedValue(false);
+      });
+
+      test('then throw an error', async () => {
+        let options = {pipelineNamespace, templateNamespace};
+        return classUnderTest.registerPipeline(options, notifyStatus)
+          .then(value => fail('should throw error'))
+          .catch(error => {
+            expect(error.message).toContain('The pipeline namespace does not exist');
+          });
+      });
     });
   });
 
