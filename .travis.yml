@@ -2,16 +2,6 @@ language: node_js
 node_js:
   - 12
 script:
-  - npm run build
-  - npm test
-branches:
-  only:
-    - beta
-env:
-  global:
-    PRE_RELEASE: "--preRelease=beta"
-    BRANCH: master
-after_success:
   - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
   - git fetch origin ${BRANCH} --tags
   - git checkout ${BRANCH}
@@ -20,3 +10,10 @@ after_success:
   - git config --global user.email "jenkins@ibmcloud.com"
   - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
   - npm run release -- $PRE_RELEASE
+branches:
+  only:
+    - beta
+env:
+  global:
+    PRE_RELEASE: "--preRelease=beta"
+    BRANCH: beta
