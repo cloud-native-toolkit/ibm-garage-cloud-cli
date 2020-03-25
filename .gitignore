@@ -6,3 +6,4 @@ dist/
 .env-config
 coverage/
 test-report.xml
+.npmrc

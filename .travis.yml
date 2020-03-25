@@ -3,12 +3,11 @@ node_js:
   - 12
 script:
   - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-  - git fetch origin ${BRANCH} --tags
-  - git checkout ${BRANCH}
-  - git branch --set-upstream-to=origin/${BRANCH} ${BRANCH}
+  - git fetch origin ${TRAVIS_BRANCH} --tags
+  - git checkout ${TRAVIS_BRANCH}
+  - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
   - git config --global user.name "Jenkins Pipeline"
   - git config --global user.email "jenkins@ibmcloud.com"
-  - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
   - npm run release -- $PRE_RELEASE
 branches:
   only:
@@ -16,4 +15,3 @@ branches:
 env:
   global:
     PRE_RELEASE: "--preRelease=beta"
-    BRANCH: beta
