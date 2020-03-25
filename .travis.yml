@@ -1,0 +1,13 @@
+language: node_js
+node_js:
+  - 12
+branches:
+  only:
+    - beta
+env:
+  global:
+    PRE_RELEASE: "--preRelease=beta"
+deploy:
+  script:
+    - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+    - npm run release -- $PRE_RELEASE
