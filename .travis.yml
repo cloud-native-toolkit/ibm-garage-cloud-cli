@@ -7,6 +7,7 @@ script:
   - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
   - git config --global user.name "Jenkins Pipeline"
   - git config --global user.email "jenkins@ibmcloud.com"
+  - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
   - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
   - cat .npmrc
   - npm run release -- $PRE_RELEASE
