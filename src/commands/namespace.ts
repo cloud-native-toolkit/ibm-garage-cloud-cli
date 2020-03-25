@@ -24,6 +24,10 @@ export const builder = (yargs: Argv<any>) => {
       default: 'default',
       type: 'string',
     })
+    .option('jenkins', {
+      describe: 'flag to install Jenkins into the namespace (only applies to OpenShift clusters)',
+      type: 'boolean',
+    })
 };
 exports.handler = async (argv: Arguments<NamespaceOptionsModel>) => {
   const namespaceBuilder: Namespace = Container.get(Namespace);
@@ -42,7 +46,7 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel>) => {
   }
 
   try {
-    return await namespaceBuilder.create(argv.namespace, argv.templateNamespace, argv.serviceAccount, statusCallback);
+    return await namespaceBuilder.create(argv, statusCallback);
   } catch (err) {
     console.log('Error preparing namespace', err);
     process.exit(1);

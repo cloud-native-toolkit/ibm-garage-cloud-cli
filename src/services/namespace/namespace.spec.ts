@@ -97,23 +97,24 @@ describe('namespace', () => {
     });
 
     describe('when clusterType is kubernetes', () => {
+      const namespace = 'test';
+      const templateNamespace = 'other';
+      const serviceAccount = 'sa';
+      const namespaceOptions = {namespace, templateNamespace, serviceAccount, jenkins: false};
+
       beforeEach(() => {
         getClusterType.mockResolvedValue('kubernetes');
       });
 
       test('then should return the namespace name', async () => {
-        const namespace = 'test';
-
-        expect(await classUnderTest.create(namespace)).toEqual(namespace);
+        expect(await classUnderTest.create(namespaceOptions)).toEqual(namespace);
       });
 
       describe('and when namespace exists', () => {
         test('then should not create it', async () => {
-          const namespace = 'test';
-
           kubeNamespace_exists.mockResolvedValue(true);
 
-          expect(await classUnderTest.create(namespace)).toEqual(namespace);
+          expect(await classUnderTest.create(namespaceOptions)).toEqual(namespace);
 
           expect(kubeNamespace_create).not.toHaveBeenCalled();
         });
@@ -121,72 +122,72 @@ describe('namespace', () => {
 
       describe('and when namespace does not exists', () => {
         test('then it should create it', async () => {
-          const namespace = 'test';
-
           kubeNamespace_exists.mockResolvedValue(false);
 
-          expect(await classUnderTest.create(namespace)).toEqual(namespace);
+          expect(await classUnderTest.create(namespaceOptions)).toEqual(namespace);
 
           expect(kubeNamespace_create).toHaveBeenCalledWith(namespace);
         });
       });
 
       test('then should setup pull secrets from tools namespace', async () => {
-        const namespace = 'test';
-        const fromNamespace = 'fromNamespace';
+        await classUnderTest.create(namespaceOptions);
 
-        await classUnderTest.create(namespace, fromNamespace);
-
-        expect(setupPullSecrets).toHaveBeenCalledWith(namespace, fromNamespace);
+        expect(setupPullSecrets).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
       test('then should setup service account with pull secrets', async () => {
-        const namespace = 'test';
+        await classUnderTest.create(namespaceOptions);
 
-        const serviceAccountName = 'test-sa';
-        await classUnderTest.create(namespace, 'tools', serviceAccountName);
-
-        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace, serviceAccountName);
+        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace, serviceAccount);
       });
 
       test('then should copy config maps in catalyst-tools group', async () => {
-        const namespace = 'test';
+        await classUnderTest.create(namespaceOptions);
 
-        await classUnderTest.create(namespace);
-
-        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, 'tools');
+        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
       test('then should copy secrets in catalyst-tools group', async () => {
-        const namespace = 'test';
+        await classUnderTest.create(namespaceOptions);
 
-        await classUnderTest.create(namespace);
-
-        expect(copySecrets).toHaveBeenCalledWith(namespace, 'tools');
+        expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
       test('then should copy tekton tasks', async () => {
-        const namespace = 'test';
+        await classUnderTest.create(namespaceOptions);
 
-        await classUnderTest.create(namespace);
-
-        expect(copyTasks).toHaveBeenCalledWith(namespace, 'tools');
+        expect(copyTasks).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
       test('then should copy tekton pipelines', async () => {
-        const namespace = 'test';
+        await classUnderTest.create(namespaceOptions);
 
-        await classUnderTest.create(namespace);
-
-        expect(copyPipelines).toHaveBeenCalledWith(namespace, 'tools');
+        expect(copyPipelines).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
-      test('then should copy the jenkins credentials', async () => {
-        const namespace = 'test';
+      describe('and when jenkins flag is false', () => {
+        beforeEach(() => {
+          namespaceOptions.jenkins = false;
+        });
 
-        await classUnderTest.create(namespace);
+        test('then should copy the jenkins credentials', async () => {
+          await classUnderTest.create(namespaceOptions);
 
-        expect(copyJenkinsCredentials).toHaveBeenCalledWith('tools', namespace);
+          expect(copyJenkinsCredentials).not.toHaveBeenCalled();
+        });
+      });
+
+      describe('and when jenkins flag is true', () => {
+        beforeEach(() => {
+          namespaceOptions.jenkins = true;
+        });
+
+        test('then should copy the jenkins credentials', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyJenkinsCredentials).toHaveBeenCalledWith(templateNamespace, namespace);
+        });
       });
     });
   });
