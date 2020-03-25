@@ -61,14 +61,12 @@ describe('register-tekton-pipeline', () => {
   });
 
   describe('given registerPipeline()', () => {
-    let setupNamespace: Mock;
     let createServiceAccount: Mock;
     let createGitPipelineResource: Mock;
     let createImagePipelineResource: Mock;
     let getPipelineName: Mock;
     let createPipelineRun: Mock;
     beforeEach(() => {
-      setupNamespace = mockField(classUnderTest, 'setupNamespace');
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
       createGitPipelineResource = mockField(classUnderTest, 'createGitPipelineResource');
       createImagePipelineResource = mockField(classUnderTest, 'createImagePipelineResource');
@@ -111,12 +109,6 @@ describe('register-tekton-pipeline', () => {
         await classUnderTest.registerPipeline(options, notifyStatus);
 
         expect(createGitSecret.getGitParameters).toHaveBeenCalledWith(options);
-      });
-
-      test('should setup namespaces', async () => {
-        await classUnderTest.registerPipeline({pipelineNamespace, templateNamespace}, notifyStatus);
-
-        expect(setupNamespace).toHaveBeenCalledWith(pipelineNamespace, templateNamespace, notifyStatus);
       });
 
       test('should setup serviceAccount', async () => {
@@ -170,32 +162,6 @@ describe('register-tekton-pipeline', () => {
           expect(createPipelineRun).not.toHaveBeenCalled();
         });
       })
-    });
-  });
-
-  describe('given setupNamespace()', () => {
-    const notifyStatus = () => undefined;
-    describe('when toNamespace equals fromNamespace', () => {
-      test('should not call namespaceBuilder', () => {
-        const namespace = 'namespace';
-        classUnderTest.setupNamespace(namespace, namespace, notifyStatus);
-
-        expect(namespaceBuilder.create).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('when toNamespace not equal to fromNamespace', () => {
-      test('should call namespaceBuilder create()', () => {
-        const toNamespace = 'toNamespace';
-        const fromNamespace = 'fromNamespace';
-        classUnderTest.setupNamespace(toNamespace, fromNamespace, notifyStatus);
-
-        expect(namespaceBuilder.create).toHaveBeenCalledWith({
-          namespace: toNamespace,
-          templateNamespace:
-          fromNamespace, serviceAccount: 'default'
-        }, notifyStatus);
-      });
     });
   });
 

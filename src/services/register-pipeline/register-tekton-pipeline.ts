@@ -14,6 +14,8 @@ import ChoiceOption = inquirer.objects.ChoiceOption;
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 import {RoleRule} from '../../api/kubectl/role';
 import {ClusterType} from '../../util/cluster-type';
+import {NamespaceMissingError} from './register-pipeline';
+import {KubeNamespace} from '../../api/kubectl/namespace';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -39,7 +41,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   createGitSecret: CreateGitSecret;
   @Inject
-  namespaceBuilder: Namespace;
+  kubeNamespace: KubeNamespace;
   @Inject
   pipelineResource: KubeTektonPipelineResource;
   @Inject
@@ -63,11 +65,12 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
 
+    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    }
+
     notifyStatus('Getting git parameters');
     const gitParams: GitParams = await this.createGitSecret.getGitParameters(options);
-
-    notifyStatus(`Setting up ${options.pipelineNamespace} namespace`);
-    await this.setupNamespace(options.pipelineNamespace, options.templateNamespace, notifyStatus);
 
     const secretName = await this.createGitSecret.createGitSecret(
       gitParams,
@@ -99,14 +102,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         serviceAccount
       });
     }
-  }
-
-  async setupNamespace(namespace: string, templateNamespace: string, notifyStatus: (text: string) => void) {
-    if (namespace === templateNamespace) {
-      return;
-    }
-
-    await this.namespaceBuilder.create({namespace, templateNamespace, serviceAccount: 'default'}, notifyStatus);
   }
 
   async createServiceAccount(namespace: string, clusterType: string, secrets: string[] = [], notifyStatus: (text: string) => void): Promise<string> {
