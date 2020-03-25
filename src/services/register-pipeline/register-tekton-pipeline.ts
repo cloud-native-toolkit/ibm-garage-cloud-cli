@@ -1,7 +1,8 @@
 import {Inject} from 'typescript-ioc';
+import * as chalk from 'chalk';
+import inquirer from 'inquirer';
 
 import {CreateGitSecret, GitParams} from '../git-secret';
-import {Namespace} from '../namespace';
 import {KubeTektonPipelineResource, TektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
 import {KubeBody} from '../../api/kubectl/kubernetes-resource-manager';
 import {ConfigMap, KubeConfigMap, KubeSecret} from '../../api/kubectl';
@@ -9,13 +10,12 @@ import {RegisterPipeline, RegisterPipelineOptions} from './index';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
 import {KubeTektonPipeline, TektonPipeline} from '../../api/kubectl/tekton-pipeline';
 import {QuestionBuilder, QuestionBuilderImpl} from '../../util/question-builder';
-import inquirer, {objects} from 'inquirer';
-import ChoiceOption = inquirer.objects.ChoiceOption;
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 import {RoleRule} from '../../api/kubectl/role';
 import {ClusterType} from '../../util/cluster-type';
 import {NamespaceMissingError} from './register-pipeline';
 import {KubeNamespace} from '../../api/kubectl/namespace';
+import ChoiceOption = inquirer.objects.ChoiceOption;
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -232,6 +232,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     if (pipelineChoices.length === 0) {
       console.log(`No Pipelines found in ${namespace} namespace. Skipping PipelineRun creation`);
+      console.log('Install Tekton tasks and pipelines into your namespace by running: ' + chalk.yellow(`igc namespace ${namespace} --tekton`));
       return 'none';
     }
 
