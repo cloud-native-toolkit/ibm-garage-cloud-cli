@@ -8,7 +8,6 @@ script:
   - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
   - git config --global user.name "Jenkins Pipeline"
   - git config --global user.email "jenkins@ibmcloud.com"
-  - npm login
   - npm run release -- $PRE_RELEASE
 branches:
   only:
