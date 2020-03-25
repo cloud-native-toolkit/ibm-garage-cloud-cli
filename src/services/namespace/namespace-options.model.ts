@@ -4,4 +4,5 @@ export class NamespaceOptionsModel {
   templateNamespace: string;
   serviceAccount: string;
   jenkins?: boolean;
+  tekton?: boolean;
 }

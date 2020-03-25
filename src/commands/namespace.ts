@@ -28,6 +28,10 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'flag to install Jenkins into the namespace (only applies to OpenShift clusters)',
       type: 'boolean',
     })
+    .option('tekton', {
+      describe: 'flag to install Tekton tasks into the namespace',
+      type: 'boolean',
+    })
 };
 exports.handler = async (argv: Arguments<NamespaceOptionsModel>) => {
   const namespaceBuilder: Namespace = Container.get(Namespace);
