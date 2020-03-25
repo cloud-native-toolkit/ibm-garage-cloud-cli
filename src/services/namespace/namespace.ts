@@ -52,7 +52,7 @@ export class NamespaceImpl implements Namespace{
   @Inject
   private childProcess: ChildProcess;
 
-  async create({namespace, templateNamespace, serviceAccount, jenkins}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount, jenkins, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -73,10 +73,13 @@ export class NamespaceImpl implements Namespace{
     await this.copyConfigMaps(namespace, templateNamespace);
     notifyStatus('Copying Secrets');
     await this.copySecrets(namespace, templateNamespace);
-    notifyStatus('Copying Tekton tasks');
-    await this.copyTasks(namespace, templateNamespace);
-    notifyStatus('Copying Tekton pipelines');
-    await this.copyPipelines(namespace, templateNamespace);
+
+    if (tekton) {
+      notifyStatus('Copying Tekton tasks');
+      await this.copyTasks(namespace, templateNamespace);
+      notifyStatus('Copying Tekton pipelines');
+      await this.copyPipelines(namespace, templateNamespace);
+    }
 
     if (jenkins) {
       await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);

@@ -8,6 +8,7 @@ import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-acco
 import {KubeRole} from '../../api/kubectl/role';
 import {KubeRoleBinding} from '../../api/kubectl/role-binding';
 import {ClusterType} from '../../util/cluster-type';
+import {NamespaceOptionsModel} from './namespace-options.model';
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -100,7 +101,7 @@ describe('namespace', () => {
       const namespace = 'test';
       const templateNamespace = 'other';
       const serviceAccount = 'sa';
-      const namespaceOptions = {namespace, templateNamespace, serviceAccount, jenkins: false};
+      const namespaceOptions: NamespaceOptionsModel = {namespace, templateNamespace, serviceAccount, jenkins: false};
 
       beforeEach(() => {
         getClusterType.mockResolvedValue('kubernetes');
@@ -154,16 +155,40 @@ describe('namespace', () => {
         expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
-      test('then should copy tekton tasks', async () => {
-        await classUnderTest.create(namespaceOptions);
+      describe('and when tekton flag is not set', () => {
+        beforeEach(() => {
+          namespaceOptions.tekton = false;
+        });
 
-        expect(copyTasks).toHaveBeenCalledWith(namespace, templateNamespace);
+        test('then should not copy tekton tasks', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyTasks).not.toHaveBeenCalled();
+        });
+
+        test('then should not opy tekton pipelines', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyPipelines).not.toHaveBeenCalled();
+        });
       });
 
-      test('then should copy tekton pipelines', async () => {
-        await classUnderTest.create(namespaceOptions);
+      describe('and when tekton flag is set', () => {
+        beforeEach(() => {
+          namespaceOptions.tekton = true;
+        });
 
-        expect(copyPipelines).toHaveBeenCalledWith(namespace, templateNamespace);
+        test('then should copy tekton tasks', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyTasks).toHaveBeenCalledWith(namespace, templateNamespace);
+        });
+
+        test('then should copy tekton pipelines', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyPipelines).toHaveBeenCalledWith(namespace, templateNamespace);
+        });
       });
 
       describe('and when jenkins flag is false', () => {
