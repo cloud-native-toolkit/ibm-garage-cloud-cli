@@ -1,16 +1,15 @@
 language: node_js
 node_js:
   - 12
+script:
+  - npm run build
+  - npm test
 branches:
   only:
     - beta
 env:
   global:
     PRE_RELEASE: "--preRelease=beta"
-before_deploy: "npm run release -- $PRE_RELEASE --no-npm.publish"
-deploy:
-  provider: npm
-  email: $EMAIL_ADDRESS
-  api_key: $NPM_TOKEN
-  on:
-    branch: beta
+after_success:
+  - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+  - npm run release -- $PRE_RELEASE
