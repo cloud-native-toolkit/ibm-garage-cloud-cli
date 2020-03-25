@@ -2,12 +2,13 @@ language: node_js
 node_js:
   - 12
 script:
-  - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
   - git fetch origin ${TRAVIS_BRANCH} --tags
   - git checkout ${TRAVIS_BRANCH}
   - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
   - git config --global user.name "Jenkins Pipeline"
   - git config --global user.email "jenkins@ibmcloud.com"
+  - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+  - cat .npmrc
   - npm run release -- $PRE_RELEASE
 branches:
   only:
