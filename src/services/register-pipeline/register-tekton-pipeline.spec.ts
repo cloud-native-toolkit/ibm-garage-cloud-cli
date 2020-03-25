@@ -190,7 +190,11 @@ describe('register-tekton-pipeline', () => {
         const fromNamespace = 'fromNamespace';
         classUnderTest.setupNamespace(toNamespace, fromNamespace, notifyStatus);
 
-        expect(namespaceBuilder.create).toHaveBeenCalledWith(toNamespace, fromNamespace, 'default', notifyStatus);
+        expect(namespaceBuilder.create).toHaveBeenCalledWith({
+          namespace: toNamespace,
+          templateNamespace:
+          fromNamespace, serviceAccount: 'default'
+        }, notifyStatus);
       });
     });
   });

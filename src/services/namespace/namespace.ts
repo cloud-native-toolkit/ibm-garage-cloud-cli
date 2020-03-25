@@ -15,9 +15,12 @@ import {KubeTektonTask} from "../../api/kubectl/tekton-task";
 import {KubeTektonPipeline} from "../../api/kubectl/tekton-pipeline";
 import {ClusterType} from '../../util/cluster-type';
 import {OcpProject} from '../../api/kubectl/project';
+import {NamespaceOptionsModel} from './namespace-options.model';
+import {KubePod, Pod} from '../../api/kubectl/pod';
+import {ChildProcess} from '../../util/child-process';
 
 export abstract class Namespace {
-  async abstract create(toNamespace: string, fromNamespace: string, serviceAccount: string, notifyStatus?: (status: string) => void): Promise<string>;
+  async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
 }
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -43,40 +46,43 @@ export class NamespaceImpl implements Namespace{
   @Inject
   private roleBindings: KubeRoleBinding;
   @Inject
+  private kubePod: KubePod;
+  @Inject
   private clusterType: ClusterType;
+  @Inject
+  private childProcess: ChildProcess;
 
-  async create(toNamespace: string, fromNamespace: string = 'tools', serviceAccount: string = 'default', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount, jenkins}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
-    const {clusterType, serverUrl} = await this.clusterType.getClusterType(fromNamespace);
+    const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
     const nsManager: AbstractKubeNamespace<any> = clusterType === 'openshift' ? this.projects : this.namespaces;
-    notifyStatus('Checking for existing namespace: ' + toNamespace);
-    if (!(await nsManager.exists(toNamespace))) {
-      notifyStatus('Creating namespace: ' + toNamespace);
-      await nsManager.create(toNamespace);
+    notifyStatus('Checking for existing namespace: ' + namespace);
+    if (!(await nsManager.exists(namespace))) {
+      notifyStatus('Creating namespace: ' + namespace);
+      await nsManager.create(namespace);
     }
 
     notifyStatus('Setting up pull secrets');
-    await this.setupPullSecrets(toNamespace, fromNamespace);
+    await this.setupPullSecrets(namespace, templateNamespace);
 
     notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
-    await this.setupServiceAccountWithPullSecrets(toNamespace, serviceAccount);
+    await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
 
     notifyStatus('Copying ConfigMaps');
-    await this.copyConfigMaps(toNamespace, fromNamespace);
+    await this.copyConfigMaps(namespace, templateNamespace);
     notifyStatus('Copying Secrets');
-    await this.copySecrets(toNamespace, fromNamespace);
+    await this.copySecrets(namespace, templateNamespace);
     notifyStatus('Copying Tekton tasks');
-    await this.copyTasks(toNamespace, fromNamespace);
+    await this.copyTasks(namespace, templateNamespace);
     notifyStatus('Copying Tekton pipelines');
-    await this.copyPipelines(toNamespace, fromNamespace);
+    await this.copyPipelines(namespace, templateNamespace);
 
-    try {
-      notifyStatus('Copying Jenkins credentials');
-      await this.copyJenkinsCredentials(fromNamespace, toNamespace);
-    } catch (err) {}
+    if (jenkins) {
+      await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);
+    }
 
-    return toNamespace;
+    return namespace;
   }
 
   async setupPullSecrets(namespace: string, fromNamespace: string = 'default'): Promise<any> {
@@ -230,6 +236,30 @@ export class NamespaceImpl implements Namespace{
       }))
       .filter((secret: Secret) => !!secret.metadata.name.match(pullSecretPattern))
       .map((secret: Secret) => ({name: secret.metadata.name}));
+  }
+
+  async setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void) {
+    try {
+      if (clusterType === 'openshift') {
+        const jenkinsPods: Pod[] = await this.kubePod.list({
+          namespace,
+          filter: (pod: Pod) => {
+            return new RegExp('jenkins-.*').test(pod.metadata.name) &&
+              !(new RegExp('jenkins-.*-deploy').test(pod.metadata.name));
+          }
+        });
+
+        if (jenkinsPods.length === 0) {
+          notifyStatus('Installing Jenkins');
+          await this.childProcess.exec(`oc new-app jenkins-ephemeral -n ${namespace}`);
+        }
+      }
+
+      notifyStatus('Copying Jenkins credentials');
+      await this.copyJenkinsCredentials(templateNamespace, namespace);
+    } catch (err) {
+    }
+
   }
 
   async copyJenkinsCredentials(fromNamespace: string, toNamespace: string) {

@@ -133,11 +133,11 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     );
   }
 
-  async setupNamespace(toNamespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
-    if (toNamespace === fromNamespace) {
+  async setupNamespace(namespace: string, templateNamespace: string, notifyStatus: (text: string) => void) {
+    if (namespace === templateNamespace) {
       return;
     }
 
-    await this.namespaceBuilder.create(toNamespace, fromNamespace, 'default', notifyStatus);
+    await this.namespaceBuilder.create({namespace, templateNamespace, serviceAccount: 'default'}, notifyStatus);
   }
 }
