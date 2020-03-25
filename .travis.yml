@@ -7,9 +7,10 @@ branches:
 env:
   global:
     PRE_RELEASE: "--preRelease=beta"
+before_deploy: "npm run release -- $PRE_RELEASE --no-npm.publish"
 deploy:
-  script:
-    - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-    - npm run release -- $PRE_RELEASE
+  provider: npm
+  email: $EMAIL_ADDRESS
+  api_key: $NPM_TOKEN
   on:
     branch: beta
