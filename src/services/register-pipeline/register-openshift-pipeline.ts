@@ -10,6 +10,7 @@ import {OpenshiftCommands} from '../../api/openshift';
 import {RegisterPipelineType} from './register-pipeline-type';
 import {GitParams} from '../git-secret';
 import path = require('path');
+import {JenkinsMissingError} from './register-pipeline';
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -43,6 +44,12 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
   async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
 
     try {
+      const host: string = await this.getRouteHosts(options.pipelineNamespace || 'tools', 'jenkins');
+
+      if (!host) {
+        throw new JenkinsMissingError('Jenkins is not available in the namespace: ' + options.pipelineNamespace);
+      }
+
       const secret = 'secret101';
       const buildConfig = this.generateBuildConfig(
         credentialsName,
@@ -62,8 +69,6 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
       );
 
       await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);
-
-      const host: string = await this.getRouteHosts(options.pipelineNamespace || 'tools', 'jenkins');
 
       const webhookUrl = await this.buildWebhookUrl(
         options.serverUrl,

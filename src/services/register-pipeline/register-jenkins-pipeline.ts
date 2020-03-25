@@ -6,7 +6,6 @@ import {RegisterIksPipeline} from './register-iks-pipeline';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 import {RegisterPipelineType} from './register-pipeline-type';
-import {Namespace} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {
   CreateWebhook,
@@ -16,6 +15,8 @@ import {
   isCreateWebhookError
 } from '../create-webhook';
 import {ClusterType} from '../../util/cluster-type';
+import {KubeNamespace} from '../../api/kubectl/namespace';
+import {NamespaceMissingError} from './register-pipeline';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -48,7 +49,7 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
   @Inject
   private openshiftPipeline: RegisterOpenshiftPipeline;
   @Inject
-  private namespaceBuilder: Namespace;
+  private kubeNamespace: KubeNamespace;
   @Inject
   private clusterType: ClusterType;
 
@@ -58,11 +59,12 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
+    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    }
+
     notifyStatus('Creating secret(s) with git credentials');
-
     const gitParams: GitParams = await this.createGitSecret.getGitParameters(options, notifyStatus);
-
-    await this.setupNamespace(options.pipelineNamespace, options.templateNamespace, notifyStatus);
 
     await this.createGitSecret.createGitSecret(
       gitParams,
@@ -74,7 +76,6 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     );
 
     notifyStatus('Registering pipeline: ' + gitParams.name);
-
     const gitConfig: GitConfig = this.createWebhook.extractGitConfig(gitParams.url);
 
     const pipelineResult = await this.executeRegisterPipeline(
@@ -131,13 +132,5 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       },
       pipelineResult,
     );
-  }
-
-  async setupNamespace(namespace: string, templateNamespace: string, notifyStatus: (text: string) => void) {
-    if (namespace === templateNamespace) {
-      return;
-    }
-
-    await this.namespaceBuilder.create({namespace, templateNamespace, serviceAccount: 'default'}, notifyStatus);
   }
 }
