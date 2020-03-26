@@ -35,10 +35,10 @@ environment.
 Prints the urls and credentials for the Catalyst tools deployed into the cluster.
 This includes Jenkins, Argo CD, and SonarQube.
 
-### ingress
+### endpoints
 
-Lists the ingress urls for the provided namespace. If no namespace
-is provided, `dev` is used.
+Lists the ingress and/or route urls for the provided namespace. The namespace is provided
+with the `-n` flag. If no namespace is provided, `dev` is used as the default.
 
 ### namespace
 
@@ -58,7 +58,7 @@ the `--jenkins` flag will install Jenkins into the namespace (only available on 
 and set up the Jenkins serviceAccount. The `--tekton` flag will copy the available Tasks
 and Pipelines from the template namespace (defaults to `tools` if not provided).
 
-**Example usages**
+**Example usage**
 
 ```bash
 igc namespace my-namespace
@@ -107,7 +107,7 @@ The command will prompt for the username and personal access token that should s
 the secret to access the Git repository. Those values can be provided a the command-line using the
 `-u` and `-p` flags, respectively.
 
-**Example usage:**
+**Example usage**
 
 ```bash
 igc pipeline --jenkins
