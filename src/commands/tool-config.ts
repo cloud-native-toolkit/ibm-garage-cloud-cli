@@ -7,9 +7,12 @@ import {ToolConfigOptions} from '../services/tool-config/tool-config-options.mod
 import {ToolsConfig} from '../services/tool-config/tool-config';
 import {Container} from 'typescript-ioc';
 
-export const command = 'tool-config';
+export const command = 'tool-config [name]';
 export const desc = 'Create the config map and secret for a tool configured in the environment';
 export const builder = (yargs: Argv<any>) => yargs
+  .positional('name', {
+    describe: 'The name of the tool that is being configured'
+  })
   .option('namespace', {
     alias: 'n',
     describe: 'The namespace for the config',
@@ -17,7 +20,6 @@ export const builder = (yargs: Argv<any>) => yargs
   })
   .option('name', {
     describe: 'The name of the tool that is being configured',
-    requires: true,
   })
   .option('url', {
     describe: 'The url of the component',
