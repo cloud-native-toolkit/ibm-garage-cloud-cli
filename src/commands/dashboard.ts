@@ -5,21 +5,25 @@ import {GetDashboardUrl} from '../services/dashboard/get-dashboard-url';
 import * as open from 'open';
 
 export const command = 'dashboard';
-export const desc = 'Open the dashboard url in the default browser';
+export const desc = 'Open the Developer Dashboard in the default browser';
 export const builder = (yargs: Argv<any>) => {
-    return yargs;
+    return yargs.option('namespace', {
+      alias: 'n',
+      describe: 'the namespace where the Dashboard has been deployed',
+      default: 'tools'
+    });
   };
-exports.handler = async (argv: Arguments<any>) => {
+exports.handler = async (argv: Arguments<{namespace: string}>) => {
   const getDashboardUrl: GetDashboardUrl = Container.get(GetDashboardUrl);
 
-  const spinner = ora('Looking up dashboard ingress').start();
+  const spinner = ora('Looking up Dashboard').start();
 
   try {
     function statusCallback(status: string) {
       spinner.text = status;
     }
 
-    const url: string = await getDashboardUrl.getUrl('tools');
+    const url: string = await getDashboardUrl.getUrl(argv.namespace);
 
     if (url) {
       spinner.stop();
