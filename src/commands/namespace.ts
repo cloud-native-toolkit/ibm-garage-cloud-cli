@@ -4,6 +4,19 @@ import {Container} from 'typescript-ioc';
 import * as ora from 'ora';
 import * as chalk from 'chalk';
 
+interface Logger {
+  text: string;
+  stop(): void;
+}
+
+class VerboseLogger implements Logger {
+
+  set text(text) {
+    console.log(text);
+  }
+  stop() {}
+}
+
 export const command = 'namespace [namespace]';
 export const desc = 'Create a namespace (if it doesn\'t exist) and prepare it with the necessary configuration';
 export const builder = (yargs: Argv<any>) => {
@@ -32,8 +45,12 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'flag to install Tekton tasks into the namespace',
       type: 'boolean',
     })
+    .option('verbose', {
+      describe: 'flag to produce more verbose logging',
+      type: 'boolean'
+    })
 };
-exports.handler = async (argv: Arguments<NamespaceOptionsModel>) => {
+exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean}>) => {
   const namespaceBuilder: Namespace = Container.get(Namespace);
 
   if (!argv.namespace) {
@@ -43,7 +60,7 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel>) => {
 
   console.log(`Setting up namespace ${chalk.yellow(argv.namespace)} and serviceAccount ${chalk.yellow(argv.serviceAccount)}`);
 
-  const spinner = ora('Setting up namespace: ' + argv.namespace).start();
+  const spinner: Logger = argv.verbose ? new VerboseLogger() : ora('Setting up namespace: ' + argv.namespace).start();
 
   function statusCallback(status: string) {
     spinner.text = status;
