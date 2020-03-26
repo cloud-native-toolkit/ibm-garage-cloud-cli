@@ -32,13 +32,37 @@ environment.
 
 ### credentials
 
-Prints the urls and credentials for the Catalyst tools deployed into the cluster.
-This includes Jenkins, Argo CD, and SonarQube.
+Prints the urls and credentials for the Cloud Native Toolkit tools deployed into the cluster. The
+command works by reading particular `ConfigMaps` and `Secrets` in a template namespace in the cluster 
+that identify the tools. The template namespace is provided by using the `-n` flag. If not provided,
+the template namespace defaults to `tools`. The tools reported include Jenkins, SonarQube, ArgoCD, etc.
+
+The command expect that the cluster login has already been performed.
+
+**Example usage**
+
+```bash
+igc credentials -n my-namespace
+```
+
+- lists the tools urls and credentials from the `my-namespace` namespace
 
 ### endpoints
 
 Lists the ingress and/or route urls for the provided namespace. The namespace is provided
-with the `-n` flag. If no namespace is provided, `dev` is used as the default.
+with the `-n` flag. If no namespace is provided, `dev` is used as the default. The results are 
+provided in an interactive menu. If one of the endpoints is selected it will display the url and
+launch it in the default browser. Selecting `Exit` will display the full list and exit.
+
+The command expect that the cluster login has already been performed.
+
+**Example usage**
+
+```bash
+igc endpoint -n tools
+```
+
+- lists the ingresses and routes in the `tools` namespace
 
 ### namespace
 
@@ -57,6 +81,8 @@ environment through the use of the `--jenkins` flag and `--tekton` flag. When pr
 the `--jenkins` flag will install Jenkins into the namespace (only available on OpenShift)
 and set up the Jenkins serviceAccount. The `--tekton` flag will copy the available Tasks
 and Pipelines from the template namespace (defaults to `tools` if not provided).
+
+The command expect that the cluster login has already been performed.
 
 **Example usage**
 
@@ -121,20 +147,51 @@ igc pipeline -n my-dev -u gituser -p gitpat --tekton
 
 - Creates a Tekton pipeline in the existing `my-dev` namespace and uses `gituser` and `gitpat`
 for the git credentials
- 
-### tools
 
-Launches the `ibm-garage-cli-tools` docker image in an interactive
-terminal. This image provides commonly used infrastructure tools like,
-`terraform`, `kubectl`, etc.
+### tool-config
+
+Configures a tool into the template namespace. The template namespace is provided with the `-n`
+argument. If not provided, the template namespace will be `tools`. The tool-config takes the 
+name of the tool as the first (and only) positional parameter. 
+
+Configuration for the tool
+can be provided with the `--url`, `--username`, and `--password` optional flags. If the `url`
+is provided then a ConfigMap will be created. If the `username` and/or `password` are provided
+then a Secret will be created,
+
+**Example usage**
+
+```bash
+igc tool-config my-tool --url https://url.com/my-tool --username admin --password password
+```
+
+- configures a tool named `my-tool` with url `https://url.com/my-tool`, username of `admin`, and 
+password of `password`
 
 ### enable
 
-"Enables" an existing project with the DevOps infrastructure. The CLI reads the available 
-pipelines from a pipeline repo and applies the selected pipeline. The default pipeline repo
-is `https://ibm-garage-cloud.github.io/garage-pipelines/` but a different one can be
-used by providing the `--repo` argument. 
- 
+"Enables" an existing project with the DevOps artifacts. The CLI reads the
+ list of
+ available pipelines and applies the selected pipeline to your code repo. This
+  command is
+  intended to be run within a git repository directory of a project for
+which a pipeline should be enabled.
+```bash
+igc enable
+```
+
+Once the project has been enabled you will need to run `igc pipeline` to
+ register the git repo as a pipeline with your target development cluster.
+
+The `enable` command adds a number of files to the local filesystem, including but not limited to:
+
+- Helm chart
+- Jenkinsfile
+
+After `enable` is called, the generated files should be committed and pushed to the git repository.
+
+The default pipeline repo is `https://ibm-garage-cloud.github.io/garage-pipelines/`, but a different one can be used by providing the `--repo` argument.  The source for the provided pipeline repo can be found at `https://github.com/ibm-garage-cloud/garage-pipelines` to use as a template.
+
 ## Development
 
 ### Run the tests
