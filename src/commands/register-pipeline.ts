@@ -110,7 +110,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       } else if (err.pipelineErrorType === PipelineErrorType.NAMESPACE_MISSING) {
         console.log(chalk.red('The target namespace does not exist'));
 
-        const flag = argv.tekton ? '' : ' --jenkins';
+        const flag = argv.tekton ? ' --tekton' : ' --jenkins';
         console.log(`Create the namespace by running: ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + flag)}`);
         console.log();
       }
