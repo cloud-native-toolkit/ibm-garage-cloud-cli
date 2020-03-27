@@ -83,6 +83,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
     console.log(status);
   }
 
+  let isError = false;
   try {
     await checkKubeconfig();
 
@@ -119,7 +120,6 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       spinner.stop();
     }
 
-    process.exit(0);
   } catch (err) {
     if (spinner) {
       spinner.stop();
@@ -128,10 +128,9 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
     if (isCommandError(err)) {
       if (err.type.severity === ErrorSeverity.WARNING) {
         console.log(`Warning: ${err.message}`);
-        process.exit(0)
       } else {
         console.log(`${err.type.severity}: ${err.message}`);
-        process.exit(1);
+        isError = true;
       }
     } else if (isPipelineError(err)) {
       if (err.pipelineErrorType === PipelineErrorType.JENKINS_MISSING) {
@@ -150,13 +149,17 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       if (argv.debug) {
         console.log('Error registering pipeline:', err);
       }
-      process.exit(1);
+      isError = true;
     }
   } finally {
     if (argv.dryRun) {
       const commandTracker: CommandTracker = Container.get(CommandTracker);
 
       console.log('Commands: ', commandTracker.commands);
+    }
+
+    if (isError) {
+      process.exit(1);
     }
   }
 };

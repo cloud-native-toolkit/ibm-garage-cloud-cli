@@ -36,7 +36,6 @@ export class ChildProcess {
       this.commandTracker.record({
         command,
         arguments: args,
-        env
       });
 
       const childProcess = spawn(command, args, env);

@@ -92,18 +92,14 @@ function recordKubePayload(tracker: CommandTracker, command: string, namespace?:
 }
 
 class KindInstanceWrapper<T extends KubeResource> implements KindInstance<T> {
-  constructor(private kindInstance: KindInstance<T>, private namespace: string, private commandTracker: CommandTracker) {}
-
-  get kind(): string {
-    return this.kindInstance.kind;
-  }
+  constructor(private kindInstance: KindInstance<T>, public readonly kind: string, private namespace: string, private commandTracker: CommandTracker) {}
 
   async get(options?: any): Promise<KubeBody<T>> {
     this.commandTracker.record({
       command: 'kubectl',
       arguments: [
         'get',
-        this.kindInstance.kind,
+        this.kind,
         '-n',
         this.namespace,
       ],
@@ -126,6 +122,7 @@ export class DryRunKindBuilder extends DefaultKubeKindBuilder implements KubeKin
 
   async getResourceNode<T extends KubeResource>(group: string | undefined, version: string, kind: string, namespace: string): Promise<KindClient<T>> {
 
+    console.log('Building original KubeKind', group, version, kind, namespace);
     const originalKubeKind = await DefaultKubeKindBuilder.prototype.getResourceNode.bind(this)(group, version, kind, namespace);
 
     if (!originalKubeKind) {
@@ -135,7 +132,7 @@ export class DryRunKindBuilder extends DefaultKubeKindBuilder implements KubeKin
 
     return Object.assign(
       (name: string): KindInstance<T> => {
-        return new KindInstanceWrapper(originalKubeKind(name), namespace, this.commandTracker);
+        return new KindInstanceWrapper(originalKubeKind(name), kind, namespace, this.commandTracker);
       },
       {
         get: originalKubeKind.get.bind(originalKubeKind),
