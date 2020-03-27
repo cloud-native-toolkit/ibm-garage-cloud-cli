@@ -8,32 +8,23 @@ branches:
   only:
     - beta
     - master
+before_deploy:
+  - git fetch origin ${TRAVIS_BRANCH} --tags
+  - git checkout ${TRAVIS_BRANCH}
+  - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
+  - git config --global user.name "Jenkins Pipeline"
+  - git config --global user.email "jenkins@ibmcloud.com"
+  - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
+  - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+  - cat .npmrc
 deploy:
   - provider: script
     on:
       branch: beta
     skip_cleanup: true
-    script:
-      - git fetch origin ${TRAVIS_BRANCH} --tags
-      - git checkout ${TRAVIS_BRANCH}
-      - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
-      - git config --global user.name "Jenkins Pipeline"
-      - git config --global user.email "jenkins@ibmcloud.com"
-      - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
-      - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-      - cat .npmrc
-      - npm run release -- --preRelease=${TRAVIS_BRANCH}
+    script: npm run release -- --preRelease=${TRAVIS_BRANCH}
   - provider: script
     on:
       branch: master
     skip_cleanup: true
-    script:
-      - git fetch origin ${TRAVIS_BRANCH} --tags
-      - git checkout ${TRAVIS_BRANCH}
-      - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
-      - git config --global user.name "Jenkins Pipeline"
-      - git config --global user.email "jenkins@ibmcloud.com"
-      - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
-      - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-      - cat .npmrc
-      - npm run release
+    script: npm run release
