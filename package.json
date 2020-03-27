@@ -25,7 +25,8 @@
   },
   "release-it": {
     "git": {
-      "tagName": "v${version}"
+      "tagName": "v${version}",
+      "commitMessage": "Release ${version}\n[skip ci]"
     },
     "github": {
       "release": true
