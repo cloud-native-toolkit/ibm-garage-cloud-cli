@@ -139,7 +139,8 @@ The pipeline command supports either `jenkins` or `tekton` pipelines using the f
 - --jenkins or
 - --tekton
  
-Jenkins is the default if no value is provided. 
+A default pipeline type has not been set. If neither of the flags is provided then a prompt will
+be shown to select one. 
 
 The command will prompt for the username and personal access token that should stored in
 the secret to access the Git repository. Those values can be provided a the command-line using the
