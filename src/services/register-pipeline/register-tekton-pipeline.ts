@@ -295,7 +295,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
                 },
               },
             ],
-            serviceAccountName: serviceAccount,
+            serviceAccount: serviceAccount,
           },
         }
       },
