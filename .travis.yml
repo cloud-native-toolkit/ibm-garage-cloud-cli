@@ -10,6 +10,9 @@ branches:
     - master
 deploy:
   - provider: script
+    on:
+      branch: beta
+    skip_cleanup: true
     script:
       - git fetch origin ${TRAVIS_BRANCH} --tags
       - git checkout ${TRAVIS_BRANCH}
@@ -20,9 +23,10 @@ deploy:
       - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
       - cat .npmrc
       - npm run release -- --preRelease=${TRAVIS_BRANCH}
-    on:
-      branch: beta
   - provider: script
+    on:
+      branch: master
+    skip_cleanup: true
     script:
       - git fetch origin ${TRAVIS_BRANCH} --tags
       - git checkout ${TRAVIS_BRANCH}
@@ -33,5 +37,3 @@ deploy:
       - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
       - cat .npmrc
       - npm run release
-    on:
-      branch: master
