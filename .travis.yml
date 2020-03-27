@@ -21,7 +21,7 @@ deploy:
       - cat .npmrc
       - npm run release -- $PRE_RELEASE
     on:
-      branch: develop
+      branch: beta
   - provider: script
     script:
       - git fetch origin ${TRAVIS_BRANCH} --tags
