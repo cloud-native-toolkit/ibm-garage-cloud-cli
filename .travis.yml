@@ -2,6 +2,13 @@ language: node_js
 node_js:
   - 12
 script:
+  - npm test
+  - npm run build
+branches:
+  only:
+    - beta
+    - master
+before_deploy:
   - git fetch origin ${TRAVIS_BRANCH} --tags
   - git checkout ${TRAVIS_BRANCH}
   - git branch --set-upstream-to=origin/${TRAVIS_BRANCH} ${TRAVIS_BRANCH}
@@ -10,10 +17,14 @@ script:
   - git config --local credential.helper "!f() { echo username=\\$GITHUB_USER; echo password=\\$GITHUB_TOKEN; }; f"
   - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
   - cat .npmrc
-  - npm run release -- $PRE_RELEASE
-branches:
-  only:
-    - beta
-env:
-  global:
-    PRE_RELEASE: "--preRelease=beta"
+deploy:
+  - provider: script
+    on:
+      branch: beta
+    skip_cleanup: true
+    script: npm run release -- --preRelease=${TRAVIS_BRANCH}
+  - provider: script
+    on:
+      branch: master
+    skip_cleanup: true
+    script: npm run release
