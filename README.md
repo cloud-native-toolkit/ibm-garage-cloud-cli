@@ -1,4 +1,4 @@
-# IBM Garage Cloud CLI
+# IBM Garage Cloud Native Toolkit CLI
 
 Command-line tool to simplify activities related to IBM Cloud.
 
