@@ -1,7 +1,8 @@
 import {Inject} from 'typescript-ioc';
+import * as chalk from 'chalk';
+import inquirer from 'inquirer';
 
 import {CreateGitSecret, GitParams} from '../git-secret';
-import {Namespace} from '../namespace';
 import {KubeTektonPipelineResource, TektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
 import {KubeBody} from '../../api/kubectl/kubernetes-resource-manager';
 import {ConfigMap, KubeConfigMap, KubeSecret} from '../../api/kubectl';
@@ -9,10 +10,12 @@ import {RegisterPipeline, RegisterPipelineOptions} from './index';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
 import {KubeTektonPipeline, TektonPipeline} from '../../api/kubectl/tekton-pipeline';
 import {QuestionBuilder, QuestionBuilderImpl} from '../../util/question-builder';
-import inquirer, {objects} from 'inquirer';
-import ChoiceOption = inquirer.objects.ChoiceOption;
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 import {RoleRule} from '../../api/kubectl/role';
+import {ClusterType} from '../../util/cluster-type';
+import {NamespaceMissingError} from './register-pipeline';
+import {KubeNamespace} from '../../api/kubectl/namespace';
+import ChoiceOption = inquirer.objects.ChoiceOption;
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -38,7 +41,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   createGitSecret: CreateGitSecret;
   @Inject
-  namespaceBuilder: Namespace;
+  kubeNamespace: KubeNamespace;
   @Inject
   pipelineResource: KubeTektonPipelineResource;
   @Inject
@@ -53,18 +56,21 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   kubeConfigMap: KubeConfigMap;
   @Inject
   kubeSecret: KubeSecret;
+  @Inject
+  clusterType: ClusterType;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
-    const {clusterType} = await this.getClusterType(cliOptions.templateNamespace);
+    const {clusterType} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
 
+    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    }
+
     notifyStatus('Getting git parameters');
     const gitParams: GitParams = await this.createGitSecret.getGitParameters(options);
-
-    notifyStatus(`Setting up ${options.pipelineNamespace} namespace`);
-    await this.setupNamespace(options.pipelineNamespace, options.templateNamespace, notifyStatus);
 
     const secretName = await this.createGitSecret.createGitSecret(
       gitParams,
@@ -96,38 +102,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         serviceAccount
       });
     }
-  }
-
-  async getClusterType(namespace = 'tools'): Promise<{ clusterType: 'openshift' | 'kubernetes', serverUrl?: string }> {
-    try {
-      const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes', SERVER_URL?: string }>(
-        'ibmcloud-config',
-        namespace,
-      );
-
-      return {clusterType: configMap.CLUSTER_TYPE, serverUrl: configMap.SERVER_URL};
-    } catch (configMapError) {
-
-      console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
-
-      try {
-        const secret = await this.kubeSecret.getData<{ cluster_type: 'openshift' | 'kubernetes' }>('ibmcloud-apikey', namespace);
-
-        return {clusterType: secret.cluster_type ? secret.cluster_type : 'kubernetes'};
-      } catch (secretError) {
-        console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
-
-        return {clusterType: 'kubernetes'};
-      }
-    }
-  }
-
-  async setupNamespace(toNamespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
-    if (toNamespace === fromNamespace) {
-      return;
-    }
-
-    await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
   }
 
   async createServiceAccount(namespace: string, clusterType: string, secrets: string[] = [], notifyStatus: (text: string) => void): Promise<string> {
@@ -258,6 +232,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     if (pipelineChoices.length === 0) {
       console.log(`No Pipelines found in ${namespace} namespace. Skipping PipelineRun creation`);
+      console.log('Install Tekton tasks and pipelines into your namespace by running: ' + chalk.yellow(`igc namespace ${namespace} --tekton`));
       return 'none';
     }
 

@@ -180,7 +180,7 @@ describe('git-parameters', () => {
         test('should return url for provided directory', async () => {
           const result = await classUnderTest.getRemoteGitUrl(process.cwd());
 
-          expect(result).toEqual('git@github.com:ibm-garage-cloud/ibm-garage-cloud-cli.git');
+          expect(result).toContain('ibm-garage-cloud/ibm-garage-cloud-cli.git');
         });
       });
 
@@ -188,7 +188,7 @@ describe('git-parameters', () => {
         test('should return url for current directory', async () => {
           const result = await classUnderTest.getRemoteGitUrl();
 
-          expect(result).toEqual('git@github.com:ibm-garage-cloud/ibm-garage-cloud-cli.git');
+          expect(result).toContain('ibm-garage-cloud/ibm-garage-cloud-cli.git');
         });
       });
 

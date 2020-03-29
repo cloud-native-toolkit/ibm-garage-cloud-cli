@@ -2,12 +2,13 @@ import {IBMCloudConfig, RegisterTektonPipeline} from './register-tekton-pipeline
 import {Container} from 'typescript-ioc';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {mockField, providerFromValue} from '../../testHelper';
-import Mock = jest.Mock;
 import {Namespace} from '../namespace';
 import {KubeTektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
 import {ConfigMap, KubeConfigMap} from '../../api/kubectl';
-import {buildOptionWithEnvDefault} from '../../util/yargs-support';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
+import Mock = jest.Mock;
+import {ClusterType} from '../../util/cluster-type';
+import {KubeNamespace} from '../../api/kubectl/namespace';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -20,6 +21,8 @@ describe('register-tekton-pipeline', () => {
   let kubePipelineRun: KubeTektonPipelineRun;
   let kubeConfigMap: KubeConfigMap;
   let namespaceBuilder: Namespace;
+  let getClusterType: Mock;
+  let kubeNamespace_exists: Mock;
   beforeEach(() => {
     createGitSecret = {
       getGitParameters: jest.fn(),
@@ -52,20 +55,24 @@ describe('register-tekton-pipeline', () => {
     Container.bind(KubeConfigMap)
       .provider(providerFromValue(kubeConfigMap));
 
+    getClusterType = jest.fn();
+    Container.bind(ClusterType)
+      .provider(providerFromValue({getClusterType}));
+
+    kubeNamespace_exists = jest.fn();
+    Container.bind(KubeNamespace)
+      .provider(providerFromValue({exists: kubeNamespace_exists}));
+
     classUnderTest = Container.get(RegisterTektonPipeline);
   });
 
   describe('given registerPipeline()', () => {
-    let getClusterType: Mock;
-    let setupNamespace: Mock;
     let createServiceAccount: Mock;
     let createGitPipelineResource: Mock;
     let createImagePipelineResource: Mock;
     let getPipelineName: Mock;
     let createPipelineRun: Mock;
     beforeEach(() => {
-      getClusterType = mockField(classUnderTest, 'getClusterType');
-      setupNamespace = mockField(classUnderTest, 'setupNamespace');
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
       createGitPipelineResource = mockField(classUnderTest, 'createGitPipelineResource');
       createImagePipelineResource = mockField(classUnderTest, 'createImagePipelineResource');
@@ -73,10 +80,11 @@ describe('register-tekton-pipeline', () => {
       createPipelineRun = mockField(classUnderTest, 'createPipelineRun');
     });
 
-    describe('when called', () => {
-      const pipelineNamespace = 'test';
-      const templateNamespace = 'tools;';
-      const notifyStatus = (text: string) => undefined;
+    const pipelineNamespace = 'test';
+    const templateNamespace = 'tools;';
+    const notifyStatus = (text: string) => undefined;
+
+    describe('when namespace exists', () => {
 
       const repoName = 'repoName';
       const gitName = 'gitName';
@@ -89,6 +97,7 @@ describe('register-tekton-pipeline', () => {
 
       beforeEach(() => {
         getClusterType.mockResolvedValue({clusterType});
+        kubeNamespace_exists.mockResolvedValue(true);
         (createGitSecret.getGitParameters as Mock).mockResolvedValue(gitParams);
         createServiceAccount.mockResolvedValue(serviceAccount);
         createGitPipelineResource.mockResolvedValue(gitName);
@@ -108,12 +117,6 @@ describe('register-tekton-pipeline', () => {
         await classUnderTest.registerPipeline(options, notifyStatus);
 
         expect(createGitSecret.getGitParameters).toHaveBeenCalledWith(options);
-      });
-
-      test('should setup namespaces', async () => {
-        await classUnderTest.registerPipeline({pipelineNamespace, templateNamespace}, notifyStatus);
-
-        expect(setupNamespace).toHaveBeenCalledWith(pipelineNamespace, templateNamespace, notifyStatus);
       });
 
       test('should setup serviceAccount', async () => {
@@ -168,26 +171,20 @@ describe('register-tekton-pipeline', () => {
         });
       })
     });
-  });
 
-  describe('given setupNamespace()', () => {
-    const notifyStatus = () => undefined;
-    describe('when toNamespace equals fromNamespace', () => {
-      test('should not call namespaceBuilder', () => {
-        const namespace = 'namespace';
-        classUnderTest.setupNamespace(namespace, namespace, notifyStatus);
-
-        expect(namespaceBuilder.create).not.toHaveBeenCalled();
+    describe('when namespace does not exist', () => {
+      beforeEach(() => {
+        getClusterType.mockResolvedValue({clusterType: 'clusterType'});
+        kubeNamespace_exists.mockResolvedValue(false);
       });
-    });
 
-    describe('when toNamespace not equal to fromNamespace', () => {
-      test('should call namespaceBuilder create()', () => {
-        const toNamespace = 'toNamespace';
-        const fromNamespace = 'fromNamespace';
-        classUnderTest.setupNamespace(toNamespace, fromNamespace, notifyStatus);
-
-        expect(namespaceBuilder.create).toHaveBeenCalledWith(toNamespace, fromNamespace, notifyStatus);
+      test('then throw an error', async () => {
+        let options = {pipelineNamespace, templateNamespace};
+        return classUnderTest.registerPipeline(options, notifyStatus)
+          .then(value => fail('should throw error'))
+          .catch(error => {
+            expect(error.message).toContain('The pipeline namespace does not exist');
+          });
       });
     });
   });

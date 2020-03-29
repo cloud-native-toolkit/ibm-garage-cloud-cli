@@ -1,16 +1,26 @@
 import {Inject, Provides} from 'typescript-ioc';
 
 import {KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
-import {KubeMetadata, ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
+import {
+  AbstractKubernetesResourceManager,
+  KubeMetadata,
+  ListOptions,
+  QueryString
+} from '../../api/kubectl/kubernetes-resource-manager';
 import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
-import {KubeNamespace} from '../../api/kubectl/namespace';
+import {AbstractKubeNamespace, KubeNamespace} from '../../api/kubectl/namespace';
 import {KubeRole} from '../../api/kubectl/role';
 import {KubeRoleBinding} from '../../api/kubectl/role-binding';
 import {KubeTektonTask} from "../../api/kubectl/tekton-task";
 import {KubeTektonPipeline} from "../../api/kubectl/tekton-pipeline";
+import {ClusterType} from '../../util/cluster-type';
+import {OcpProject} from '../../api/kubectl/project';
+import {NamespaceOptionsModel} from './namespace-options.model';
+import {KubePod, Pod} from '../../api/kubectl/pod';
+import {ChildProcess} from '../../util/child-process';
 
 export abstract class Namespace {
-  async abstract create(toNamespace: string, fromNamespace: string, notifyStatus?: (status: string) => void): Promise<string>;
+  async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
 }
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -19,6 +29,8 @@ const noopNotifyStatus: (status: string) => void = () => {};
 export class NamespaceImpl implements Namespace{
   @Inject
   private namespaces: KubeNamespace;
+  @Inject
+  private projects: OcpProject;
   @Inject
   private secrets: KubeSecret;
   @Inject
@@ -33,37 +45,47 @@ export class NamespaceImpl implements Namespace{
   private roles: KubeRole;
   @Inject
   private roleBindings: KubeRoleBinding;
+  @Inject
+  private kubePod: KubePod;
+  @Inject
+  private clusterType: ClusterType;
+  @Inject
+  private childProcess: ChildProcess;
 
-  async create(toNamespace: string, fromNamespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
-    notifyStatus('Checking for existing namespace: ' + toNamespace);
-    if (!(await this.namespaces.exists(toNamespace))) {
-      notifyStatus('Creating namespace: ' + toNamespace);
-      await this.namespaces.create(toNamespace);
+  async create({namespace, templateNamespace, serviceAccount, jenkins, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+
+    const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
+
+    const nsManager: AbstractKubeNamespace<any> = clusterType === 'openshift' ? this.projects : this.namespaces;
+    notifyStatus('Checking for existing namespace: ' + namespace);
+    if (!(await nsManager.exists(namespace))) {
+      notifyStatus('Creating namespace: ' + namespace);
+      await nsManager.create(namespace);
     }
 
     notifyStatus('Setting up pull secrets');
-    await this.setupPullSecrets(toNamespace, fromNamespace);
-    notifyStatus('Setting up tls secrets');
-    await this.setupTlsSecrets(toNamespace, fromNamespace);
+    await this.setupPullSecrets(namespace, templateNamespace);
 
-    notifyStatus('Adding pull secrets to serviceAccount');
-    await this.setupServiceAccountWithPullSecrets(toNamespace);
+    notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
+    await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
 
     notifyStatus('Copying ConfigMaps');
-    await this.copyConfigMaps(toNamespace, fromNamespace);
+    await this.copyConfigMaps(namespace, templateNamespace);
     notifyStatus('Copying Secrets');
-    await this.copySecrets(toNamespace, fromNamespace);
-    notifyStatus('Copying Tekton tasks');
-    await this.copyTasks(toNamespace, fromNamespace);
-    notifyStatus('Copying Tekton pipelines');
-    await this.copyPipelines(toNamespace, fromNamespace);
+    await this.copySecrets(namespace, templateNamespace);
 
-    try {
-      notifyStatus('Copying Jenkins credentials');
-      await this.copyJenkinsCredentials(fromNamespace, toNamespace);
-    } catch (err) {}
+    if (tekton) {
+      notifyStatus('Copying Tekton tasks');
+      await this.copyTasks(namespace, templateNamespace);
+      notifyStatus('Copying Tekton pipelines');
+      await this.copyPipelines(namespace, templateNamespace);
+    }
 
-    return toNamespace;
+    if (jenkins) {
+      await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);
+    }
+
+    return namespace;
   }
 
   async setupPullSecrets(namespace: string, fromNamespace: string = 'default'): Promise<any> {
@@ -156,9 +178,8 @@ export class NamespaceImpl implements Namespace{
     return this.tektonPipelines.copyAll({namespace: fromNamespace}, toNamespace);
   }
 
-  async setupServiceAccountWithPullSecrets(namespace: string): Promise<any> {
-    const serviceAccountName = 'default';
-    const serviceAccount: ServiceAccount = await this.serviceAccounts.get(serviceAccountName, namespace);
+  async setupServiceAccountWithPullSecrets(namespace: string, serviceAccountName: string): Promise<any> {
+    let serviceAccount: ServiceAccount = await this.getServiceAccount(namespace, serviceAccountName);
 
     const pullSecretPattern = '.*icr-io';
     const serviceAccountWithPullSecrets: ServiceAccount = await this.updateServiceAccountWithPullSecretsMatchingPattern(
@@ -171,6 +192,14 @@ export class NamespaceImpl implements Namespace{
       {body: serviceAccountWithPullSecrets},
       namespace,
     );
+  }
+
+  async getServiceAccount(namespace: string, name: string): Promise<ServiceAccount> {
+    if (await this.serviceAccounts.exists(name, namespace)) {
+      return this.serviceAccounts.get(name, namespace);
+    } else {
+      return this.serviceAccounts.create(name, {body: {metadata: {name}}}, namespace);
+    }
   }
 
   containsPullSecretsMatchingPattern(serviceAccount: ServiceAccount, pattern: string): boolean {
@@ -210,6 +239,30 @@ export class NamespaceImpl implements Namespace{
       }))
       .filter((secret: Secret) => !!secret.metadata.name.match(pullSecretPattern))
       .map((secret: Secret) => ({name: secret.metadata.name}));
+  }
+
+  async setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void) {
+    try {
+      if (clusterType === 'openshift') {
+        const jenkinsPods: Pod[] = await this.kubePod.list({
+          namespace,
+          filter: (pod: Pod) => {
+            return new RegExp('jenkins-.*').test(pod.metadata.name) &&
+              !(new RegExp('jenkins-.*-deploy').test(pod.metadata.name));
+          }
+        });
+
+        if (jenkinsPods.length === 0) {
+          notifyStatus('Installing Jenkins');
+          await this.childProcess.exec(`oc new-app jenkins-ephemeral -n ${namespace}`);
+        }
+      }
+
+      notifyStatus('Copying Jenkins credentials');
+      await this.copyJenkinsCredentials(templateNamespace, namespace);
+    } catch (err) {
+    }
+
   }
 
   async copyJenkinsCredentials(fromNamespace: string, toNamespace: string) {

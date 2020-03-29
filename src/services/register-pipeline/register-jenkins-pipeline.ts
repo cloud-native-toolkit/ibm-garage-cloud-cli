@@ -6,7 +6,6 @@ import {RegisterIksPipeline} from './register-iks-pipeline';
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 import {RegisterPipelineType} from './register-pipeline-type';
-import {Namespace} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {
   CreateWebhook,
@@ -15,6 +14,9 @@ import {
   GitConfig,
   isCreateWebhookError
 } from '../create-webhook';
+import {ClusterType} from '../../util/cluster-type';
+import {KubeNamespace} from '../../api/kubectl/namespace';
+import {NamespaceMissingError} from './register-pipeline';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -47,19 +49,22 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
   @Inject
   private openshiftPipeline: RegisterOpenshiftPipeline;
   @Inject
-  private namespaceBuilder: Namespace;
+  private kubeNamespace: KubeNamespace;
+  @Inject
+  private clusterType: ClusterType;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
-    const {clusterType, serverUrl} = await this.getClusterType(cliOptions.templateNamespace);
+    const {clusterType, serverUrl} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
+    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    }
+
     notifyStatus('Creating secret(s) with git credentials');
-
     const gitParams: GitParams = await this.createGitSecret.getGitParameters(options, notifyStatus);
-
-    await this.setupNamespace(options.pipelineNamespace, options.templateNamespace, notifyStatus);
 
     await this.createGitSecret.createGitSecret(
       gitParams,
@@ -71,7 +76,6 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     );
 
     notifyStatus('Registering pipeline: ' + gitParams.name);
-
     const gitConfig: GitConfig = this.createWebhook.extractGitConfig(gitParams.url);
 
     const pipelineResult = await this.executeRegisterPipeline(
@@ -118,30 +122,6 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     return pipeline.registerPipeline(options, gitParams, credentialsName);
   }
 
-  async getClusterType(namespace = 'tools'): Promise<{clusterType: 'openshift' | 'kubernetes', serverUrl?: string}> {
-    try {
-      const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes', SERVER_URL?: string }>(
-        'ibmcloud-config',
-        namespace,
-      );
-
-      return {clusterType: configMap.CLUSTER_TYPE, serverUrl: configMap.SERVER_URL};
-    } catch (configMapError) {
-
-      console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
-
-      try {
-        const secret = await this.kubeSecret.getData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
-
-        return {clusterType: secret.cluster_type ? secret.cluster_type : 'kubernetes'};
-      } catch (secretError) {
-        console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
-
-        return {clusterType: 'kubernetes'};
-      }
-    }
-  }
-
   buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string; jenkinsUser: string; jenkinsPassword: string, jobName: string, webhookUrl?: string}): CreateWebhookOptions {
 
     return Object.assign(
@@ -152,13 +132,5 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       },
       pipelineResult,
     );
-  }
-
-  async setupNamespace(toNamespace: string, fromNamespace: string, notifyStatus: (text: string) => void) {
-    if (toNamespace === fromNamespace) {
-      return;
-    }
-
-    await this.namespaceBuilder.create(toNamespace, fromNamespace, notifyStatus);
   }
 }
