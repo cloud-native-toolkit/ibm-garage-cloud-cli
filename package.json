@@ -7,7 +7,9 @@
   "license": "MIT",
   "private": false,
   "bin": {
-    "igc": "dist/script.js"
+    "igc": "dist/script.js",
+    "oc-pipeline": "dist/script.js pipeline $@",
+    "kubectl-pipeline": "dist/script.js pipeline $@"
   },
   "watch": {
     "test": {
