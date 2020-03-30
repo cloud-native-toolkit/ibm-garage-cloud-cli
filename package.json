@@ -8,8 +8,8 @@
   "private": false,
   "bin": {
     "igc": "dist/script.js",
-    "oc-pipeline": "dist/script.js pipeline $@",
-    "kubectl-pipeline": "dist/script.js pipeline $@"
+    "oc-pipeline": "bin/script-pipeline.sh",
+    "kubectl-pipeline": "bin/script-pipeline.sh"
   },
   "watch": {
     "test": {
