@@ -57,6 +57,8 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
+    notifyStatus(`Creating pipeline on ${clusterType} cluster`);
+
     const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
     if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
