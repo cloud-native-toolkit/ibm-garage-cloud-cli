@@ -97,7 +97,7 @@ export class NamespaceImpl implements Namespace{
   }
 
   buildPullSecretListOptions(fromNamespace: string): ListOptions<Secret> {
-    const pattern = `(.*icr.*)`;
+    const pattern = `${fromNamespace}-(.*icr.*)|(.*icr.*)`;
 
     const filter: (secret: Secret) => boolean = (secret: Secret) => {
       return new RegExp(pattern, 'g').test(secret.metadata.name);
