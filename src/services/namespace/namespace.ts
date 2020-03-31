@@ -97,13 +97,15 @@ export class NamespaceImpl implements Namespace{
   }
 
   buildPullSecretListOptions(fromNamespace: string): ListOptions<Secret> {
-    const pattern = `${fromNamespace}-(.*icr.*)`;
+    const patterns = [`${fromNamespace}-(.*icr.*)`, '(.*icr.*)'];
 
     const filter: (secret: Secret) => boolean = (secret: Secret) => {
-      return new RegExp(pattern, 'g').test(secret.metadata.name);
+      return any(patterns, pattern => new RegExp(pattern, 'g').test(secret.metadata.name));
     };
 
     const mapMetadata: (metadata: KubeMetadata) => KubeMetadata = (metadata: KubeMetadata) => {
+      const pattern = first(patterns, pattern => new RegExp(pattern, 'g').test(metadata.name));
+
       return Object.assign(
         {},
         metadata,
@@ -305,4 +307,18 @@ export class NamespaceImpl implements Namespace{
         return result;
       }, [])
   }
+}
+
+function any(list: string[], test: (value: string) => boolean): boolean {
+  return list.filter(test).length > 0;
+}
+
+function first(list: string[], test: (value: string) => boolean): string {
+  const filteredList = list.filter(test);
+
+  if (filteredList.length == 0) {
+    throw new Error('List is empty after applying filter');
+  }
+
+  return filteredList[0];
 }
