@@ -2,6 +2,6 @@
 
 import {addCommandToArgs} from './util/add-command-to-args';
 
-process.argv = addCommandToArgs(process.argv, 'pipeline');
+process.argv = addCommandToArgs(process.argv, 'credentials');
 
 require('./script');

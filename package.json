@@ -8,8 +8,22 @@
   "private": false,
   "bin": {
     "igc": "dist/script.js",
+    "oc-credentials": "dist/script-credentials.js",
+    "kubectl-credentials": "dist/script-credentials.js",
+    "oc-dashboard": "dist/script-dashboard.js",
+    "kubectl-dashboard": "dist/script-dashboard.js",
+    "oc-enable": "dist/script-enable.js",
+    "kubectl-enable": "dist/script-enable.js",
+    "oc-endpoints": "dist/script-endpoints.js",
+    "kubectl-endpoints": "dist/script-endpoints.js",
+    "oc-git-secret": "dist/script-git-secret.js",
+    "kubectl-git-secret": "dist/script-git-secret.js",
     "oc-pipeline": "dist/script-pipeline.js",
-    "kubectl-pipeline": "dist/script-pipeline.js"
+    "kubectl-pipeline": "dist/script-pipeline.js",
+    "oc-init-namespace": "dist/script-namespace.js",
+    "kubectl-init-namespace": "dist/script-namespace.js",
+    "oc-tool-config": "dist/script-tool-config.js",
+    "kubectl-tool-config": "dist/script-tool-config.js"
   },
   "watch": {
     "test": {
@@ -45,7 +59,7 @@
     "test": "jest --coverage",
     "tdd": "jest --watch",
     "build": "tsc -d",
-    "postbuild": "chmod +x dist/script.js && chmod +x dist/script-pipeline.js",
+    "postbuild": "chmod +x dist/script*.js",
     "prelink": "npm run build",
     "link": "npm link $npm_package_name",
     "unlink": "npm unlink $npm_package_name",
