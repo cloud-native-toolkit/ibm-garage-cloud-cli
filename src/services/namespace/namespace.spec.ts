@@ -271,8 +271,8 @@ describe('namespace', () => {
       });
 
       describe('when secret name is "us-icr-io"', () => {
-        test('then return false', async () => {
-          expect(filter({metadata: {name: 'us-icr-io'}} as any)).toEqual(false);
+        test('then return true', async () => {
+          expect(filter({metadata: {name: 'us-icr-io'}} as any)).toEqual(true);
         });
       });
     });
