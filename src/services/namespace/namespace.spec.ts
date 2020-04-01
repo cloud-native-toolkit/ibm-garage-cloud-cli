@@ -299,7 +299,7 @@ describe('namespace', () => {
 
           const mappedSecret: Secret = map(secret);
 
-          expect(mappedSecret.metadata.name).toEqual('us-icr-io');
+          expect(mappedSecret.metadata.name).toEqual('default-us-icr-io');
           expect(mappedSecret.metadata.labels).toEqual(labels);
           expect(mappedSecret.data).toEqual(data);
         });
