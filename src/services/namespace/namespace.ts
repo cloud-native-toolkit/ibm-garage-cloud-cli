@@ -18,6 +18,7 @@ import {OcpProject} from '../../api/kubectl/project';
 import {NamespaceOptionsModel} from './namespace-options.model';
 import {KubePod, Pod} from '../../api/kubectl/pod';
 import {ChildProcess} from '../../util/child-process';
+import {CreateServiceAccount} from '../create-service-account/create-service-account';
 
 export abstract class Namespace {
   async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
@@ -51,6 +52,8 @@ export class NamespaceImpl implements Namespace{
   private clusterType: ClusterType;
   @Inject
   private childProcess: ChildProcess;
+  @Inject
+  private createServiceAccount: CreateServiceAccount;
 
   async create({namespace, templateNamespace, serviceAccount, jenkins, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
@@ -255,16 +258,25 @@ export class NamespaceImpl implements Namespace{
         });
 
         if (jenkinsPods.length === 0) {
-          notifyStatus('Installing Jenkins');
-          await this.childProcess.exec(`oc new-app jenkins-ephemeral -n ${namespace}`);
+          await this.deployJenkins(notifyStatus, namespace);
         }
       }
 
       notifyStatus('Copying Jenkins credentials');
       await this.copyJenkinsCredentials(templateNamespace, namespace);
+
+      if (clusterType === 'openshift') {
+        notifyStatus('Adding privileged scc to jenkins serviceAccount');
+        await this.createServiceAccount.createOpenShift(namespace, 'jenkins', ['privileged']);
+      }
     } catch (err) {
     }
 
+  }
+
+  private async deployJenkins(notifyStatus: (status: string) => void, namespace: string) {
+    notifyStatus('Installing Jenkins');
+    await this.childProcess.exec(`oc new-app jenkins-ephemeral -n ${namespace}`);
   }
 
   async copyJenkinsCredentials(fromNamespace: string, toNamespace: string) {
