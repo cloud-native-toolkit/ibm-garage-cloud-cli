@@ -47,7 +47,7 @@ describe.skip('get-vlan', () => {
         mock_getFlattenedVlans = jest.fn();
 
         unset_collectValuesFromTarget = setField(classUnderTest, 'collectValuesFromTarget', mock_collectValuesFromTarget);
-        unset_getVlanDatacenters = setField(classUnderTest, 'getVlanDatacenters', mock_getVlanDatacenters);
+        unset_getVlanDatacenters = setField(classUnderTest, 'getVlanDataCenters', mock_getVlanDatacenters);
         unset_getFlattenedVlans = setField(classUnderTest, 'flattenVlans', mock_getFlattenedVlans);
       });
 

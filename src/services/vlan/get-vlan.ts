@@ -60,7 +60,7 @@ export class GetVlanImpl implements GetVlan {
 
     const targetValues: TargetInfo = await this.collectValuesFromTarget(options, notifyStatus);
 
-    const vlan_datacenters: string[] = await this.getVlanDatacenters(targetValues.vlan_region, notifyStatus, options.datacenter);
+    const vlan_datacenters: string[] = await this.getVlanDataCenters(targetValues.vlan_region, notifyStatus, options.datacenter);
 
     const vlanList = await this.getDataCenterVlans(vlan_datacenters, notifyStatus);
 
@@ -80,7 +80,7 @@ export class GetVlanImpl implements GetVlan {
     );
   }
 
-  private async getDataCenterVlans(vlan_datacenters: string[], notifyStatus: (status: string) => void) {
+  private async getDataCenterVlans(vlan_datacenters: string[] = [], notifyStatus: (status: string) => void) {
     const vlanList: DataCenterVlans = {};
 
     for (let i = 0; i < vlan_datacenters.length; i++) {
@@ -161,7 +161,7 @@ export class GetVlanImpl implements GetVlan {
     };
   }
 
-  async getVlanDatacenters(region: string, notifyStatus: (status: string) => void, datacenter?: string): Promise<string[]> {
+  async getVlanDataCenters(region: string, notifyStatus: (status: string) => void, datacenter?: string): Promise<string[]> {
 
     if (datacenter) {
       notifyStatus(`Using provided datacenter: ${chalk.yellow(datacenter)}`);
