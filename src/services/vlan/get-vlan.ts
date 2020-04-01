@@ -1,4 +1,5 @@
 import {Container, Inject, Provides} from 'typescript-ioc';
+import * as chalk from 'chalk';
 
 import {GetVlanOptions} from './get-vlan-options.model';
 import {getIBMCloudTargetInfo, IBMCloudTarget} from '../../api/ibmcloud/target';
@@ -36,6 +37,18 @@ export abstract class GetVlan {
   async abstract getVlan(options: GetVlanOptions, notifyStatus?: (status: string) => void): Promise<VlanResult>;
 }
 
+export class NoVlansAvailable extends Error {
+  readonly errorType: 'NoVlansAvailable';
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export function isNoVlansAvailable(error: Error): error is NoVlansAvailable {
+  return (!!error) && ((error as NoVlansAvailable).errorType === 'NoVlansAvailable');
+}
+
 @Provides(GetVlan)
 export class GetVlanImpl implements GetVlan {
   @Inject
@@ -45,39 +58,45 @@ export class GetVlanImpl implements GetVlan {
 
   async getVlan(options: GetVlanOptions, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<VlanResult> {
 
-    notifyStatus('Getting target info');
+    const targetValues: TargetInfo = await this.collectValuesFromTarget(options, notifyStatus);
 
-    const targetValues: TargetInfo = await this.collectValuesFromTarget(options);
+    const vlan_datacenters: string[] = await this.getVlanDatacenters(targetValues.vlan_region, notifyStatus, options.datacenter);
 
-    notifyStatus('Getting zones');
+    const vlanList = await this.getDataCenterVlans(vlan_datacenters, notifyStatus);
 
-    const vlan_datacenters: string[] = options.datacenter ? [options.datacenter] : await this.getVlanDatacenters(targetValues.vlan_region);
+    const dataCenter = await this.selectDataCenter(
+      Object
+        .keys(vlanList)
+        .filter(key => vlanList[key].length > 0));
 
+    const {publicVlan, privateVlan} = await this.selectVlansFromDataCenter(dataCenter, vlanList);
+
+    return Object.assign(
+      {
+        vlan_datacenter: dataCenter,
+      },
+      await this.flattenVlans([publicVlan, privateVlan]),
+      targetValues,
+    );
+  }
+
+  private async getDataCenterVlans(vlan_datacenters: string[], notifyStatus: (status: string) => void) {
     const vlanList: DataCenterVlans = {};
 
-    notifyStatus('Getting vlans');
     for (let i = 0; i < vlan_datacenters.length; i++) {
       const vlan_datacenter = vlan_datacenters[i];
 
+      notifyStatus(`Getting vlans for ${chalk.yellow(vlan_datacenter)}`);
       const vlans: IBMCloudVlan[] = await this.vlans.getVlans(vlan_datacenter);
 
       vlanList[vlan_datacenter] = vlans;
     }
 
-    const availableDataCenters = Object.keys(vlanList)
-      .filter(key => vlanList[key].length > 0);
+    return vlanList;
+  }
 
-    const dataCenterQuestion: QuestionBuilder<{dataCenter: string}> = Container.get(QuestionBuilder);
-    const {dataCenter} = await dataCenterQuestion
-      .question({
-        type: 'list',
-        choices: availableDataCenters,
-        name: 'dataCenter',
-        message: 'Which data center would you like to use for the vlan?'
-      })
-      .prompt();
-
-    const vlanQuestion: QuestionBuilder<{publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan}> = Container.get(QuestionBuilder);
+  private async selectVlansFromDataCenter(dataCenter: string, vlanList: DataCenterVlans): Promise<{publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan}> {
+    const vlanQuestion: QuestionBuilder<{ publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan }> = Container.get(QuestionBuilder);
     const {publicVlan, privateVlan} = await vlanQuestion
       .question({
         type: 'list',
@@ -97,16 +116,33 @@ export class GetVlanImpl implements GetVlan {
       })
       .prompt();
 
-    return Object.assign(
-      {
-        vlan_datacenter: dataCenter,
-      },
-      await this.flattenVlans([publicVlan, privateVlan]),
-      targetValues,
-    );
+    return {publicVlan, privateVlan};
   }
 
-  async collectValuesFromTarget(options: GetVlanOptions): Promise<TargetInfo> {
+  private async selectDataCenter(availableDataCenters: string[]): Promise<string> {
+    if (!availableDataCenters || availableDataCenters.length == 0) {
+      throw new NoVlansAvailable('Unable to find any vlans in the dataCenters');
+    }
+
+    if (availableDataCenters.length == 1) {
+      return availableDataCenters[0];
+    }
+
+    const dataCenterQuestion: QuestionBuilder<{ dataCenter: string }> = Container.get(QuestionBuilder);
+    const {dataCenter} = await dataCenterQuestion
+      .question({
+        type: 'list',
+        choices: availableDataCenters,
+        name: 'dataCenter',
+        message: 'Which data center would you like to use for the vlan?'
+      })
+      .prompt();
+
+    return dataCenter;
+  }
+
+  async collectValuesFromTarget(options: GetVlanOptions, notifyStatus: (status: string) => void): Promise<TargetInfo> {
+    notifyStatus('Getting target info from account');
 
     const target: IBMCloudTarget = await getIBMCloudTargetInfo();
 
@@ -125,9 +161,14 @@ export class GetVlanImpl implements GetVlan {
     };
   }
 
-  async getVlanDatacenters(region: string): Promise<string[]> {
+  async getVlanDatacenters(region: string, notifyStatus: (status: string) => void, datacenter?: string): Promise<string[]> {
 
-    return await this.zones.getZones(region);
+    if (datacenter) {
+      notifyStatus(`Using provided datacenter: ${chalk.yellow(datacenter)}`);
+    } else {
+      notifyStatus(`Getting zones for ${chalk.yellow(region)} region`);
+      return await this.zones.getZones(region);
+    }
   }
 
   flattenVlans(vlans: IBMCloudVlan[]): VlanContainer {
