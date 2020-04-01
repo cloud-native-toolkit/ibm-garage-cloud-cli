@@ -1,9 +1,10 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Container, Inject, Provides} from 'typescript-ioc';
 
 import {GetVlanOptions} from './get-vlan-options.model';
 import {getIBMCloudTargetInfo, IBMCloudTarget} from '../../api/ibmcloud/target';
-import {IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
+import {DataCenterVlans, IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
 import {Zones} from '../../api/ibmcloud/zones';
+import {QuestionBuilder} from '../../util/question-builder';
 
 class VlanContainer {
   private?: IBMCloudVlan;
@@ -46,19 +47,61 @@ export class GetVlanImpl implements GetVlan {
 
     notifyStatus('Getting target info');
 
-    const targetValues = await this.collectValuesFromTarget(options);
+    const targetValues: TargetInfo = await this.collectValuesFromTarget(options);
 
     notifyStatus('Getting zones');
 
-    const vlan_datacenter: string = options.datacenter || await this.getVlanDatacenter(targetValues.vlan_region);
+    const vlan_datacenters: string[] = options.datacenter ? [options.datacenter] : await this.getVlanDatacenters(targetValues.vlan_region);
+
+    const vlanList: DataCenterVlans = {};
 
     notifyStatus('Getting vlans');
+    for (let i = 0; i < vlan_datacenters.length; i++) {
+      const vlan_datacenter = vlan_datacenters[i];
+
+      const vlans: IBMCloudVlan[] = await this.vlans.getVlans(vlan_datacenter);
+
+      vlanList[vlan_datacenter] = vlans;
+    }
+
+    const availableDataCenters = Object.keys(vlanList)
+      .filter(key => vlanList[key].length > 0);
+
+    const dataCenterQuestion: QuestionBuilder<{dataCenter: string}> = Container.get(QuestionBuilder);
+    const {dataCenter} = await dataCenterQuestion
+      .question({
+        type: 'list',
+        choices: availableDataCenters,
+        name: 'dataCenter',
+        message: 'Which data center would you like to use for the vlan?'
+      })
+      .prompt();
+
+    const vlanQuestion: QuestionBuilder<{publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan}> = Container.get(QuestionBuilder);
+    const {publicVlan, privateVlan} = await vlanQuestion
+      .question({
+        type: 'list',
+        name: 'publicVlan',
+        message: 'Which public vlan would you like to use?',
+        choices: vlanList[dataCenter]
+          .filter(dc => dc.type === 'public')
+          .map(dc => ({name: `${dc.id}/${dc.router}`, value: dc})),
+      })
+      .question({
+        type: 'list',
+        name: 'privateVlan',
+        message: 'Which private vlan would you like to use?',
+        choices: vlanList[dataCenter]
+          .filter(dc => dc.type === 'private')
+          .map(dc => ({name: `${dc.id}/${dc.router}`, value: dc})),
+      })
+      .prompt();
 
     return Object.assign(
       {
-        vlan_datacenter,
+        vlan_datacenter: dataCenter,
       },
-      await this.getFlattenedVlans(vlan_datacenter),
+      await this.flattenVlans([publicVlan, privateVlan]),
       targetValues,
     );
   }
@@ -82,15 +125,9 @@ export class GetVlanImpl implements GetVlan {
     };
   }
 
-  async getVlanDatacenter(region: string): Promise<string> {
+  async getVlanDatacenters(region: string): Promise<string[]> {
 
-    const zones: string[] = await this.zones.getZones(region);
-
-    return zones[0];
-  }
-
-  async getFlattenedVlans(vlan_datacenter: string): Promise<VlanContainer> {
-    return this.flattenVlans(await this.vlans.getVlans(vlan_datacenter));
+    return await this.zones.getZones(region);
   }
 
   flattenVlans(vlans: IBMCloudVlan[]): VlanContainer {

@@ -1,9 +1,9 @@
-import ora from 'ora';
 import {Container} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
 
 import {GetVlan, GetVlanOptions, VlanResult} from '../services/vlan';
 import {FsPromises} from '../util/file-util';
+import {Logger, VerboseLogger} from '../util/logger';
 
 export const command = 'vlan';
 export const desc = 'Print out the vlan values';
@@ -19,7 +19,7 @@ export const builder = (yargs: Argv<any>) => yargs
   });
 exports.handler = async (argv: Arguments<GetVlanOptions>) => {
   try {
-    const spinner = ora('Getting vlan').start();
+    const spinner: Logger = new VerboseLogger();
 
     function statusCallback(status: string) {
       spinner.text = status;

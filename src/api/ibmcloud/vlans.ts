@@ -10,6 +10,10 @@ export class IBMCloudVlan {
   router: string;
 }
 
+export class DataCenterVlans {
+  [dataCenter: string]: IBMCloudVlan[];
+}
+
 export abstract class Vlans {
   async abstract getVlans(zone: string): Promise<IBMCloudVlan[]>;
 }
