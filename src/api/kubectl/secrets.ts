@@ -28,12 +28,18 @@ export class KubeSecret extends AbstractKubernetesResourceManager<Secret> {
   async getData<U>(secretName: string, namespace: string): Promise<U> {
     const secret: Secret = await this.get(secretName, namespace);
 
+    if (!secret || !secret.data) {
+      return {} as any;
+    }
+
     return this.decodeSecretData(secret.data);
   }
 
   decodeSecretData<U>(secretData: U): any {
     return Object.keys(secretData).reduce((decodedResults, currentKey) => {
-      decodedResults[currentKey] = base64decode(secretData[currentKey]);
+      if (secretData[currentKey]) {
+        decodedResults[currentKey] = base64decode(secretData[currentKey]);
+      }
 
       return decodedResults;
     }, {} as U);
