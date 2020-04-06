@@ -61,7 +61,7 @@
     "start": "./dist/script.js",
     "igc": "./dist/script.js",
     "release": "release-it --verbose",
-    "update-interactive": "npm-check --interactive"
+    "update-interactive": "npm-check --update"
   },
   "devDependencies": {
     "@babel/core": "^7.4.3",
