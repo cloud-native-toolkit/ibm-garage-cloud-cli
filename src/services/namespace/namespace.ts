@@ -262,8 +262,10 @@ export class NamespaceImpl implements Namespace{
         }
       }
 
-      notifyStatus('Copying Jenkins credentials');
-      await this.copyJenkinsCredentials(templateNamespace, namespace);
+      try {
+        notifyStatus('Copying Jenkins credentials');
+        await this.copyJenkinsCredentials(templateNamespace, namespace);
+      } catch (err) {}
 
       if (clusterType === 'openshift') {
         notifyStatus('Adding privileged scc to jenkins serviceAccount');
