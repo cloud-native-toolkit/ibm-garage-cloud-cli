@@ -41,6 +41,11 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
   .option('values', {
     description: 'optional file with additional values to add to the secret'
   })
+  .option('replaceGitSecret', {
+    alias: 'g',
+    description: 'Flag indicating that the secret holding the git credentials should be recreated',
+    type: 'boolean'
+  })
   .option('tekton', {
     conflicts: 'jenkins',
     description: 'register a tekton pipeline',

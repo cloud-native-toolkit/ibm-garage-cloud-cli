@@ -1,13 +1,21 @@
 {
   "name": "@ibmgaragecloud/cloud-native-toolkit-cli",
-  "version": "0.4.16",
+  "version": "0.4.17-beta.1",
   "description": "CLI that provides functions to simplify interactions with containerized platforms and tools",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
   "license": "MIT",
   "private": false,
   "bin": {
-    "igc": "dist/script.js"
+    "igc": "dist/script.js",
+    "kubectl-credentials": "dist/script-credentials.js",
+    "kubectl-dashboard": "dist/script-dashboard.js",
+    "kubectl-enable": "dist/script-enable.js",
+    "kubectl-endpoints": "dist/script-endpoints.js",
+    "kubectl-git-secret": "dist/script-git-secret.js",
+    "kubectl-pipeline": "dist/script-pipeline.js",
+    "kubectl-init-namespace": "dist/script-namespace.js",
+    "kubectl-tool-config": "dist/script-tool-config.js"
   },
   "watch": {
     "test": {
@@ -43,7 +51,7 @@
     "test": "jest --coverage",
     "tdd": "jest --watch",
     "build": "tsc -d",
-    "postbuild": "chmod +x dist/script.js",
+    "postbuild": "chmod +x dist/script*.js",
     "prelink": "npm run build",
     "link": "npm link $npm_package_name",
     "unlink": "npm unlink $npm_package_name",
@@ -52,7 +60,8 @@
     "prestart": "npm run build",
     "start": "./dist/script.js",
     "igc": "./dist/script.js",
-    "release": "release-it --verbose"
+    "release": "release-it --verbose",
+    "update-interactive": "npm-check --update"
   },
   "devDependencies": {
     "@babel/core": "^7.4.3",
@@ -78,6 +87,7 @@
     "jest": "^24.7.1",
     "jest-plugin-context": "^2.9.0",
     "jest-sonar-reporter": "^2.0.0",
+    "npm-check": "^5.9.2",
     "npm-watch": "^0.6.0",
     "release-it": "^12.6.2",
     "ts-jest": "^24.0.2",
