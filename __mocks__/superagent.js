@@ -25,6 +25,7 @@ let Request = {
   type: jest.fn().mockReturnThis(),
   set: jest.fn().mockReturnThis(),
   accept: jest.fn().mockReturnThis(),
+  agent: jest.fn().mockReturnThis(),
   timeout: jest.fn().mockReturnThis(),
   end: jest.fn().mockImplementation((callback) => {
     if (mockDelay) {
