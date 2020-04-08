@@ -1,7 +1,8 @@
 import {Container} from 'typescript-ioc';
+import * as _ from 'lodash';
 
-import {GitSecret, GitSecretImpl} from './git-secret';
-import {KubeSecret} from '../../api/kubectl';
+import {GitSecret, GitSecretImpl, SECRET_NAME} from './git-secret';
+import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {setField, providerFromValue} from '../../testHelper';
 import {GitParams} from './git-params.model';
 import Mock = jest.Mock;
@@ -13,13 +14,26 @@ describe('create-git-secret', () => {
 
   describe('given GitSecret', () => {
     let classUnderTest: GitSecretImpl;
+    let mock_existsSecret: Mock;
     let mock_createOrUpdateSecret: Mock;
+    let mock_createOrUpdateConfig: Mock;
 
     beforeEach(() => {
+      mock_existsSecret = jest.fn();
       mock_createOrUpdateSecret = jest.fn();
       Container
         .bind(KubeSecret)
-        .provider(providerFromValue({createOrUpdate: mock_createOrUpdateSecret}));
+        .provider(providerFromValue({
+          exists: mock_existsSecret,
+          createOrUpdate: mock_createOrUpdateSecret,
+        }));
+
+      mock_createOrUpdateConfig = jest.fn();
+      Container
+        .bind(KubeConfigMap)
+        .provider(providerFromValue({
+          createOrUpdate: mock_createOrUpdateConfig,
+        }));
 
       classUnderTest = Container.get(GitSecretImpl);
     });
@@ -47,29 +61,32 @@ describe('create-git-secret', () => {
         mock_createOrUpdateSecret.mockResolvedValue(expectedResult);
 
         const gitParams: any = {
-          name: 'git name'
+          name: 'git name',
+          host: 'github.com',
+          org: 'org',
         };
         const namespace = 'namespace';
         const additionalParams = {};
 
-        const actualResult = await classUnderTest.create(gitParams, namespace, additionalParams);
+        const actualResult = await classUnderTest.create({gitParams, namespaces: namespace, additionalParams});
 
-        expect(actualResult).toEqual(gitParams.name);
+        expect(actualResult).toEqual({configMapName: gitParams.name, secretName: SECRET_NAME});
 
-        expect(mock_buildGitSecretBody).toHaveBeenCalledWith(gitParams, additionalParams);
-        expect(mock_createOrUpdateSecret).toHaveBeenCalledWith(gitParams.name, {body: gitSecretBody}, namespace);
+        expect(mock_buildGitSecretBody).toHaveBeenCalledWith(SECRET_NAME, gitParams, additionalParams);
+        expect(mock_createOrUpdateSecret).toHaveBeenCalledWith(SECRET_NAME, {body: gitSecretBody}, namespace);
       });
     });
 
     describe('buildGitSecretBody()', () => {
       const name = 'name';
-      const urlBase = 'https://github.com/org';
+      const org = 'org';
+      const repo = 'repo';
+      const host = 'host';
+      const urlBase = `https://${host}/${org}`;
       const url = `${urlBase}/repo.git`;
       const username = 'username';
       const password = 'password';
       const branch = 'branch';
-      const org = 'org';
-      const repo = 'repo';
 
       const gitParams: GitParams = {
         name,
@@ -79,6 +96,7 @@ describe('create-git-secret', () => {
         branch,
         org,
         repo,
+        host,
       };
       const secretData = {
         url,
@@ -87,31 +105,32 @@ describe('create-git-secret', () => {
         branch,
         org,
         repo,
+        host,
       };
 
       test('metadata.name=gitParams.name', () => {
-        const secret = classUnderTest.buildGitSecretBody(gitParams);
+        const secret = classUnderTest.buildGitSecretBody(gitParams.name, gitParams);
 
         expect(secret.metadata.name).toEqual(name);
       });
 
       test('should have source-secret-match-uri annotation', () => {
-        const secret = classUnderTest.buildGitSecretBody(gitParams);
+        const secret = classUnderTest.buildGitSecretBody(gitParams.name, gitParams);
 
         expect(secret.metadata.annotations['build.openshift.io/source-secret-match-uri-1'])
-          .toEqual(urlBase + '/*');
+          .toEqual( `https://${host}/*`);
       });
 
       test('should have type=kubernetes.io/basic-auth', () => {
-        const secret = classUnderTest.buildGitSecretBody(gitParams);
+        const secret = classUnderTest.buildGitSecretBody(gitParams.name, gitParams);
 
         expect(secret.type).toEqual('kubernetes.io/basic-auth');
       });
 
       test('should have data from gitParams', () => {
-        const secret = classUnderTest.buildGitSecretBody(gitParams);
+        const secret = classUnderTest.buildGitSecretBody(gitParams.name, gitParams);
 
-        expect(secret.stringData).toEqual(secretData);
+        expect(secret.stringData).toEqual(_.pick(secretData, ['username', 'password']));
       });
     });
   });

@@ -9,6 +9,7 @@ import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
 import Mock = jest.Mock;
 import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
+import {RegisterPipelineOptions} from './register-pipeline-options.model';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -25,8 +26,7 @@ describe('register-tekton-pipeline', () => {
   let kubeNamespace_exists: Mock;
   beforeEach(() => {
     createGitSecret = {
-      getGitParameters: jest.fn(),
-      createGitSecret: jest.fn(),
+      getParametersAndCreateSecret: jest.fn(),
     } as any;
     Container.bind(CreateGitSecret)
       .provider(providerFromValue(createGitSecret));
@@ -92,13 +92,13 @@ describe('register-tekton-pipeline', () => {
       const pipelineName = 'pipelineName';
       const clusterType = 'clusterType';
       const serviceAccount = 'serviceAccount';
-
+      const secretName = 'secretName';
       const gitParams = {repo: repoName};
 
       beforeEach(() => {
         getClusterType.mockResolvedValue({clusterType});
         kubeNamespace_exists.mockResolvedValue(true);
-        (createGitSecret.getGitParameters as Mock).mockResolvedValue(gitParams);
+        (createGitSecret.getParametersAndCreateSecret as Mock).mockResolvedValue({gitParams, secretName, configMapName: 'configMapName'});
         createServiceAccount.mockResolvedValue(serviceAccount);
         createGitPipelineResource.mockResolvedValue(gitName);
         createImagePipelineResource.mockResolvedValue(imageName);
@@ -113,16 +113,25 @@ describe('register-tekton-pipeline', () => {
       });
 
       test('should get git parameters', async () => {
-        let options = {pipelineNamespace, templateNamespace};
+        let options: RegisterPipelineOptions = {pipelineNamespace, templateNamespace, replaceGitSecret: false};
         await classUnderTest.registerPipeline(options, notifyStatus);
 
-        expect(createGitSecret.getGitParameters).toHaveBeenCalledWith(options);
+        expect(createGitSecret.getParametersAndCreateSecret).toHaveBeenCalledWith(
+          Object.assign(
+            {},
+            options,
+            {
+              namespaces: [options.pipelineNamespace],
+              replace: options.replaceGitSecret,
+            }),
+          notifyStatus,
+        );
       });
 
       test('should setup serviceAccount', async () => {
         await classUnderTest.registerPipeline({pipelineNamespace, templateNamespace}, notifyStatus);
 
-        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, clusterType, [undefined], notifyStatus);
+        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, clusterType, [secretName], notifyStatus);
       });
 
       test('should create git pipeline resource', async () => {

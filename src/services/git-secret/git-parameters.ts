@@ -34,17 +34,17 @@ export class GetGitParametersImpl implements GetGitParameters {
       .question({
         type: 'input',
         name: 'username',
-        message: 'Provide the username:',
+        message: 'Provide the git username:',
       }, options.gitUsername)
       .question({
         type: 'password',
         name: 'password',
-        message: `Provide your password/personal access token:`,
+        message: `Provide the git personal access token:`,
       }, options.gitPat)
       .question({
         type: 'input',
         name: 'branch',
-        message: `Provide the branch the pipeline should use:`,
+        message: `Provide the git branch that should be used:`,
         default: currentBranch,
       });
 

@@ -66,15 +66,19 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     }
 
     notifyStatus('Creating secret(s) with git credentials');
-    const gitParams: GitParams = await this.createGitSecret.getGitParameters(options, notifyStatus);
-
-    await this.createGitSecret.createGitSecret(
-      gitParams,
-      [
-        options.pipelineNamespace,
-        options.templateNamespace,
-      ],
-      options.values,
+    const {gitParams, secretName, configMapName} = await this.createGitSecret.getParametersAndCreateSecret(
+      Object.assign(
+        {},
+        options,
+        {
+          namespaces: [
+            options.pipelineNamespace,
+            options.templateNamespace,
+          ],
+          replace: options.replaceGitSecret,
+        },
+      ),
+      notifyStatus,
     );
 
     notifyStatus('Registering pipeline: ' + gitParams.name);

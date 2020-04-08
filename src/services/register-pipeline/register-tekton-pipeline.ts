@@ -2,10 +2,10 @@ import {Inject} from 'typescript-ioc';
 import * as chalk from 'chalk';
 import inquirer from 'inquirer';
 
-import {CreateGitSecret, GitParams} from '../git-secret';
+import {CreateGitSecret, CreateGitSecretOptions, GitParams} from '../git-secret';
 import {KubeTektonPipelineResource, TektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
 import {KubeBody} from '../../api/kubectl/kubernetes-resource-manager';
-import {ConfigMap, KubeConfigMap, KubeSecret} from '../../api/kubectl';
+import {ConfigMap, KubeConfigMap} from '../../api/kubectl';
 import {RegisterPipeline, RegisterPipelineOptions} from './index';
 import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
 import {KubeTektonPipeline, TektonPipeline} from '../../api/kubectl/tekton-pipeline';
@@ -53,10 +53,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   serviceAccount: CreateServiceAccount;
   @Inject
-  kubeConfigMap: KubeConfigMap;
-  @Inject
-  kubeSecret: KubeSecret;
-  @Inject
   clusterType: ClusterType;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
@@ -70,15 +66,16 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     }
 
     notifyStatus('Getting git parameters');
-    const gitParams: GitParams = await this.createGitSecret.getGitParameters(options);
-
-    const secretName = await this.createGitSecret.createGitSecret(
-      gitParams,
-      [
-        options.pipelineNamespace,
-        options.templateNamespace,
-      ],
-      options.values,
+    const {gitParams, secretName} = await this.createGitSecret.getParametersAndCreateSecret(
+      Object.assign(
+        {},
+        options,
+        {
+          namespaces: [options.pipelineNamespace],
+          replace: options.replaceGitSecret,
+        }
+      ),
+      notifyStatus,
     );
 
     const serviceAccount = await this.createServiceAccount(options.pipelineNamespace, clusterType, [secretName], notifyStatus);

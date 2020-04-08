@@ -36,6 +36,11 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Git personal access token for the current repository',
       require: false,
     })
+    .option('replace', {
+      describe: 'Flag indicating that the secret should be replaced if it already exists',
+      type: 'boolean',
+      require: false,
+    })
     .positional('name', {
       describe: 'Name of the secret that will be created. the value will default to {git org}.{git repo} it not provided',
       require: false,
