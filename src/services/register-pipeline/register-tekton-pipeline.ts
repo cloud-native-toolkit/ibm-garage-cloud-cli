@@ -86,15 +86,23 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     notifyStatus('Creating Image PipelineResource');
     const dockerImage = await this.createImagePipelineResource(options, gitParams);
 
-    const pipelineName = await this.getPipelineName(options.pipelineNamespace, options.pipelineName);
+    const pipelineName = await this.getPipelineName(options.templateNamespace, options.pipelineName);
 
     if (pipelineName !== 'none') {
-      notifyStatus(`Creating PipelineRun for pipeline: ${pipelineName}`);
+      const pipelineValue: TektonPipeline = await this.pipeline.copy(
+        pipelineName,
+        options.templateNamespace,
+        options.pipelineNamespace,
+        gitParams.name
+      );
+      notifyStatus(`Copied Pipeline from ${options.templateNamespace}/${pipelineName} to ${options.pipelineNamespace}/${pipelineValue.metadata.name}`);
+
+      notifyStatus(`Creating PipelineRun for pipeline: ${pipelineValue.metadata.name}`);
       await this.createPipelineRun({
         name: gitParams.repo,
         gitSource,
         dockerImage,
-        pipelineName,
+        pipelineName: pipelineValue.metadata.name,
         pipelineNamespace: options.pipelineNamespace,
         serviceAccount
       });
@@ -262,7 +270,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       serviceAccount?: string,
     }) {
     const dateHex = Date.now().toString(16);
-    const pipelineRunName = `${name}-run-${dateHex}`;
+    const pipelineRunName = `${name}-${dateHex}`;
 
     return this.pipelineRun.create(
       pipelineRunName,

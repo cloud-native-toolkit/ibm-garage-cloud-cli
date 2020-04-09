@@ -10,6 +10,7 @@ import Mock = jest.Mock;
 import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
+import {KubeTektonPipeline} from '../../api/kubectl/tekton-pipeline';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -18,6 +19,7 @@ describe('register-tekton-pipeline', () => {
 
   let classUnderTest: RegisterTektonPipeline;
   let createGitSecret: CreateGitSecret;
+  let kubePipeline: KubeTektonPipeline;
   let kubePipelineResource: KubeTektonPipelineResource;
   let kubePipelineRun: KubeTektonPipelineRun;
   let kubeConfigMap: KubeConfigMap;
@@ -42,6 +44,12 @@ describe('register-tekton-pipeline', () => {
     } as any;
     Container.bind(KubeTektonPipelineResource)
       .provider(providerFromValue(kubePipelineResource));
+
+    kubePipeline = {
+      copy: jest.fn(),
+    } as any;
+    Container.bind(KubeTektonPipeline)
+      .provider(providerFromValue(kubePipeline));
 
     kubePipelineRun = {
       create: jest.fn()
@@ -93,6 +101,7 @@ describe('register-tekton-pipeline', () => {
       const clusterType = 'clusterType';
       const serviceAccount = 'serviceAccount';
       const secretName = 'secretName';
+      const newPipelineName = 'newPipelineName';
       const gitParams = {repo: repoName};
 
       beforeEach(() => {
@@ -103,6 +112,7 @@ describe('register-tekton-pipeline', () => {
         createGitPipelineResource.mockResolvedValue(gitName);
         createImagePipelineResource.mockResolvedValue(imageName);
         getPipelineName.mockResolvedValue(pipelineName);
+        (kubePipeline.copy as Mock).mockResolvedValue({metadata: {name: newPipelineName}})
       });
 
       test('should get cluster type', async () => {
@@ -152,7 +162,7 @@ describe('register-tekton-pipeline', () => {
         const options = {pipelineNamespace, templateNamespace, pipelineName};
         await classUnderTest.registerPipeline(options, notifyStatus);
 
-        expect(getPipelineName).toHaveBeenCalledWith(pipelineNamespace, pipelineName);
+        expect(getPipelineName).toHaveBeenCalledWith(templateNamespace, pipelineName);
       });
 
       test('should create pipeline run', async () => {
@@ -163,7 +173,7 @@ describe('register-tekton-pipeline', () => {
           name: repoName,
           gitSource: gitName,
           dockerImage: imageName,
-          pipelineName,
+          pipelineName: newPipelineName,
           serviceAccount,
         });
       });
