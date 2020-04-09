@@ -80,8 +80,6 @@ export class NamespaceImpl implements Namespace{
     if (tekton) {
       notifyStatus('Copying Tekton tasks');
       await this.copyTasks(namespace, templateNamespace);
-      notifyStatus('Copying Tekton pipelines');
-      await this.copyPipelines(namespace, templateNamespace);
     }
 
     if (jenkins) {

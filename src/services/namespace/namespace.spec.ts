@@ -183,12 +183,6 @@ describe('namespace', () => {
 
           expect(copyTasks).toHaveBeenCalledWith(namespace, templateNamespace);
         });
-
-        test('then should copy tekton pipelines', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyPipelines).toHaveBeenCalledWith(namespace, templateNamespace);
-        });
       });
 
       describe('and when jenkins flag is false', () => {
