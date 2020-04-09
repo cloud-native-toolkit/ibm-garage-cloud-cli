@@ -84,7 +84,6 @@ describe('namespace', () => {
     let copySecrets: Mock;
     let setupServiceAccountWithPullSecrets: Mock;
     let copyJenkinsCredentials: Mock;
-    let copyTasks: Mock;
     let copyPipelines: Mock;
     beforeEach(() => {
       setupPullSecrets = mockField(classUnderTest, 'setupPullSecrets');
@@ -93,7 +92,6 @@ describe('namespace', () => {
       copySecrets = mockField(classUnderTest, 'copySecrets');
       setupServiceAccountWithPullSecrets = mockField(classUnderTest, 'setupServiceAccountWithPullSecrets');
       copyJenkinsCredentials = mockField(classUnderTest, 'copyJenkinsCredentials');
-      copyTasks = mockField(classUnderTest, 'copyTasks');
       copyPipelines = mockField(classUnderTest, 'copyPipelines');
     });
 
@@ -153,36 +151,6 @@ describe('namespace', () => {
         await classUnderTest.create(namespaceOptions);
 
         expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
-      });
-
-      describe('and when tekton flag is not set', () => {
-        beforeEach(() => {
-          namespaceOptions.tekton = false;
-        });
-
-        test('then should not copy tekton tasks', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyTasks).not.toHaveBeenCalled();
-        });
-
-        test('then should not opy tekton pipelines', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyPipelines).not.toHaveBeenCalled();
-        });
-      });
-
-      describe('and when tekton flag is set', () => {
-        beforeEach(() => {
-          namespaceOptions.tekton = true;
-        });
-
-        test('then should copy tekton tasks', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyTasks).toHaveBeenCalledWith(namespace, templateNamespace);
-        });
       });
 
       describe('and when jenkins flag is false', () => {

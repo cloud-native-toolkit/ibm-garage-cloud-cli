@@ -96,13 +96,14 @@ describe('register-tekton-pipeline', () => {
 
       const repoName = 'repoName';
       const gitName = 'gitName';
+      const fullGitName = "org-name";
       const imageName = 'imageName';
       const pipelineName = 'pipelineName';
       const clusterType = 'clusterType';
       const serviceAccount = 'serviceAccount';
       const secretName = 'secretName';
       const newPipelineName = 'newPipelineName';
-      const gitParams = {repo: repoName};
+      const gitParams = {name: fullGitName, repo: repoName};
 
       beforeEach(() => {
         getClusterType.mockResolvedValue({clusterType});
@@ -170,7 +171,7 @@ describe('register-tekton-pipeline', () => {
 
         expect(createPipelineRun).toHaveBeenCalledWith({
           pipelineNamespace,
-          name: repoName,
+          name: fullGitName,
           gitSource: gitName,
           dockerImage: imageName,
           pipelineName: newPipelineName,
