@@ -16,6 +16,7 @@ import {ClusterType} from '../../util/cluster-type';
 import {NamespaceMissingError} from './register-pipeline';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import ChoiceOption = inquirer.objects.ChoiceOption;
+import {KubeTektonTask} from '../../api/kubectl/tekton-task';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -48,6 +49,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   pipelineRun: KubeTektonPipelineRun;
   @Inject
   pipeline: KubeTektonPipeline;
+  @Inject
+  tektonTask: KubeTektonTask;
   @Inject
   configMap: KubeConfigMap;
   @Inject
@@ -89,6 +92,9 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     const pipelineName = await this.getPipelineName(options.templateNamespace, options.pipelineName);
 
     if (pipelineName !== 'none') {
+      notifyStatus(`Copying tasks from ${options.templateNamespace}`);
+      await this.tektonTask.copyAll({namespace: options.templateNamespace}, options.pipelineNamespace);
+
       const pipelineValue: TektonPipeline = await this.pipeline.copy(
         pipelineName,
         options.templateNamespace,
@@ -99,7 +105,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
       notifyStatus(`Creating PipelineRun for pipeline: ${pipelineValue.metadata.name}`);
       await this.createPipelineRun({
-        name: gitParams.repo,
+        name: gitParams.name,
         gitSource,
         dockerImage,
         pipelineName: pipelineValue.metadata.name,

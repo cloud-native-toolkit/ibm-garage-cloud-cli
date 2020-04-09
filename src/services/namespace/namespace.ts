@@ -77,11 +77,6 @@ export class NamespaceImpl implements Namespace{
     notifyStatus('Copying Secrets');
     await this.copySecrets(namespace, templateNamespace);
 
-    if (tekton) {
-      notifyStatus('Copying Tekton tasks');
-      await this.copyTasks(namespace, templateNamespace);
-    }
-
     if (jenkins) {
       await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);
     }
@@ -163,14 +158,6 @@ export class NamespaceImpl implements Namespace{
     const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
 
     return this.secrets.copyAll({namespace: fromNamespace, qs}, toNamespace);
-  }
-
-  async copyTasks(toNamespace: string, fromNamespace: string): Promise<any> {
-    if (toNamespace === fromNamespace) {
-      return;
-    }
-
-    return this.tektonTasks.copyAll({namespace: fromNamespace}, toNamespace);
   }
 
   async copyPipelines(toNamespace: string, fromNamespace: string): Promise<any> {
