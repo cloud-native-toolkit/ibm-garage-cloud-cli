@@ -276,7 +276,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       serviceAccount?: string,
     }) {
     const dateHex = Date.now().toString(16);
-    const pipelineRunName = `${name}-${dateHex}`;
+    const pipelineRunName = `${name}-${dateHex}`.replace(/[.]/g, '-');
 
     return this.pipelineRun.create(
       pipelineRunName,
