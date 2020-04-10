@@ -93,6 +93,7 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       clusterType,
       options,
       Object.assign({}, gitParams, {type: gitConfig.type}),
+      gitParams.name,
       secretName,
     );
 
@@ -127,10 +128,10 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     return clusterType === 'openshift' ? this.openshiftPipeline : this.iksPipeline;
   }
 
-  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
+  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams, pipelineName: string, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
     const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
-    return pipeline.registerPipeline(options, gitParams, credentialsName);
+    return pipeline.registerPipeline(options, gitParams, pipelineName, credentialsName);
   }
 
   buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string; jenkinsUser: string; jenkinsPassword: string, jobName: string, webhookUrl?: string}): CreateWebhookOptions {

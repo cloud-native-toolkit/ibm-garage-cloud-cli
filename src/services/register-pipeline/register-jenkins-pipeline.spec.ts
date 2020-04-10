@@ -61,10 +61,11 @@ describe('register-pipeline', () => {
           const options: RegisterPipelineOptions = {} as any;
           const gitParams: GitParams = {} as any;
           const credentialsName = 'credentialsName';
-          expect(await classUnderTest.executeRegisterPipeline(clusterType, options, gitParams, credentialsName)).toBe(expectedResult);
+          const pipelineName = 'pipeline name';
+          expect(await classUnderTest.executeRegisterPipeline(clusterType, options, gitParams, pipelineName, credentialsName)).toBe(expectedResult);
 
           expect(mock_getPipelineType).toHaveBeenCalledWith(clusterType);
-          expect(mock_registerPipeline).toHaveBeenCalledWith(options, gitParams, credentialsName);
+          expect(mock_registerPipeline).toHaveBeenCalledWith(options, gitParams, pipelineName, credentialsName);
         });
       });
     });
