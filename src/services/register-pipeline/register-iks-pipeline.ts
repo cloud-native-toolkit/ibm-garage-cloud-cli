@@ -20,10 +20,9 @@ export class RegisterIksPipeline implements RegisterPipelineType {
   @Inject
   private kubeSecret: KubeSecret;
 
-  setupDefaultOptions(): Partial<RegisterPipelineOptions> {
+  async setupDefaultOptions(): Promise<Partial<RegisterPipelineOptions>> {
     return {
       templateNamespace: 'tools',
-      pipelineNamespace: 'dev',
     };
   }
 

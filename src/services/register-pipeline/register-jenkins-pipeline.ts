@@ -1,4 +1,5 @@
 import {Inject, Provides} from 'typescript-ioc';
+import * as chalk from 'chalk';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
@@ -16,7 +17,7 @@ import {
 } from '../create-webhook';
 import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
-import {NamespaceMissingError} from './register-pipeline';
+import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -57,12 +58,16 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
-    notifyStatus(`Creating pipeline on ${clusterType} cluster`);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
-    const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
+    notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
 
-    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
-      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    if (!options.pipelineNamespace) {
+      throw new PipelineNamespaceNotProvided('A pipeline namespace must be provided', clusterType);
+    }
+
+    if (!(await this.kubeNamespace.exists(options.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace, clusterType);
     }
 
     notifyStatus('Creating secret(s) with git credentials');
@@ -107,12 +112,12 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     }
   }
 
-  setupDefaultOptions(clusterType: string, serverUrl: string, cliOptions: RegisterPipelineOptions): RegisterPipelineOptions {
+  async setupDefaultOptions(clusterType: string, serverUrl: string, cliOptions: RegisterPipelineOptions): Promise<RegisterPipelineOptions> {
     const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
     return Object.assign(
       {},
-      pipeline.setupDefaultOptions(),
+      await pipeline.setupDefaultOptions(),
       cliOptions,
       {serverUrl},
     );

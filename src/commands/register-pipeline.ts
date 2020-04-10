@@ -142,6 +142,14 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
         const flag = argv.tekton ? ' --tekton' : ' --jenkins';
         console.log(`Create the namespace by running: ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + flag)}`);
         console.log();
+      } else if (err.pipelineErrorType === PipelineErrorType.NO_PIPELINE_NAMESPACE) {
+        console.log(chalk.red('The target namespace is not provided'));
+
+        console.log(`Provide the namespace by passing it with ${chalk.yellow('-n')} flag`);
+        if (err.clusterType === 'openshift') {
+          console.log(`  or by setting the project with ${chalk.yellow('oc project {project}')} flag`);
+        }
+        console.log();
       }
     } else {
       console.log('Error registering pipeline:', err.message);
