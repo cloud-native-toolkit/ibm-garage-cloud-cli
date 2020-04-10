@@ -93,7 +93,7 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       clusterType,
       options,
       Object.assign({}, gitParams, {type: gitConfig.type}),
-      gitParams.name.toLowerCase(),
+      secretName,
     );
 
     if (!options.skipWebhook) {
