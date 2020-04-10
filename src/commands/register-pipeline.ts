@@ -63,7 +63,7 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
   .option('generateCrumb', {
     alias: 'c',
     description: 'flag indicating that a crumb is required to complete the registration',
-    default: false,
+    default: true,
   });
 exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean}>) => {
   let spinner;

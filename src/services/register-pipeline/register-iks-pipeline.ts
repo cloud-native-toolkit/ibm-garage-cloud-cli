@@ -1,6 +1,6 @@
 import * as path from 'path';
 import {Inject} from 'typescript-ioc';
-import {Response, get, post} from 'superagent';
+import * as superagent from 'superagent';
 import {prompt, Questions} from 'inquirer';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
@@ -13,6 +13,8 @@ import {GitParams} from '../git-secret';
 interface Prompt {
   shouldUpdate: boolean;
 }
+
+const agent = superagent.agent();
 
 export class RegisterIksPipeline implements RegisterPipelineType {
   @Inject
@@ -27,7 +29,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string}> {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.templateNamespace);
 
@@ -88,7 +90,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
   async ifJenkinsResourceExists({url, name, username, api_token, headers = {}}: {url: string, name: string, username: string, api_token: string, headers: object}): Promise<boolean> {
     try {
-      const result: Response = await get(`${url}/checkJobName?value=${name}`)
+      const result: superagent.Response = await agent.get(`${url}/checkJobName?value=${name}`)
         .auth(username, api_token)
         .set(headers)
         .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`);
@@ -109,7 +111,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
   async createJenkinsFolder({url, name, username, api_token, headers = {}}: {url: string, name: string, username: string, api_token: string, headers: object}) {
     try {
-      await post(`${url}/createItem`)
+      await agent.post(`${url}/createItem`)
         .query({
           name,
           mode: 'com.cloudbees.hudson.plugins.folder.Folder',
@@ -134,8 +136,8 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
     console.log(`${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`);
 
-    const response: Response = await
-      get(`${jenkinsAccess.url}/crumbIssuer/api/json`)
+    const response: superagent.Response = await
+      agent.get(`${jenkinsAccess.url}/crumbIssuer/api/json`)
         .auth(jenkinsAccess.username, jenkinsAccess.api_token)
         .set('User-Agent', `${jenkinsAccess.username.trim()} via ibm-garage-cloud cli`);
 
@@ -151,8 +153,8 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     return result as any;
   }
 
-  async createJenkinsPipeline({url, name, username, api_token, headers, content}: {url: string, name: string, username: string, api_token: string, headers: object, content: string}): Promise<Response> {
-    return post(`${url}/createItem?name=${name}`)
+  async createJenkinsPipeline({url, name, username, api_token, headers, content}: {url: string, name: string, username: string, api_token: string, headers: object, content: string}): Promise<superagent.Response> {
+    return agent.post(`${url}/createItem?name=${name}`)
       .auth(username, api_token)
       .set(headers)
       .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`)
@@ -160,8 +162,8 @@ export class RegisterIksPipeline implements RegisterPipelineType {
       .send(content);
   }
 
-  async deleteJenkinsPipeline({url, name, username, api_token, headers}: {url: string, name: string, username: string, api_token: string, headers: object}): Promise<Response> {
-    return post(`${url}/job/${name}/doDelete`)
+  async deleteJenkinsPipeline({url, name, username, api_token, headers}: {url: string, name: string, username: string, api_token: string, headers: object}): Promise<superagent.Response> {
+    return agent.post(`${url}/job/${name}/doDelete`)
       .auth(username, api_token)
       .set(headers)
       .set('User-Agent', `${username.trim()} via ibm-garage-cloud cli`);
@@ -200,7 +202,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
   async startJenkinsPipeline({url, name, username, api_token, namespace, headers = {}}: {url: string, name: string, username: string, api_token: string, namespace: string, headers: object}) {
     // curl -X POST http://developer:developer@localhost:8080/job/test/buildWithParameter
     // --data-urlencode json='{"parameter": [{"name":"paramA", "value":"123"}]}'
-    return post(`${url}/job/${name}/buildWithParameters`)
+    return agent.post(`${url}/job/${name}/buildWithParameters`)
       .query({
         NAMESPACE: namespace,
       })
