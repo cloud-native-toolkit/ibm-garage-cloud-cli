@@ -27,7 +27,9 @@ describe('namespace', () => {
   let secrets_list: Mock;
   let secrets_copy: Mock;
   let roles_copy: Mock;
+  let roles_addRules: Mock;
   let roleBindings_copy: Mock;
+  let roleBindings_addSubject: Mock;
   beforeEach(() => {
     getClusterType = jest.fn();
     Container.bind(ClusterType).provider(providerFromValue({
@@ -61,13 +63,17 @@ describe('namespace', () => {
     }));
 
     roles_copy = jest.fn();
+    roles_addRules = jest.fn();
     Container.bind(KubeRole).provider(providerFromValue({
       copy: roles_copy,
+      addRules: roles_addRules,
     }));
 
     roleBindings_copy = jest.fn();
+    roleBindings_addSubject = jest.fn();
     Container.bind(KubeRoleBinding).provider(providerFromValue({
       copy: roleBindings_copy,
+      addSubject: roleBindings_addSubject,
     }));
 
     classUnderTest = Container.get(Namespace);
