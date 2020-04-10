@@ -286,7 +286,33 @@ export class NamespaceImpl implements Namespace{
 
     await this.roles.copy('jenkins-schedule-agents', fromNamespace, toNamespace);
 
+    await this.roles.addRules(
+      'jenkins-schedule-agents',
+      [{
+        resource: 'services',
+        verbs: ['*'],
+      }, {
+        apiGroup: 'apps',
+        resource: 'deployments',
+        verbs: ['*'],
+      }, {
+        apiGroup: 'networking.k8s.io',
+        resource: 'ingresses',
+        verbs: ['*'],
+      }],
+      toNamespace
+    );
+
     await this.roleBindings.copy('jenkins-schedule-agents', fromNamespace, toNamespace);
+
+    await this.roleBindings.addSubject(
+      'jenkins-schedule-agents',
+      {
+        kind: 'ServiceAccount',
+        name: 'jenkins',
+        namespace: fromNamespace,
+      },
+      toNamespace)
   }
 
   async copyServiceAccount(name: string, fromNamespace: string, toNamespace: string) {
