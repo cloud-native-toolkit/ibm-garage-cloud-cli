@@ -18,6 +18,7 @@ import {
 import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
+import {Namespace as NamespaceService} from '../namespace';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -53,6 +54,8 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
   private kubeNamespace: KubeNamespace;
   @Inject
   private clusterType: ClusterType;
+  @Inject
+  private namespaceService: NamespaceService;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
@@ -113,12 +116,13 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     }
   }
 
-  async setupDefaultOptions(clusterType: string, serverUrl: string, cliOptions: RegisterPipelineOptions): Promise<RegisterPipelineOptions> {
-    const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
-
+  async setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', serverUrl: string, cliOptions: RegisterPipelineOptions): Promise<RegisterPipelineOptions> {
     return Object.assign(
       {},
-      await pipeline.setupDefaultOptions(),
+      {
+        templateNamespace: 'tools',
+        pipelineNamespace: await this.namespaceService.getCurrentProject(clusterType),
+      },
       cliOptions,
       {serverUrl},
     );

@@ -7,6 +7,7 @@ import {Namespace, NamespaceOptionsModel} from '../services/namespace';
 import {Logger, VerboseLogger} from '../util/logger';
 
 export const command = 'namespace [namespace]';
+export const aliases = ['project'];
 export const desc = 'Create a namespace (if it doesn\'t exist) and prepare it with the necessary configuration';
 export const builder = (yargs: Argv<any>) => {
   return yargs

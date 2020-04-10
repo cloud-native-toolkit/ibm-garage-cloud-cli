@@ -61,11 +61,27 @@ export class NamespaceImpl implements Namespace{
       const {stdout} = await this.childProcess.exec('oc project -q');
 
       if (stdout) {
-        return stdout.toString().trim();
+        const value = stdout.toString().trim();
+
+        return value != 'default' ? value : defaultValue;
       } else {
         return defaultValue;
       }
     } else {
+      const currentContextResult = await this.childProcess.exec('kubectl config view -o jsonpath=\'{.current-context}\'');
+
+      if (currentContextResult.stdout) {
+        const currentContext = currentContextResult.stdout.toString().trim();
+
+        if (currentContext) {
+          const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`);
+
+          const value = stdout.toString().trim();
+
+          return value != 'default' ? value : defaultValue;
+        }
+      }
+
       return defaultValue;
     }
   }
@@ -95,6 +111,9 @@ export class NamespaceImpl implements Namespace{
     if (jenkins) {
       await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);
     }
+
+    notifyStatus(`Setting current ${clusterType === 'openshift' ? 'project' : 'namespace'} to ${namespace}`)
+    await this.setCurrentProject(clusterType, namespace);
 
     return namespace;
   }
@@ -346,6 +365,14 @@ export class NamespaceImpl implements Namespace{
 
         return result;
       }, [])
+  }
+
+  async setCurrentProject(clusterType: 'openshift' | 'kubernetes', namespace: string) {
+    if (clusterType === 'openshift') {
+      await this.childProcess.exec(`oc project ${namespace}`);
+    } else {
+      await this.childProcess.exec(`kubectl config set-context --current --namespace=${namespace}`);
+    }
   }
 }
 
