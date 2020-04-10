@@ -11,6 +11,7 @@ import {RegisterPipelineType} from './register-pipeline-type';
 import {GitParams} from '../git-secret';
 import path = require('path');
 import {JenkinsMissingError} from './register-pipeline';
+import {Namespace} from '../namespace';
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -33,11 +34,13 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
   private openShift: OpenshiftCommands;
   @Inject
   private childProcess: ChildProcess;
+  @Inject
+  private namespace: Namespace;
 
-  setupDefaultOptions(): Partial<RegisterPipelineOptions> {
+  async setupDefaultOptions(): Promise<Partial<RegisterPipelineOptions>> {
     return {
       templateNamespace: 'tools',
-      pipelineNamespace: 'dev',
+      pipelineNamespace: await this.namespace.getCurrentProject('openshift'),
     };
   }
 
@@ -47,7 +50,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
       const host: string = await this.getRouteHosts(options.pipelineNamespace || 'tools', 'jenkins');
 
       if (!host) {
-        throw new JenkinsMissingError('Jenkins is not available in the namespace: ' + options.pipelineNamespace);
+        throw new JenkinsMissingError('Jenkins is not available in the namespace: ' + options.pipelineNamespace, 'openshift');
       }
 
       const secret = 'secret101';

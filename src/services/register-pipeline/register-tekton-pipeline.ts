@@ -13,10 +13,11 @@ import {QuestionBuilder, QuestionBuilderImpl} from '../../util/question-builder'
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 import {RoleRule} from '../../api/kubectl/role';
 import {ClusterType} from '../../util/cluster-type';
-import {NamespaceMissingError} from './register-pipeline';
+import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import ChoiceOption = inquirer.objects.ChoiceOption;
 import {KubeTektonTask} from '../../api/kubectl/tekton-task';
+import {Namespace as NamespaceService} from '../namespace';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -57,15 +58,23 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   serviceAccount: CreateServiceAccount;
   @Inject
   clusterType: ClusterType;
+  @Inject
+  namespace: NamespaceService;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
     const {clusterType} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
-    const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(clusterType, cliOptions);
 
-    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
-      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
+
+    if (!options.pipelineNamespace) {
+      throw new PipelineNamespaceNotProvided('A pipeline namespace must be provided', clusterType);
+    }
+
+    if (!(await this.kubeNamespace.exists(options.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + options.pipelineNamespace, clusterType);
     }
 
     notifyStatus('Getting git parameters');
@@ -314,10 +323,10 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     );
   }
 
-  setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', cliOptions: RegisterPipelineOptions) {
+  async setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', cliOptions: RegisterPipelineOptions) {
     const defaultOptions: RegisterPipelineOptions = {
       templateNamespace: 'tools',
-      pipelineNamespace: 'dev',
+      pipelineNamespace: await this.namespace.getCurrentProject(clusterType),
     };
 
     return Object.assign(

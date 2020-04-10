@@ -34,7 +34,8 @@ describe('register-tekton-pipeline', () => {
       .provider(providerFromValue(createGitSecret));
 
     namespaceBuilder = {
-      create: jest.fn()
+      create: jest.fn(),
+      getCurrentProject: jest.fn(),
     };
     Container.bind(Namespace)
       .provider(providerFromValue(namespaceBuilder));

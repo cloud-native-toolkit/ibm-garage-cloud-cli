@@ -21,6 +21,7 @@ import {ChildProcess} from '../../util/child-process';
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 
 export abstract class Namespace {
+  async abstract getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string>;
   async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
 }
 
@@ -54,6 +55,20 @@ export class NamespaceImpl implements Namespace{
   private childProcess: ChildProcess;
   @Inject
   private createServiceAccount: CreateServiceAccount;
+
+  async getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string> {
+    if (clusterType == 'openshift') {
+      const {stdout} = await this.childProcess.exec('oc project -q');
+
+      if (stdout) {
+        return stdout.toString().trim();
+      } else {
+        return defaultValue;
+      }
+    } else {
+      return defaultValue;
+    }
+  }
 
   async create({namespace, templateNamespace, serviceAccount, jenkins, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
