@@ -63,7 +63,7 @@ describe('register-openshift-pipeline', () => {
         unset_createBuildPipeline = setField(classUnderTest, 'createBuildPipeline', mock_createBuildPipeline) as () => void;
 
         mock_getRouteHosts = jest.fn();
-        unset_getRouteHosts = setField(classUnderTest, 'getRouteHosts', mock_getRouteHosts) as () => void;
+        unset_getRouteHosts = setField(classUnderTest, 'getRouteHost', mock_getRouteHosts) as () => void;
       });
 
       afterEach(() => {

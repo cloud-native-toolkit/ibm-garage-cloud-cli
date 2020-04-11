@@ -49,7 +49,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
   async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, pipelineName: string, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
 
-    const host: string = await this.getRouteHosts(options.pipelineNamespace, 'jenkins');
+    const host: string = await this.getRouteHost(options.pipelineNamespace, 'jenkins');
 
     const secret = 'secret101';
     const buildConfig = this.generateBuildConfig(
@@ -184,9 +184,9 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
     return result.shouldUpdate;
   }
 
-  async getRouteHosts(namespace: string, name: string): Promise<string> {
+  async getRouteHost(namespace: string, name: string): Promise<string> {
     try {
-      const hosts: string[] = await this.route.getHosts(name, namespace);
+      const hosts: string[] = await this.route.getHosts(namespace, name);
 
       if (hosts.length > 0) {
         return hosts[0];
