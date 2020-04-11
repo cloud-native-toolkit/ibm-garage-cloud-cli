@@ -103,10 +103,12 @@ export class NamespaceImpl implements Namespace{
     notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
     await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
 
-    notifyStatus('Copying ConfigMaps');
-    await this.copyConfigMaps(namespace, templateNamespace);
-    notifyStatus('Copying Secrets');
-    await this.copySecrets(namespace, templateNamespace);
+    if (jenkins || tekton) {
+      notifyStatus('Copying ConfigMaps');
+      await this.copyConfigMaps(namespace, templateNamespace);
+      notifyStatus('Copying Secrets');
+      await this.copySecrets(namespace, templateNamespace);
+    }
 
     if (jenkins) {
       await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);

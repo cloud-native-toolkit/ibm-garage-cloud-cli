@@ -149,18 +149,6 @@ describe('namespace', () => {
         expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace, serviceAccount);
       });
 
-      test('then should copy config maps in catalyst-tools group', async () => {
-        await classUnderTest.create(namespaceOptions);
-
-        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
-      });
-
-      test('then should copy secrets in catalyst-tools group', async () => {
-        await classUnderTest.create(namespaceOptions);
-
-        expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
-      });
-
       describe('and when jenkins flag is false', () => {
         beforeEach(() => {
           namespaceOptions.jenkins = false;
@@ -176,6 +164,18 @@ describe('namespace', () => {
       describe('and when jenkins flag is true', () => {
         beforeEach(() => {
           namespaceOptions.jenkins = true;
+        });
+
+        test('then should copy config maps in catalyst-tools group', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
+        });
+
+        test('then should copy secrets in catalyst-tools group', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
         });
 
         test('then should copy the jenkins credentials', async () => {
