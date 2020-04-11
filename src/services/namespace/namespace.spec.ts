@@ -91,6 +91,7 @@ describe('namespace', () => {
     let setupServiceAccountWithPullSecrets: Mock;
     let copyJenkinsCredentials: Mock;
     let copyPipelines: Mock;
+    let setCurrentProject: Mock;
     beforeEach(() => {
       setupPullSecrets = mockField(classUnderTest, 'setupPullSecrets');
       setupTlsSecrets = mockField(classUnderTest, 'setupTlsSecrets');
@@ -99,6 +100,7 @@ describe('namespace', () => {
       setupServiceAccountWithPullSecrets = mockField(classUnderTest, 'setupServiceAccountWithPullSecrets');
       copyJenkinsCredentials = mockField(classUnderTest, 'copyJenkinsCredentials');
       copyPipelines = mockField(classUnderTest, 'copyPipelines');
+      setCurrentProject = mockField(classUnderTest, 'setCurrentProject');
     });
 
     describe('when clusterType is kubernetes', () => {
