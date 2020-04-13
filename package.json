@@ -8,6 +8,7 @@
   "private": false,
   "bin": {
     "igc": "dist/script.js",
+    "kubectl-igc": "dist/script.js",
     "kubectl-credentials": "dist/script-credentials.js",
     "kubectl-dashboard": "dist/script-dashboard.js",
     "kubectl-enable": "dist/script-enable.js",
