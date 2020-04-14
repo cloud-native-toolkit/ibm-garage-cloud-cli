@@ -16,20 +16,26 @@ export abstract class EnablePipeline {
 
 export interface PipelineIndex {
   name?: string;
-  url: string;
+  url?: string;
+  version?: string;
 }
 
 export interface PipelineIndicies {
-  name?: string;
+  version?: string;
   pipelines?: {
     [pipeline: string]: PipelineIndex;
+  };
+  branches?: {
+    [branch: string]: {
+      [pipeline: string]: PipelineIndex[];
+    }
   }
 }
 
 export interface EnablePipelineResult {
   repository: string;
-  pipelineName: string;
-  pipelinePath: string;
+  pipeline: PipelineIndex;
+  branch: string;
   filesChanged: string[];
 }
 
@@ -44,23 +50,23 @@ export class EnablePipelineImpl implements EnablePipeline {
       throw new Error('value required for \'repo\'');
     }
 
-    const {pipelinePath, pipelineName} = await this.getPipelinePath(options);
+    const {pipeline, branch} = await this.getPipelinePath(options);
 
-    const filesChanged: string[] = await this.applyPipelineToCurrentDirectory(pipelinePath);
+    const filesChanged: string[] = await this.applyPipelineToCurrentDirectory(pipeline);
 
     return {
       repository: options.repo,
-      pipelineName,
-      pipelinePath,
+      pipeline,
+      branch,
       filesChanged,
     }
   }
 
-  async getPipelinePath(options: EnablePipelineModel): Promise<{pipelineName: string, pipelinePath: string}> {
+  async getPipelinePath(options: EnablePipelineModel): Promise<{pipeline: PipelineIndex, branch: string}> {
 
     const index: PipelineIndicies = await this.getPipelineRepoIndex(options.repo);
 
-    return await this.promptForPipelineName(index, options.pipeline);
+    return await this.promptForPipelineName(index, options);
   }
 
   async getPipelineRepoIndex(repoUrl: string): Promise<PipelineIndicies> {
@@ -75,31 +81,40 @@ export class EnablePipelineImpl implements EnablePipeline {
     }
   }
 
-  async promptForPipelineName(index: PipelineIndicies = {pipelines: {}}, pipeline?: string): Promise<{pipelineName: string, pipelinePath: string}> {
-    if (!index.pipelines || Object.keys(index.pipelines).length === 0) {
-      throw new Error('No pipelines found in repo');
+  async promptForPipelineName(index: PipelineIndicies = {pipelines: {}, branches: {}}, options: EnablePipelineModel): Promise<{pipeline: PipelineIndex, branch: string}> {
+    if (index.version != 'v2') {
+      throw new Error('Pipeline version is newer than CLI');
+    }
+
+    if (!index.branches || Object.keys(index.branches[options.branch] || {}).length === 0) {
+      throw new Error(`No pipelines found in repo for branch: ${options.branch}`);
     }
 
     const questionBuilder: QuestionBuilder<{pipeline: string}> = Container.get(QuestionBuilder);
 
-    const choices = Object.keys(index.pipelines);
+    const choices = Object.keys(index.branches[options.branch]);
     this.log('Pipeline choices', choices);
-    pipeline = (await questionBuilder
+    const pipeline = (await questionBuilder
       .question({
         type: 'list',
         name: 'pipeline',
         message: 'Which pipeline should be enabled?',
         choices
-      }, pipeline)
+      }, options.pipeline)
       .prompt()).pipeline;
 
-    const match: PipelineIndex = index.pipelines[pipeline];
+    const pipelinesVersions: PipelineIndex[] = index.branches[options.branch][pipeline]
+      .filter(index => index.version === options.version);
 
-    return {pipelinePath: match.url, pipelineName: pipeline};
+    if (pipelinesVersions.length === 0) {
+      throw new Error(`No pipelines found in repo for branch and version: ${options.branch}/${options.version}`)
+    }
+
+    return {pipeline: pipelinesVersions[0], branch: options.branch};
   }
 
-  async applyPipelineToCurrentDirectory(pipelineUrl: string): Promise<string[]> {
-    const path = await this.downloadUrlToPath(pipelineUrl);
+  async applyPipelineToCurrentDirectory(pipeline: PipelineIndex): Promise<string[]> {
+    const path = await this.downloadUrlToPath(pipeline.url);
 
     const filesChanged: string[] = await this.copyFilesFromPath(path, process.cwd());
 

@@ -14,9 +14,22 @@ export const builder = (argv: Argv<any>) => argv
     default: 'https://ibm-garage-cloud.github.io/garage-pipelines/',
   })
   .option('pipeline', {
+    alias: 'p',
     type: 'string',
     describe: 'The name of the pipeline to enable for the project',
     required: false
+  })
+  .option('version', {
+    alias: 'v',
+    type: 'string',
+    describe: 'The version of the pipeline to enable for the project',
+    default: 'latest'
+  })
+  .option('branch', {
+    branch: 'b',
+    type: 'string',
+    describe: 'The branch for the pipeline (e.g. stable)',
+    default: 'stable'
   });
 exports.handler = async (argv: Arguments<EnablePipelineModel & CommandLineOptions>) => {
   const service: EnablePipeline = Container.get(EnablePipeline);
@@ -28,7 +41,7 @@ exports.handler = async (argv: Arguments<EnablePipelineModel & CommandLineOption
   console.log('**Here\'s what happened**');
   console.log('');
   console.log('1. A listing of available pipelines was retrieved from ' + chalk.green(result.repository));
-  console.log('2. You selected the ' + chalk.green(result.pipelineName) + ' pipeline');
+  console.log(`2. You selected the ${chalk.green(result.branch + '/' + result.pipeline.name + '@' + result.pipeline.version)} pipeline`);
   if (result.filesChanged.length > 0) {
     console.log('3. We added the following files to your repo:');
     result.filesChanged.forEach(file => {
