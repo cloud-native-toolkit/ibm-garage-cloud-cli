@@ -3,7 +3,7 @@ import {splitLines} from '../../util/string-util';
 import {ChildProcess, ExecResult} from '../../util/child-process';
 
 export abstract class Zones {
-  async abstract getZones(region?: string): Promise<string[]>;
+  async abstract getZones(region?: string, provider?: string): Promise<string[]>;
 }
 
 @Provides(Zones)
@@ -20,9 +20,9 @@ export class ZonesImpl implements Zones {
     'eu-gb': 'lon',
   };
 
-  async getZones(region?: string): Promise<string[]> {
+  async getZones(region?: string, provider: string = 'classic'): Promise<string[]> {
     return this.childProcess.exec(
-      'ibmcloud ks zones --region-only',
+      `ibmcloud ks zones --region-only --provider ${provider}`,
       {
         env: process.env
       },

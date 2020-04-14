@@ -51,7 +51,7 @@ describe('ibmcloud-zones', () => {
           const actualResult = await classUnderTest.getZones(region);
 
           expect(actualResult).toEqual(zones);
-          expect(mock_execPromise).toHaveBeenCalledWith('ibmcloud ks zones --region-only', {env: process.env});
+          expect(mock_execPromise).toHaveBeenCalledWith('ibmcloud ks zones --region-only --provider classic', {env: process.env});
           expect(mock_filterZonesForRegion).toHaveBeenCalledWith(region);
         });
       });

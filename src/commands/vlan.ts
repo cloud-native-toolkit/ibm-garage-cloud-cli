@@ -12,6 +12,11 @@ export const builder = (yargs: Argv<any>) => yargs
     alias: 'd',
     describe: 'the datacenter to use. if not provided it will use the first one listed for the region'
   })
+  .option('provider', {
+    alias: 'p',
+    describe: 'the provider: classic or vlan',
+    default: 'classic'
+  })
   .option('output', {
     alias: 'o',
     describe: 'the optional fileName where the output should be written',
