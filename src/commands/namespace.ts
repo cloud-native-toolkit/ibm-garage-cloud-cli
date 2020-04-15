@@ -35,12 +35,21 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'flag to install Tekton tasks into the namespace',
       type: 'boolean',
     })
+    .option('dev', {
+      describe: 'flag to indicate this is a development namespace and that development artifacts should be created',
+      type: 'boolean',
+    })
     .option('verbose', {
       describe: 'flag to produce more verbose logging',
       type: 'boolean'
     })
 };
-exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean}>) => {
+exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean, dev: boolean}>) => {
+  if (argv.dev) {
+    argv.jenkins = true;
+    argv.tekton = true;
+  }
+
   const namespaceBuilder: Namespace = Container.get(Namespace);
 
   if (!argv.namespace) {
