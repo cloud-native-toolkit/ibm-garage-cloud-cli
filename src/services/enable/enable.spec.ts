@@ -155,7 +155,7 @@ describe('enable', () => {
 
           (questionBuilder.prompt as Mock).mockResolvedValue({pipeline: selectedPipeline});
 
-          const actualResult = await classUnderTest.promptForPipelineName(index, {repo: 'repo', branch, version: 'latest'});
+          const actualResult = await classUnderTest.promptForPipelineName(index, {repo: 'repo', branch, release: 'latest'});
 
           expect(actualResult).toEqual({pipeline: {name: 'nodejs', url, version: 'latest'}, branch,});
         });

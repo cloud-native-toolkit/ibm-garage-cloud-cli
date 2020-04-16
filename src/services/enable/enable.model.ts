@@ -1,6 +1,6 @@
 export class EnablePipelineModel {
   repo: string;
   pipeline?: string;
-  version?: string;
+  release?: string;
   branch?: string;
 }

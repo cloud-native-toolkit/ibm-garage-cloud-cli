@@ -39,6 +39,12 @@ export interface EnablePipelineResult {
   filesChanged: string[];
 }
 
+export class PipelineVersionNotFound extends Error {
+  constructor(message, public readonly branch: string, public readonly pipeline, public readonly versions: string[]) {
+    super(message);
+  }
+}
+
 @Provides(EnablePipeline)
 export class EnablePipelineImpl implements EnablePipeline {
   private debug = false;
@@ -103,11 +109,19 @@ export class EnablePipelineImpl implements EnablePipeline {
       }, options.pipeline)
       .prompt()).pipeline;
 
-    const pipelinesVersions: PipelineIndex[] = index.branches[options.branch][pipeline]
-      .filter(index => index.version === options.version);
+    const branchPipeline = index.branches[options.branch][pipeline];
+    const pipelinesVersions: PipelineIndex[] = branchPipeline
+      .filter((val: PipelineIndex) => val.version === options.release);
+
+    console.log('Pipeline versions', pipelinesVersions);
 
     if (pipelinesVersions.length === 0) {
-      throw new Error(`No pipelines found in repo for branch and version: ${options.branch}/${options.version}`)
+      throw new PipelineVersionNotFound(
+        `No pipelines found in repo for branch and version: ${options.branch}/${options.pipeline}/${options.release}`,
+        options.branch,
+        pipeline,
+        pipelinesVersions.map(val => val.version)
+      );
     }
 
     return {pipeline: pipelinesVersions[0], branch: options.branch};
