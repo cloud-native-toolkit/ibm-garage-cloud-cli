@@ -104,17 +104,18 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       notifyStatus(`Copying tasks from ${options.templateNamespace}`);
       await this.tektonTask.copyAll({namespace: options.templateNamespace}, options.pipelineNamespace);
 
+      const name = this.generatePipelineName(gitParams);
       const pipelineValue: TektonPipeline = await this.pipeline.copy(
         pipelineName,
         options.templateNamespace,
         options.pipelineNamespace,
-        gitParams.name
+        name
       );
       notifyStatus(`Copied Pipeline from ${options.templateNamespace}/${pipelineName} to ${options.pipelineNamespace}/${pipelineValue.metadata.name}`);
 
       notifyStatus(`Creating PipelineRun for pipeline: ${pipelineValue.metadata.name}`);
       await this.createPipelineRun({
-        name: gitParams.name,
+        name,
         gitSource,
         dockerImage,
         pipelineName: pipelineValue.metadata.name,
@@ -122,6 +123,24 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         serviceAccount
       });
     }
+  }
+
+  generatePipelineName(gitParams: GitParams): string {
+    let formattedName = (gitParams.repo)
+      .toLowerCase()
+      .replace(/[.]/g, '-')
+      .replace(/--+/g, '-');
+
+    if (formattedName.length <= 56) {
+      return formattedName;
+    }
+
+    const nameSegments = formattedName.split('-');
+    for (let i = 0; i < nameSegments.length && nameSegments.join('-').length > 56; i++) {
+      nameSegments[i] = nameSegments[i][0];
+    }
+
+    return nameSegments.join('-');
   }
 
   async createServiceAccount(namespace: string, clusterType: string, secrets: string[] = [], notifyStatus: (text: string) => void): Promise<string> {
@@ -284,8 +303,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       pipelineName: string,
       serviceAccount?: string,
     }) {
-    const dateHex = Date.now().toString(16);
-    const pipelineRunName = `${name}-${dateHex}`.replace(/[.]/g, '-');
+    const dateHex = Date.now().toString(16).substring(0, 6);
+    const pipelineRunName = `${name}-${dateHex}`;
 
     return this.pipelineRun.create(
       pipelineRunName,

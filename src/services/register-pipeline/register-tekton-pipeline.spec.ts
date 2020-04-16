@@ -11,6 +11,7 @@ import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {KubeTektonPipeline} from '../../api/kubectl/tekton-pipeline';
+import {buildOptionWithEnvDefault} from '../../util/yargs-support';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -81,12 +82,14 @@ describe('register-tekton-pipeline', () => {
     let createImagePipelineResource: Mock;
     let getPipelineName: Mock;
     let createPipelineRun: Mock;
+    let generatePipelineName: Mock;
     beforeEach(() => {
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
       createGitPipelineResource = mockField(classUnderTest, 'createGitPipelineResource');
       createImagePipelineResource = mockField(classUnderTest, 'createImagePipelineResource');
       getPipelineName = mockField(classUnderTest, 'getPipelineName');
       createPipelineRun = mockField(classUnderTest, 'createPipelineRun');
+      generatePipelineName = mockField(classUnderTest, 'generatePipelineName');
     });
 
     const pipelineNamespace = 'test';
@@ -95,7 +98,7 @@ describe('register-tekton-pipeline', () => {
 
     describe('when namespace exists', () => {
 
-      const repoName = 'repoName';
+      const repoName = 'repo-name';
       const gitName = 'gitName';
       const fullGitName = "org-name";
       const imageName = 'imageName';
@@ -114,7 +117,8 @@ describe('register-tekton-pipeline', () => {
         createGitPipelineResource.mockResolvedValue(gitName);
         createImagePipelineResource.mockResolvedValue(imageName);
         getPipelineName.mockResolvedValue(pipelineName);
-        (kubePipeline.copy as Mock).mockResolvedValue({metadata: {name: newPipelineName}})
+        (kubePipeline.copy as Mock).mockResolvedValue({metadata: {name: newPipelineName}});
+        generatePipelineName.mockReturnValue(repoName);
       });
 
       test('should get cluster type', async () => {
@@ -172,7 +176,7 @@ describe('register-tekton-pipeline', () => {
 
         expect(createPipelineRun).toHaveBeenCalledWith({
           pipelineNamespace,
-          name: fullGitName,
+          name: repoName,
           gitSource: gitName,
           dockerImage: imageName,
           pipelineName: newPipelineName,
@@ -367,4 +371,42 @@ describe('register-tekton-pipeline', () => {
       });
     })
   })
+
+  describe('given generatePipelineRunName()', () => {
+    describe('when repo name are short', () => {
+      test('then return the two values', async () => {
+        const repo = 'repo';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual(repo);
+      });
+    });
+    describe('when repo contain capital letters', () => {
+      test('then return lower case values', async () => {
+        const repo = 'Repo';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual(repo.toLowerCase());
+      });
+    });
+    describe('when repo contain periods', () => {
+      test('then return value with dashes', async () => {
+        const repo = 're.po';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual('re-po');
+      });
+    });
+    describe('when repo contain multiple dashes together', () => {
+      test('then return value with single dash', async () => {
+        const repo = 're---po';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual('re-po');
+      });
+    });
+    describe('when repo name is longer than 56 characters', () => {
+      test('then return truncated value', async () => {
+        const repo = 'ibm-gsi-ecosystem-inventory-management-ui-solution-dev-test';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual('i-g-ecosystem-inventory-management-ui-solution-dev-test');
+      });
+    });
+  });
 });
