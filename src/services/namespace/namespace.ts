@@ -22,7 +22,12 @@ import {CreateServiceAccount} from '../create-service-account/create-service-acc
 
 export abstract class Namespace {
   async abstract getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string>;
+
+  async abstract setCurrentProject(clusterType: 'openshift' | 'kubernetes', namespace: string);
+
   async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
+
+  async abstract setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void);
 }
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -86,7 +91,7 @@ export class NamespaceImpl implements Namespace{
     }
   }
 
-  async create({namespace, templateNamespace, serviceAccount, jenkins, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -103,15 +108,11 @@ export class NamespaceImpl implements Namespace{
     notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
     await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
 
-    if (jenkins || tekton) {
+    if (dev) {
       notifyStatus('Copying ConfigMaps');
       await this.copyConfigMaps(namespace, templateNamespace);
       notifyStatus('Copying Secrets');
       await this.copySecrets(namespace, templateNamespace);
-    }
-
-    if (jenkins) {
-      await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);
     }
 
     notifyStatus(`Setting current ${clusterType === 'openshift' ? 'project' : 'namespace'} to ${namespace}`)

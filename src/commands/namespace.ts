@@ -27,14 +27,6 @@ export const builder = (yargs: Argv<any>) => {
       default: 'default',
       type: 'string',
     })
-    .option('jenkins', {
-      describe: 'flag to install Jenkins into the namespace (only applies to OpenShift clusters)',
-      type: 'boolean',
-    })
-    .option('tekton', {
-      describe: 'flag to install Tekton tasks into the namespace',
-      type: 'boolean',
-    })
     .option('dev', {
       describe: 'flag to indicate this is a development namespace and that development artifacts should be created',
       type: 'boolean',
@@ -44,12 +36,7 @@ export const builder = (yargs: Argv<any>) => {
       type: 'boolean'
     })
 };
-exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean, dev: boolean}>) => {
-  if (argv.dev) {
-    argv.jenkins = true;
-    argv.tekton = true;
-  }
-
+exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean}>) => {
   const namespaceBuilder: Namespace = Container.get(Namespace);
 
   if (!argv.namespace) {

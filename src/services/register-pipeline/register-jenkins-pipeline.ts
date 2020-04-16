@@ -89,6 +89,9 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       notifyStatus,
     );
 
+    notifyStatus('Setting up Jenkins environment');
+    await this.namespaceService.setupJenkins(options.pipelineNamespace, options.templateNamespace, clusterType, notifyStatus);
+
     notifyStatus('Registering pipeline: ' + gitParams.name);
     const gitConfig: GitConfig = this.createWebhook.extractGitConfig(gitParams.url);
 

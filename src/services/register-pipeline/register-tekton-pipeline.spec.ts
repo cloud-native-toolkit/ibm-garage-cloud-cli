@@ -27,6 +27,8 @@ describe('register-tekton-pipeline', () => {
   let namespaceBuilder: Namespace;
   let getClusterType: Mock;
   let kubeNamespace_exists: Mock;
+  let namespaceService_setupJenkins: Mock;
+  let namespaceService_getCurrentProject: Mock;
   beforeEach(() => {
     createGitSecret = {
       getParametersAndCreateSecret: jest.fn(),
@@ -37,6 +39,8 @@ describe('register-tekton-pipeline', () => {
     namespaceBuilder = {
       create: jest.fn(),
       getCurrentProject: jest.fn(),
+      setCurrentProject: jest.fn(),
+      setupJenkins: jest.fn(),
     };
     Container.bind(Namespace)
       .provider(providerFromValue(namespaceBuilder));
@@ -72,6 +76,14 @@ describe('register-tekton-pipeline', () => {
     kubeNamespace_exists = jest.fn();
     Container.bind(KubeNamespace)
       .provider(providerFromValue({exists: kubeNamespace_exists}));
+
+    namespaceService_setupJenkins = jest.fn();
+    namespaceService_getCurrentProject = jest.fn();
+    Container.bind(Namespace)
+      .provider(providerFromValue({
+        setupJenkins: namespaceService_setupJenkins,
+        getCurrentProject: namespaceService_getCurrentProject,
+      }));
 
     classUnderTest = Container.get(RegisterTektonPipeline);
   });
