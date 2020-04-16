@@ -113,8 +113,6 @@ export class EnablePipelineImpl implements EnablePipeline {
     const pipelinesVersions: PipelineIndex[] = branchPipeline
       .filter((val: PipelineIndex) => val.version === options.release);
 
-    console.log('Pipeline versions', pipelinesVersions);
-
     if (pipelinesVersions.length === 0) {
       throw new PipelineVersionNotFound(
         `No pipelines found in repo for branch and version: ${options.branch}/${options.pipeline}/${options.release}`,
