@@ -12,6 +12,7 @@ import {KubeNamespace} from '../../api/kubectl/namespace';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {KubeTektonPipeline} from '../../api/kubectl/tekton-pipeline';
 import {buildOptionWithEnvDefault} from '../../util/yargs-support';
+import {KubeTektonTask} from '../../api/kubectl/tekton-task';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -27,6 +28,9 @@ describe('register-tekton-pipeline', () => {
   let namespaceBuilder: Namespace;
   let getClusterType: Mock;
   let kubeNamespace_exists: Mock;
+  let namespace_getCurrentProject: Mock;
+  let tektonTask_copyAll: Mock;
+  let pipeline_copy: Mock;
   let namespaceService_setupJenkins: Mock;
   let namespaceService_getCurrentProject: Mock;
   beforeEach(() => {
@@ -76,6 +80,18 @@ describe('register-tekton-pipeline', () => {
     kubeNamespace_exists = jest.fn();
     Container.bind(KubeNamespace)
       .provider(providerFromValue({exists: kubeNamespace_exists}));
+
+    namespace_getCurrentProject = jest.fn();
+    Container.bind(Namespace)
+      .provider(providerFromValue({getCurrentProject: namespace_getCurrentProject}));
+
+    tektonTask_copyAll = jest.fn();
+    Container.bind(KubeTektonTask)
+      .provider(providerFromValue({copyAll: tektonTask_copyAll}));
+
+    pipeline_copy = jest.fn();
+    Container.bind(KubeTektonPipeline)
+      .provider(providerFromValue({copy: pipeline_copy}));
 
     namespaceService_setupJenkins = jest.fn();
     namespaceService_getCurrentProject = jest.fn();
@@ -131,6 +147,7 @@ describe('register-tekton-pipeline', () => {
         getPipelineName.mockResolvedValue(pipelineName);
         (kubePipeline.copy as Mock).mockResolvedValue({metadata: {name: newPipelineName}});
         generatePipelineName.mockReturnValue(repoName);
+        pipeline_copy.mockResolvedValue({metadata: {name: newPipelineName}});
       });
 
       test('should get cluster type', async () => {
