@@ -1,18 +1,19 @@
 import {Container} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
+import * as chalk from 'chalk';
 
 import {CreateGitSecret, CreateGitSecretOptions} from '../services/git-secret';
-import {stringToStringArray} from '../util/string-util';
+import {ClusterType} from '../util/cluster-type';
+import {Namespace} from '../services/namespace';
 
 export const command = 'git-secret [name]';
 export const desc = 'Create a kubernetes secret that contains the url, username, and personal access token for a git repo';
 export const builder = (yargs: Argv<any>) => {
   return yargs
-    .option('namespaces', {
+    .option('namespace', {
       alias: 'n',
       type: 'string',
-      describe: 'Namespace(s) where the secret should be created. multiple values. Multiple values should be separated by a comma (e.g. dev,test)',
-      require: true,
+      describe: 'Namespace where the secret should be created',
     })
     .option('values', {
       describe: 'Values file yaml that contains additional attributes to add to the secret',
@@ -46,10 +47,10 @@ export const builder = (yargs: Argv<any>) => {
       require: false,
     });
 };
-exports.handler = async (argv: Arguments<CreateGitSecretOptions>) => {
+exports.handler = async (argv: Arguments<CreateGitSecretOptions & {namespace: string}>) => {
   const cmd: CreateGitSecret = Container.get(CreateGitSecret);
-  let spinner;
 
+  let spinner;
   function statusCallback(status: string) {
     // if (!spinner) {
     //   spinner = ora(status).start();
@@ -60,13 +61,34 @@ exports.handler = async (argv: Arguments<CreateGitSecretOptions>) => {
     console.log(status);
   }
 
+  if (!argv.namespace) {
+    try {
+      const clusterTypeService: ClusterType = Container.get(ClusterType);
+      const {clusterType} = await clusterTypeService.getClusterType('tools');
+
+      const namespaceService: Namespace = Container.get(Namespace);
+      const currentProject: string = await namespaceService.getCurrentProject(clusterType);
+
+      if (currentProject != 'default') {
+        argv.namespace = currentProject;
+      }
+    } catch (err) {}
+  }
+
+  if (!argv.namespace) {
+    console.log(chalk.red('The namespace was not provided'));
+    console.log(`Please provide it by adding ${chalk.yellow('-n {namespace}')} or by setting the namespace/project in the current context, e.g. ${chalk.yellow('oc project {namespace}')}`);
+  } else {
+    console.log(`Setting the git credentials in the ${chalk.yellow(argv.namespace)} namespace`);
+  }
+
   try {
     await cmd.getParametersAndCreateSecret(
       Object.assign(
         {},
         argv,
         {
-          namespaces: stringToStringArray(argv.namespaces),
+          namespaces: [argv.namespace],
         }
       ),
       statusCallback,
