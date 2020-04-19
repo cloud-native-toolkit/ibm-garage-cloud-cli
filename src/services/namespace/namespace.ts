@@ -18,9 +18,16 @@ import {OcpProject} from '../../api/kubectl/project';
 import {NamespaceOptionsModel} from './namespace-options.model';
 import {KubePod, Pod} from '../../api/kubectl/pod';
 import {ChildProcess} from '../../util/child-process';
+import {CreateServiceAccount} from '../create-service-account/create-service-account';
 
 export abstract class Namespace {
+  async abstract getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string>;
+
+  async abstract setCurrentProject(clusterType: 'openshift' | 'kubernetes', namespace: string);
+
   async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
+
+  async abstract setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void);
 }
 
 const noopNotifyStatus: (status: string) => void = () => {};
@@ -51,8 +58,40 @@ export class NamespaceImpl implements Namespace{
   private clusterType: ClusterType;
   @Inject
   private childProcess: ChildProcess;
+  @Inject
+  private createServiceAccount: CreateServiceAccount;
 
-  async create({namespace, templateNamespace, serviceAccount, jenkins, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string> {
+    if (clusterType == 'openshift') {
+      const {stdout} = await this.childProcess.exec('oc project -q');
+
+      if (stdout) {
+        const value = stdout.toString().trim();
+
+        return value != 'default' ? value : defaultValue;
+      } else {
+        return defaultValue;
+      }
+    } else {
+      const currentContextResult = await this.childProcess.exec('kubectl config view -o jsonpath=\'{.current-context}\'');
+
+      if (currentContextResult.stdout) {
+        const currentContext = currentContextResult.stdout.toString().trim();
+
+        if (currentContext) {
+          const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`);
+
+          const value = stdout.toString().trim();
+
+          return value != 'default' ? value : defaultValue;
+        }
+      }
+
+      return defaultValue;
+    }
+  }
+
+  async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -69,21 +108,15 @@ export class NamespaceImpl implements Namespace{
     notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
     await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
 
-    notifyStatus('Copying ConfigMaps');
-    await this.copyConfigMaps(namespace, templateNamespace);
-    notifyStatus('Copying Secrets');
-    await this.copySecrets(namespace, templateNamespace);
-
-    if (tekton) {
-      notifyStatus('Copying Tekton tasks');
-      await this.copyTasks(namespace, templateNamespace);
-      notifyStatus('Copying Tekton pipelines');
-      await this.copyPipelines(namespace, templateNamespace);
+    if (dev) {
+      notifyStatus('Copying ConfigMaps');
+      await this.copyConfigMaps(namespace, templateNamespace);
+      notifyStatus('Copying Secrets');
+      await this.copySecrets(namespace, templateNamespace);
     }
 
-    if (jenkins) {
-      await this.setupJenkins(namespace, templateNamespace, clusterType, notifyStatus);
-    }
+    notifyStatus(`Setting current ${clusterType === 'openshift' ? 'project' : 'namespace'} to ${namespace}`)
+    await this.setCurrentProject(clusterType, namespace);
 
     return namespace;
   }
@@ -162,14 +195,6 @@ export class NamespaceImpl implements Namespace{
     const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
 
     return this.secrets.copyAll({namespace: fromNamespace, qs}, toNamespace);
-  }
-
-  async copyTasks(toNamespace: string, fromNamespace: string): Promise<any> {
-    if (toNamespace === fromNamespace) {
-      return;
-    }
-
-    return this.tektonTasks.copyAll({namespace: fromNamespace}, toNamespace);
   }
 
   async copyPipelines(toNamespace: string, fromNamespace: string): Promise<any> {
@@ -255,16 +280,27 @@ export class NamespaceImpl implements Namespace{
         });
 
         if (jenkinsPods.length === 0) {
-          notifyStatus('Installing Jenkins');
-          await this.childProcess.exec(`oc new-app jenkins-ephemeral -n ${namespace}`);
+          await this.deployJenkins(notifyStatus, namespace);
         }
       }
 
-      notifyStatus('Copying Jenkins credentials');
-      await this.copyJenkinsCredentials(templateNamespace, namespace);
+      try {
+        notifyStatus('Copying Jenkins credentials');
+        await this.copyJenkinsCredentials(templateNamespace, namespace);
+      } catch (err) {}
+
+      if (clusterType === 'openshift') {
+        notifyStatus('Adding privileged scc to jenkins serviceAccount');
+        await this.createServiceAccount.createOpenShift(namespace, 'jenkins', ['privileged']);
+      }
     } catch (err) {
     }
 
+  }
+
+  private async deployJenkins(notifyStatus: (status: string) => void, namespace: string) {
+    notifyStatus('Installing Jenkins');
+    await this.childProcess.exec(`oc new-app jenkins-ephemeral -n ${namespace}`);
   }
 
   async copyJenkinsCredentials(fromNamespace: string, toNamespace: string) {
@@ -272,7 +308,33 @@ export class NamespaceImpl implements Namespace{
 
     await this.roles.copy('jenkins-schedule-agents', fromNamespace, toNamespace);
 
+    await this.roles.addRules(
+      'jenkins-schedule-agents',
+      [{
+        resource: 'services',
+        verbs: ['*'],
+      }, {
+        apiGroup: 'apps',
+        resource: 'deployments',
+        verbs: ['*'],
+      }, {
+        apiGroup: 'networking.k8s.io',
+        resource: 'ingresses',
+        verbs: ['*'],
+      }],
+      toNamespace
+    );
+
     await this.roleBindings.copy('jenkins-schedule-agents', fromNamespace, toNamespace);
+
+    await this.roleBindings.addSubject(
+      'jenkins-schedule-agents',
+      {
+        kind: 'ServiceAccount',
+        name: 'jenkins',
+        namespace: fromNamespace,
+      },
+      toNamespace)
   }
 
   async copyServiceAccount(name: string, fromNamespace: string, toNamespace: string) {
@@ -306,6 +368,14 @@ export class NamespaceImpl implements Namespace{
 
         return result;
       }, [])
+  }
+
+  async setCurrentProject(clusterType: 'openshift' | 'kubernetes', namespace: string) {
+    if (clusterType === 'openshift') {
+      await this.childProcess.exec(`oc project ${namespace}`);
+    } else {
+      await this.childProcess.exec(`kubectl config set-context --current --namespace=${namespace}`);
+    }
   }
 }
 

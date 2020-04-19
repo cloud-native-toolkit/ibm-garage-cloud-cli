@@ -54,4 +54,16 @@ export class KubeRoleBinding extends AbstractKubernetesResourceManager<RoleBindi
       }
     );
   }
+
+  async addSubject(name: string, subject: RoleSubject, namespace: string): Promise<RoleBinding> {
+    const roleBinding: RoleBinding = await this.get(name, namespace);
+
+    if (!roleBinding.subjects.includes(subject)) {
+      roleBinding.subjects.push(subject);
+
+      return this.update(name, {body: roleBinding}, namespace);
+    }
+
+    return roleBinding;
+  }
 }

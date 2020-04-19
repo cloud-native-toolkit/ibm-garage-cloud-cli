@@ -11,6 +11,8 @@ import {RegisterPipelineType} from './register-pipeline-type';
 import {GitParams} from '../git-secret';
 import path = require('path');
 import {JenkinsMissingError} from './register-pipeline';
+import {Namespace} from '../namespace';
+import {OcpRoute} from '../../api/kubectl/route';
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -33,60 +35,57 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
   private openShift: OpenshiftCommands;
   @Inject
   private childProcess: ChildProcess;
+  @Inject
+  private namespace: Namespace;
+  @Inject
+  private route: OcpRoute;
 
-  setupDefaultOptions(): Partial<RegisterPipelineOptions> {
+  async setupDefaultOptions(): Promise<Partial<RegisterPipelineOptions>> {
     return {
       templateNamespace: 'tools',
-      pipelineNamespace: 'dev',
+      pipelineNamespace: await this.namespace.getCurrentProject('openshift'),
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, pipelineName: string, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string }> {
 
-    try {
-      const host: string = await this.getRouteHosts(options.pipelineNamespace || 'tools', 'jenkins');
+    const host: string = await this.getRouteHost(options.pipelineNamespace, 'jenkins');
 
-      if (!host) {
-        throw new JenkinsMissingError('Jenkins is not available in the namespace: ' + options.pipelineNamespace);
+    const secret = 'secret101';
+    const buildConfig = this.generateBuildConfig(
+      pipelineName,
+      gitParams.url,
+      gitParams.branch,
+      options.pipelineNamespace,
+      gitParams.type,
+      secret,
+      {
+        app: gitParams.repo,
       }
+    );
 
-      const secret = 'secret101';
-      const buildConfig = this.generateBuildConfig(
-        credentialsName,
-        gitParams.url,
-        gitParams.branch,
-        options.pipelineNamespace,
-        gitParams.type,
-        secret,
-        {
-          app: gitParams.repo,
-        }
-      );
+    const fileName = await this.fsPromises.writeFile(
+      path.join(process.cwd(), './pipeline-build-config.yaml'),
+      YAML.safeDump(buildConfig)
+    );
 
-      const fileName = await this.fsPromises.writeFile(
-        path.join(process.cwd(), './pipeline-build-config.yaml'),
-        YAML.safeDump(buildConfig)
-      );
+    await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);
 
-      await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);
+    const webhookUrl = await this.buildWebhookUrl(
+      options.serverUrl,
+      options.pipelineNamespace,
+      buildConfig.metadata.name,
+      secret,
+      gitParams.type,
+    );
 
-      const webhookUrl = await this.buildWebhookUrl(
-        options.serverUrl,
-        options.pipelineNamespace,
-        buildConfig.metadata.name,
-        secret,
-        gitParams.type,
-      );
-
-      return {
-        jenkinsUrl: host ? `https://${host}` : '',
-        jobName: gitParams.name,
-        webhookUrl,
-        jenkinsUser: '',
-        jenkinsPassword: ''
-      };
-    } catch (err) {
-    }
+    return {
+      jenkinsUrl: host ? `https://${host}` : '',
+      jobName: gitParams.name,
+      webhookUrl,
+      jenkinsUser: '',
+      jenkinsPassword: ''
+    };
   }
 
   async buildWebhookUrl(serverUrl: string, namespace: string, jobName: string, secret: string, gitType: string) {
@@ -185,19 +184,18 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
     return result.shouldUpdate;
   }
 
-  async getRouteHosts(namespace: string, name: string): Promise<string> {
-    const routeText: string = await this.childProcess.spawn(
-      'oc',
-      ['get', 'route/jenkins', '-n', namespace, '-o', 'json'],
-      {
-        env: process.env
-      },
-      false
-    );
+  async getRouteHost(namespace: string, name: string): Promise<string> {
+    try {
+      const hosts: string[] = await this.route.getHosts(namespace, name);
 
-    const route: {spec: {host: string}} = this.parseRouteOutput(routeText);
-
-    return route.spec.host;
+      if (hosts.length > 0) {
+        return hosts[0];
+      } else {
+        throw new Error('Host not found');
+      }
+    } catch (err) {
+      throw new JenkinsMissingError('Jenkins is not available in the namespace: ' + namespace, 'openshift');
+    }
   }
 
   parseRouteOutput(routeText: string): {spec: {host: string}} {

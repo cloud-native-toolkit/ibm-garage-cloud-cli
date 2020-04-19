@@ -39,16 +39,21 @@ export class CreateServiceAccountImpl implements CreateServiceAccount {
     if (secrets.length > 0) {
       const serviceAccount = await this.serviceAccount.get(name, namespace);
 
-      const existingSecrets = serviceAccount.secrets || [];
-      const newSecrets = _.difference(secrets.map(name => ({name: name.toLowerCase()})), existingSecrets);
-      if (newSecrets.length > 0) {
-        serviceAccount.secrets = existingSecrets.concat(newSecrets);
+      const {updatedSecrets, changed} = this.updateSecretList(serviceAccount.secrets, secrets);
+      if (changed) {
+        serviceAccount.secrets = updatedSecrets;
 
         await this.serviceAccount.createOrUpdate(name, {body: serviceAccount}, namespace);
       }
     }
 
     return name;
+  }
+
+  updateSecretList(existingSecrets: Array<{name: string}>, candidateSecrets: string[]): {updatedSecrets: Array<{name: string}>, changed: boolean} {
+    const newSecrets: string[] = _.difference(candidateSecrets, (existingSecrets || []).map(secret => secret.name));
+
+    return {updatedSecrets: _.concat(existingSecrets, newSecrets.map(name => ({name}))), changed: newSecrets.length > 0};
   }
 
   async createKubernetes(namespace: string, name: string, rules: RoleRule[] = []): Promise<string> {

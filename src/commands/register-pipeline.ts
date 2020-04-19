@@ -134,13 +134,19 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
     } else if (isPipelineError(err)) {
       if (err.pipelineErrorType === PipelineErrorType.JENKINS_MISSING) {
         console.log(chalk.red('Jenkins has not been installed in this namespace'));
-        console.log(`Install Jenkins by running ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + ' --jenkins')}`)
         console.log();
       } else if (err.pipelineErrorType === PipelineErrorType.NAMESPACE_MISSING) {
         console.log(chalk.red('The target namespace does not exist'));
 
-        const flag = argv.tekton ? ' --tekton' : ' --jenkins';
-        console.log(`Create the namespace by running: ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + flag)}`);
+        console.log(`Create the namespace by running: ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + ' --dev')}`);
+        console.log();
+      } else if (err.pipelineErrorType === PipelineErrorType.NO_PIPELINE_NAMESPACE) {
+        console.log(chalk.red('The target namespace is not provided'));
+
+        console.log(`Provide the namespace by passing it with ${chalk.yellow('-n')} flag`);
+        if (err.clusterType === 'openshift') {
+          console.log(`  or by setting the namespace in the current context - e.g. ${chalk.yellow('oc project {project}')}`);
+        }
         console.log();
       }
     } else {

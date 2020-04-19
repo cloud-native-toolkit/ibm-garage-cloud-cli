@@ -227,13 +227,15 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     return _.get(result, 'body');
   }
 
-  async copy(name: string, fromNamespace: string, toNamespace: string): Promise<T> {
+  async copy(name: string, fromNamespace: string, toNamespace: string, toName?: string): Promise<T> {
     const result = await this.get(name, fromNamespace);
 
+    const newName = (toName || name).replace(/[.]/g, '-');
+
     return this.createOrUpdate(
-      name,
+      newName,
       {
-        body: this.updateWithNamespace(result, toNamespace)
+        body: this.updateWithNamespace(result, toNamespace, newName)
       },
       toNamespace,
     );
@@ -253,7 +255,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     }));
   }
 
-  updateWithNamespace(obj: T, namespace: string): T {
+  updateWithNamespace(obj: T, namespace: string, toName?: string): T {
     if (!obj) {
       return {} as any;
     }
@@ -261,7 +263,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     const metadata = Object.assign(
       {},
       {
-        name: obj.metadata.name,
+        name: toName || obj.metadata.name,
         labels: obj.metadata.labels,
         annotations: obj.metadata.annotations,
       },

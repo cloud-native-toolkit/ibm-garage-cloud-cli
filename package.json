@@ -8,13 +8,14 @@
   "private": false,
   "bin": {
     "igc": "dist/script.js",
+    "kubectl-igc": "dist/script.js",
     "kubectl-credentials": "dist/script-credentials.js",
     "kubectl-dashboard": "dist/script-dashboard.js",
     "kubectl-enable": "dist/script-enable.js",
     "kubectl-endpoints": "dist/script-endpoints.js",
     "kubectl-git-secret": "dist/script-git-secret.js",
     "kubectl-pipeline": "dist/script-pipeline.js",
-    "kubectl-init-namespace": "dist/script-namespace.js",
+    "kubectl-sync": "dist/script-namespace.js",
     "kubectl-tool-config": "dist/script-tool-config.js"
   },
   "watch": {

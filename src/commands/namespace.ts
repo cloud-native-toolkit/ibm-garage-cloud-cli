@@ -6,7 +6,8 @@ import * as chalk from 'chalk';
 import {Namespace, NamespaceOptionsModel} from '../services/namespace';
 import {Logger, VerboseLogger} from '../util/logger';
 
-export const command = 'namespace [namespace]';
+export const command = 'sync [namespace]';
+export const aliases = ['project', 'namespace'];
 export const desc = 'Create a namespace (if it doesn\'t exist) and prepare it with the necessary configuration';
 export const builder = (yargs: Argv<any>) => {
   return yargs
@@ -26,12 +27,8 @@ export const builder = (yargs: Argv<any>) => {
       default: 'default',
       type: 'string',
     })
-    .option('jenkins', {
-      describe: 'flag to install Jenkins into the namespace (only applies to OpenShift clusters)',
-      type: 'boolean',
-    })
-    .option('tekton', {
-      describe: 'flag to install Tekton tasks into the namespace',
+    .option('dev', {
+      describe: 'flag to indicate this is a development namespace and that development artifacts should be created',
       type: 'boolean',
     })
     .option('verbose', {

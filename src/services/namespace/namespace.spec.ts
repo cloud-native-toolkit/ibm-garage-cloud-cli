@@ -27,7 +27,9 @@ describe('namespace', () => {
   let secrets_list: Mock;
   let secrets_copy: Mock;
   let roles_copy: Mock;
+  let roles_addRules: Mock;
   let roleBindings_copy: Mock;
+  let roleBindings_addSubject: Mock;
   beforeEach(() => {
     getClusterType = jest.fn();
     Container.bind(ClusterType).provider(providerFromValue({
@@ -61,13 +63,17 @@ describe('namespace', () => {
     }));
 
     roles_copy = jest.fn();
+    roles_addRules = jest.fn();
     Container.bind(KubeRole).provider(providerFromValue({
       copy: roles_copy,
+      addRules: roles_addRules,
     }));
 
     roleBindings_copy = jest.fn();
+    roleBindings_addSubject = jest.fn();
     Container.bind(KubeRoleBinding).provider(providerFromValue({
       copy: roleBindings_copy,
+      addSubject: roleBindings_addSubject,
     }));
 
     classUnderTest = Container.get(Namespace);
@@ -84,8 +90,8 @@ describe('namespace', () => {
     let copySecrets: Mock;
     let setupServiceAccountWithPullSecrets: Mock;
     let copyJenkinsCredentials: Mock;
-    let copyTasks: Mock;
     let copyPipelines: Mock;
+    let setCurrentProject: Mock;
     beforeEach(() => {
       setupPullSecrets = mockField(classUnderTest, 'setupPullSecrets');
       setupTlsSecrets = mockField(classUnderTest, 'setupTlsSecrets');
@@ -93,15 +99,15 @@ describe('namespace', () => {
       copySecrets = mockField(classUnderTest, 'copySecrets');
       setupServiceAccountWithPullSecrets = mockField(classUnderTest, 'setupServiceAccountWithPullSecrets');
       copyJenkinsCredentials = mockField(classUnderTest, 'copyJenkinsCredentials');
-      copyTasks = mockField(classUnderTest, 'copyTasks');
       copyPipelines = mockField(classUnderTest, 'copyPipelines');
+      setCurrentProject = mockField(classUnderTest, 'setCurrentProject');
     });
 
     describe('when clusterType is kubernetes', () => {
       const namespace = 'test';
       const templateNamespace = 'other';
       const serviceAccount = 'sa';
-      const namespaceOptions: NamespaceOptionsModel = {namespace, templateNamespace, serviceAccount, jenkins: false};
+      const namespaceOptions: NamespaceOptionsModel = {namespace, templateNamespace, serviceAccount, dev: false};
 
       beforeEach(() => {
         getClusterType.mockResolvedValue('kubernetes');
@@ -143,57 +149,9 @@ describe('namespace', () => {
         expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace, serviceAccount);
       });
 
-      test('then should copy config maps in catalyst-tools group', async () => {
-        await classUnderTest.create(namespaceOptions);
-
-        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
-      });
-
-      test('then should copy secrets in catalyst-tools group', async () => {
-        await classUnderTest.create(namespaceOptions);
-
-        expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
-      });
-
-      describe('and when tekton flag is not set', () => {
+      describe('and when dev flag is false', () => {
         beforeEach(() => {
-          namespaceOptions.tekton = false;
-        });
-
-        test('then should not copy tekton tasks', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyTasks).not.toHaveBeenCalled();
-        });
-
-        test('then should not opy tekton pipelines', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyPipelines).not.toHaveBeenCalled();
-        });
-      });
-
-      describe('and when tekton flag is set', () => {
-        beforeEach(() => {
-          namespaceOptions.tekton = true;
-        });
-
-        test('then should copy tekton tasks', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyTasks).toHaveBeenCalledWith(namespace, templateNamespace);
-        });
-
-        test('then should copy tekton pipelines', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyPipelines).toHaveBeenCalledWith(namespace, templateNamespace);
-        });
-      });
-
-      describe('and when jenkins flag is false', () => {
-        beforeEach(() => {
-          namespaceOptions.jenkins = false;
+          namespaceOptions.dev = false;
         });
 
         test('then should copy the jenkins credentials', async () => {
@@ -203,15 +161,27 @@ describe('namespace', () => {
         });
       });
 
-      describe('and when jenkins flag is true', () => {
+      describe('and when dev flag is true', () => {
         beforeEach(() => {
-          namespaceOptions.jenkins = true;
+          namespaceOptions.dev = true;
         });
 
-        test('then should copy the jenkins credentials', async () => {
+        test('then should copy config maps in catalyst-tools group', async () => {
           await classUnderTest.create(namespaceOptions);
 
-          expect(copyJenkinsCredentials).toHaveBeenCalledWith(templateNamespace, namespace);
+          expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
+        });
+
+        test('then should copy secrets in catalyst-tools group', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
+        });
+
+        test('then should not copy the jenkins credentials', async () => {
+          await classUnderTest.create(namespaceOptions);
+
+          expect(copyJenkinsCredentials).not.toHaveBeenCalledWith();
         });
       });
     });

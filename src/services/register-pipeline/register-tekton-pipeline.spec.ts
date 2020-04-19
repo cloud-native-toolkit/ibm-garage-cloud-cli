@@ -10,6 +10,9 @@ import Mock = jest.Mock;
 import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
+import {KubeTektonPipeline} from '../../api/kubectl/tekton-pipeline';
+import {buildOptionWithEnvDefault} from '../../util/yargs-support';
+import {KubeTektonTask} from '../../api/kubectl/tekton-task';
 
 describe('register-tekton-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -18,12 +21,18 @@ describe('register-tekton-pipeline', () => {
 
   let classUnderTest: RegisterTektonPipeline;
   let createGitSecret: CreateGitSecret;
+  let kubePipeline: KubeTektonPipeline;
   let kubePipelineResource: KubeTektonPipelineResource;
   let kubePipelineRun: KubeTektonPipelineRun;
   let kubeConfigMap: KubeConfigMap;
   let namespaceBuilder: Namespace;
   let getClusterType: Mock;
   let kubeNamespace_exists: Mock;
+  let namespace_getCurrentProject: Mock;
+  let tektonTask_copyAll: Mock;
+  let pipeline_copy: Mock;
+  let namespaceService_setupJenkins: Mock;
+  let namespaceService_getCurrentProject: Mock;
   beforeEach(() => {
     createGitSecret = {
       getParametersAndCreateSecret: jest.fn(),
@@ -32,7 +41,10 @@ describe('register-tekton-pipeline', () => {
       .provider(providerFromValue(createGitSecret));
 
     namespaceBuilder = {
-      create: jest.fn()
+      create: jest.fn(),
+      getCurrentProject: jest.fn(),
+      setCurrentProject: jest.fn(),
+      setupJenkins: jest.fn(),
     };
     Container.bind(Namespace)
       .provider(providerFromValue(namespaceBuilder));
@@ -42,6 +54,12 @@ describe('register-tekton-pipeline', () => {
     } as any;
     Container.bind(KubeTektonPipelineResource)
       .provider(providerFromValue(kubePipelineResource));
+
+    kubePipeline = {
+      copy: jest.fn(),
+    } as any;
+    Container.bind(KubeTektonPipeline)
+      .provider(providerFromValue(kubePipeline));
 
     kubePipelineRun = {
       create: jest.fn()
@@ -63,6 +81,26 @@ describe('register-tekton-pipeline', () => {
     Container.bind(KubeNamespace)
       .provider(providerFromValue({exists: kubeNamespace_exists}));
 
+    namespace_getCurrentProject = jest.fn();
+    Container.bind(Namespace)
+      .provider(providerFromValue({getCurrentProject: namespace_getCurrentProject}));
+
+    tektonTask_copyAll = jest.fn();
+    Container.bind(KubeTektonTask)
+      .provider(providerFromValue({copyAll: tektonTask_copyAll}));
+
+    pipeline_copy = jest.fn();
+    Container.bind(KubeTektonPipeline)
+      .provider(providerFromValue({copy: pipeline_copy}));
+
+    namespaceService_setupJenkins = jest.fn();
+    namespaceService_getCurrentProject = jest.fn();
+    Container.bind(Namespace)
+      .provider(providerFromValue({
+        setupJenkins: namespaceService_setupJenkins,
+        getCurrentProject: namespaceService_getCurrentProject,
+      }));
+
     classUnderTest = Container.get(RegisterTektonPipeline);
   });
 
@@ -72,12 +110,14 @@ describe('register-tekton-pipeline', () => {
     let createImagePipelineResource: Mock;
     let getPipelineName: Mock;
     let createPipelineRun: Mock;
+    let generatePipelineName: Mock;
     beforeEach(() => {
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
       createGitPipelineResource = mockField(classUnderTest, 'createGitPipelineResource');
       createImagePipelineResource = mockField(classUnderTest, 'createImagePipelineResource');
       getPipelineName = mockField(classUnderTest, 'getPipelineName');
       createPipelineRun = mockField(classUnderTest, 'createPipelineRun');
+      generatePipelineName = mockField(classUnderTest, 'generatePipelineName');
     });
 
     const pipelineNamespace = 'test';
@@ -86,14 +126,16 @@ describe('register-tekton-pipeline', () => {
 
     describe('when namespace exists', () => {
 
-      const repoName = 'repoName';
+      const repoName = 'repo-name';
       const gitName = 'gitName';
+      const fullGitName = "org-name";
       const imageName = 'imageName';
       const pipelineName = 'pipelineName';
       const clusterType = 'clusterType';
       const serviceAccount = 'serviceAccount';
       const secretName = 'secretName';
-      const gitParams = {repo: repoName};
+      const newPipelineName = 'newPipelineName';
+      const gitParams = {name: fullGitName, repo: repoName};
 
       beforeEach(() => {
         getClusterType.mockResolvedValue({clusterType});
@@ -103,6 +145,9 @@ describe('register-tekton-pipeline', () => {
         createGitPipelineResource.mockResolvedValue(gitName);
         createImagePipelineResource.mockResolvedValue(imageName);
         getPipelineName.mockResolvedValue(pipelineName);
+        (kubePipeline.copy as Mock).mockResolvedValue({metadata: {name: newPipelineName}});
+        generatePipelineName.mockReturnValue(repoName);
+        pipeline_copy.mockResolvedValue({metadata: {name: newPipelineName}});
       });
 
       test('should get cluster type', async () => {
@@ -152,7 +197,7 @@ describe('register-tekton-pipeline', () => {
         const options = {pipelineNamespace, templateNamespace, pipelineName};
         await classUnderTest.registerPipeline(options, notifyStatus);
 
-        expect(getPipelineName).toHaveBeenCalledWith(pipelineNamespace, pipelineName);
+        expect(getPipelineName).toHaveBeenCalledWith(templateNamespace, pipelineName);
       });
 
       test('should create pipeline run', async () => {
@@ -163,7 +208,7 @@ describe('register-tekton-pipeline', () => {
           name: repoName,
           gitSource: gitName,
           dockerImage: imageName,
-          pipelineName,
+          pipelineName: newPipelineName,
           serviceAccount,
         });
       });
@@ -355,4 +400,42 @@ describe('register-tekton-pipeline', () => {
       });
     })
   })
+
+  describe('given generatePipelineRunName()', () => {
+    describe('when repo name are short', () => {
+      test('then return the two values', async () => {
+        const repo = 'repo';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual(repo);
+      });
+    });
+    describe('when repo contain capital letters', () => {
+      test('then return lower case values', async () => {
+        const repo = 'Repo';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual(repo.toLowerCase());
+      });
+    });
+    describe('when repo contain periods', () => {
+      test('then return value with dashes', async () => {
+        const repo = 're.po';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual('re-po');
+      });
+    });
+    describe('when repo contain multiple dashes together', () => {
+      test('then return value with single dash', async () => {
+        const repo = 're---po';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual('re-po');
+      });
+    });
+    describe('when repo name is longer than 56 characters', () => {
+      test('then return truncated value', async () => {
+        const repo = 'ibm-gsi-ecosystem-inventory-management-ui-solution-dev-test';
+        expect(classUnderTest.generatePipelineName({repo} as any))
+          .toEqual('i-g-ecosystem-inventory-management-ui-solution-dev-test');
+      });
+    });
+  });
 });

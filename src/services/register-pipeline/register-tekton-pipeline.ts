@@ -13,9 +13,11 @@ import {QuestionBuilder, QuestionBuilderImpl} from '../../util/question-builder'
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 import {RoleRule} from '../../api/kubectl/role';
 import {ClusterType} from '../../util/cluster-type';
-import {NamespaceMissingError} from './register-pipeline';
+import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
 import {KubeNamespace} from '../../api/kubectl/namespace';
 import ChoiceOption = inquirer.objects.ChoiceOption;
+import {KubeTektonTask} from '../../api/kubectl/tekton-task';
+import {Namespace as NamespaceService} from '../namespace';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -49,20 +51,30 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   pipeline: KubeTektonPipeline;
   @Inject
+  tektonTask: KubeTektonTask;
+  @Inject
   configMap: KubeConfigMap;
   @Inject
   serviceAccount: CreateServiceAccount;
   @Inject
   clusterType: ClusterType;
+  @Inject
+  namespace: NamespaceService;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
     const {clusterType} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
-    const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, cliOptions);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(clusterType, cliOptions);
 
-    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
-      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
+
+    if (!options.pipelineNamespace) {
+      throw new PipelineNamespaceNotProvided('A pipeline namespace must be provided', clusterType);
+    }
+
+    if (!(await this.kubeNamespace.exists(options.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + options.pipelineNamespace, clusterType);
     }
 
     notifyStatus('Getting git parameters');
@@ -86,19 +98,49 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     notifyStatus('Creating Image PipelineResource');
     const dockerImage = await this.createImagePipelineResource(options, gitParams);
 
-    const pipelineName = await this.getPipelineName(options.pipelineNamespace, options.pipelineName);
+    const pipelineName = await this.getPipelineName(options.templateNamespace, options.pipelineName);
 
     if (pipelineName !== 'none') {
-      notifyStatus(`Creating PipelineRun for pipeline: ${pipelineName}`);
+      notifyStatus(`Copying tasks from ${options.templateNamespace}`);
+      await this.tektonTask.copyAll({namespace: options.templateNamespace}, options.pipelineNamespace);
+
+      const name = this.generatePipelineName(gitParams);
+      const pipelineValue: TektonPipeline = await this.pipeline.copy(
+        pipelineName,
+        options.templateNamespace,
+        options.pipelineNamespace,
+        name
+      );
+      notifyStatus(`Copied Pipeline from ${options.templateNamespace}/${pipelineName} to ${options.pipelineNamespace}/${pipelineValue.metadata.name}`);
+
+      notifyStatus(`Creating PipelineRun for pipeline: ${pipelineValue.metadata.name}`);
       await this.createPipelineRun({
-        name: gitParams.repo,
+        name,
         gitSource,
         dockerImage,
-        pipelineName,
+        pipelineName: pipelineValue.metadata.name,
         pipelineNamespace: options.pipelineNamespace,
         serviceAccount
       });
     }
+  }
+
+  generatePipelineName(gitParams: GitParams): string {
+    let formattedName = (gitParams.repo)
+      .toLowerCase()
+      .replace(/[.]/g, '-')
+      .replace(/--+/g, '-');
+
+    if (formattedName.length <= 56) {
+      return formattedName;
+    }
+
+    const nameSegments = formattedName.split('-');
+    for (let i = 0; i < nameSegments.length && nameSegments.join('-').length > 56; i++) {
+      nameSegments[i] = nameSegments[i][0];
+    }
+
+    return nameSegments.join('-');
   }
 
   async createServiceAccount(namespace: string, clusterType: string, secrets: string[] = [], notifyStatus: (text: string) => void): Promise<string> {
@@ -261,8 +303,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       pipelineName: string,
       serviceAccount?: string,
     }) {
-    const dateHex = Date.now().toString(16);
-    const pipelineRunName = `${name}-run-${dateHex}`;
+    const dateHex = Date.now().toString(16).substring(0, 6);
+    const pipelineRunName = `${name}-${dateHex}`;
 
     return this.pipelineRun.create(
       pipelineRunName,
@@ -300,10 +342,10 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     );
   }
 
-  setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', cliOptions: RegisterPipelineOptions) {
+  async setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', cliOptions: RegisterPipelineOptions) {
     const defaultOptions: RegisterPipelineOptions = {
       templateNamespace: 'tools',
-      pipelineNamespace: 'dev',
+      pipelineNamespace: await this.namespace.getCurrentProject(clusterType),
     };
 
     return Object.assign(

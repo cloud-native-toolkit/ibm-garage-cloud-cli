@@ -22,18 +22,15 @@ export class RegisterIksPipeline implements RegisterPipelineType {
   @Inject
   private kubeSecret: KubeSecret;
 
-  setupDefaultOptions(): Partial<RegisterPipelineOptions> {
+  async setupDefaultOptions(): Promise<Partial<RegisterPipelineOptions>> {
     return {
       templateNamespace: 'tools',
-      pipelineNamespace: 'dev',
     };
   }
 
-  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string}> {
+  async registerPipeline(options: RegisterPipelineOptions, gitParams: GitParams, pipelineName: string, credentialsName: string): Promise<{jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string; webhookUrl?: string}> {
 
     const jenkinsAccess = await this.pullJenkinsAccessSecrets(options.templateNamespace);
-
-    const jobName = gitParams.name;
 
     const headers = options.generateCrumb ? await this.generateJenkinsCrumbHeader(jenkinsAccess) : {};
 
@@ -55,15 +52,15 @@ export class RegisterIksPipeline implements RegisterPipelineType {
         {},
         jenkinsAccess,
         {
-          name: jobName,
+          name: pipelineName,
           headers,
           url: `${folderOptions.url}/job/${folderOptions.name}`,
-          content: await this.buildJenkinsPipelineConfig(gitParams, credentialsName, options.pipelineNamespace),
+          content: await this.buildJenkinsPipelineConfig(gitParams, pipelineName, credentialsName, options.pipelineNamespace),
         }
       );
 
       if (await this.ifJenkinsResourceExists(pipelineOptions)) {
-        const shouldReplace = await this.shouldUpdateExistingBuildConfig(jobName);
+        const shouldReplace = await this.shouldUpdateExistingBuildConfig(pipelineName);
 
         if (!shouldReplace) {
           process.exit(0);
@@ -80,7 +77,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
         jenkinsUrl: jenkinsAccess.url,
         jenkinsUser: jenkinsAccess.username,
         jenkinsPassword: jenkinsAccess.api_token,
-        jobName,
+        jobName: pipelineName,
       };
     } catch (err) {
       console.error('Error creating job', err);
@@ -175,7 +172,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
     return data.toString();
   }
 
-  async buildJenkinsPipelineConfig(gitParams: GitParams, credentialsName: string, namespace: string): Promise<string> {
+  async buildJenkinsPipelineConfig(gitParams: GitParams, pipelineName: string, credentialsName: string, namespace: string): Promise<string> {
     const data: Buffer = await this.fs.readFile(path.join(__dirname, '../../../etc/jenkins-pipeline-template.xml'));
 
     return data.toString()

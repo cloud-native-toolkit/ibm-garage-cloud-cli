@@ -37,7 +37,7 @@ describe('enable', () => {
       });
 
       describe('when options.repo is defined', () => {
-        const options = {repo: 'repo-path', pipeline: 'pipeline-name'};
+        const options = {repo: 'repo-path', pipeline: 'pipeline-name', branch: 'stable'};
         
         let getPipelinePath;
         let applyPipeline;
@@ -47,12 +47,14 @@ describe('enable', () => {
         });
 
         test('then should get the pipeline path and apply the pipeline', async () => {
-          const pipelinePath = 'pipeline-path';
-          getPipelinePath.mockResolvedValue({pipelinePath});
+          const pipeline = {path: 'pipeline-path', url: 'url', name: 'name'};
+          const branch = 'branch';
+
+          getPipelinePath.mockResolvedValue({pipeline, branch});
           
           await classUnderTest.enable(options);
 
-          expect(applyPipeline).toHaveBeenCalledWith(pipelinePath);
+          expect(applyPipeline).toHaveBeenCalledWith(pipeline);
         });
       })
     });
@@ -78,7 +80,7 @@ describe('enable', () => {
           const actualResult = await classUnderTest.getPipelinePath(options);
 
           expect(actualResult).toEqual(expectedResult);
-          expect(promptForPipelineName).toHaveBeenCalledWith(index, options.pipeline);
+          expect(promptForPipelineName).toHaveBeenCalledWith(index, options);
         });
       });
     });
@@ -118,36 +120,44 @@ describe('enable', () => {
     describe('given promptForPipelineName()', () => {
       describe('when pipeline is undefined', () => {
         test('then throw an error', async () => {
-          return classUnderTest.promptForPipelineName()
+          return classUnderTest.promptForPipelineName({version: 'v2'}, {branch: 'branch', repo: 'repo'})
             .then(value => fail('should throw error'))
-            .catch(err => expect(err.message).toEqual('No pipelines found in repo'));
+            .catch(err => expect(err.message).toEqual('No pipelines found in repo for branch: branch'));
         });
       });
       describe('when pipeline indicies is undefined', () => {
         test('then throw an error', async () => {
-          return classUnderTest.promptForPipelineName({})
+          return classUnderTest.promptForPipelineName({version: 'v2'}, {repo: 'repo', branch: 'stable'})
             .then(value => fail('should throw error'))
-            .catch(err => expect(err.message).toEqual('No pipelines found in repo'));
+            .catch(err => expect(err.message).toEqual('No pipelines found in repo for branch: stable'));
         });
       });
       describe('when pipeline indicies are empty', () => {
         test('then throw error', async () => {
-          return classUnderTest.promptForPipelineName({name: 'name', pipelines: {}})
+          return classUnderTest.promptForPipelineName({version: 'v2', pipelines: {}}, {repo: 'repo', branch: 'stable'})
             .then(value => fail('should throw error'))
-            .catch(err => expect(err.message).toEqual('No pipelines found in repo'));
+            .catch(err => expect(err.message).toEqual('No pipelines found in repo for branch: stable'));
+        });
+      });
+      describe('when pipeline indicies version is not v2', () => {
+        test('then throw error', async () => {
+          return classUnderTest.promptForPipelineName({version: 'v3', pipelines: {}}, {repo: 'repo'})
+            .then(value => fail('should throw error'))
+            .catch(err => expect(err.message).toEqual('Pipeline version is newer than CLI'));
         });
       });
       describe('when pipeline indicies are provided', () => {
         test('then prompt the user to pick the pipeline from the list', async () => {
           const url = 'pipelineUrl';
-          const index = {pipelines: {nodejs: {url}}};
+          const index = {version: 'v2', branches: {stable: {nodejs: [{url, version: 'latest', name: 'nodejs'}, {url, version: '1.0.0', name: 'nodejs'}]}}};
           const selectedPipeline = 'nodejs';
+          const branch = 'stable';
 
           (questionBuilder.prompt as Mock).mockResolvedValue({pipeline: selectedPipeline});
 
-          const actualResult = await classUnderTest.promptForPipelineName(index);
+          const actualResult = await classUnderTest.promptForPipelineName(index, {repo: 'repo', branch, release: 'latest'});
 
-          expect(actualResult).toEqual({pipelineName: 'nodejs', pipelinePath: url});
+          expect(actualResult).toEqual({pipeline: {name: 'nodejs', url, version: 'latest'}, branch,});
         });
       });
     });

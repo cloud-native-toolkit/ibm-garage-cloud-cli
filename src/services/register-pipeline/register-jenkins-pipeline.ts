@@ -1,4 +1,5 @@
 import {Inject, Provides} from 'typescript-ioc';
+import * as chalk from 'chalk';
 
 import {RegisterPipelineOptions} from './register-pipeline-options.model';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
@@ -16,7 +17,8 @@ import {
 } from '../create-webhook';
 import {ClusterType} from '../../util/cluster-type';
 import {KubeNamespace} from '../../api/kubectl/namespace';
-import {NamespaceMissingError} from './register-pipeline';
+import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
+import {Namespace as NamespaceService} from '../namespace';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
@@ -52,17 +54,23 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
   private kubeNamespace: KubeNamespace;
   @Inject
   private clusterType: ClusterType;
+  @Inject
+  private namespaceService: NamespaceService;
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
-    notifyStatus(`Creating pipeline on ${clusterType} cluster`);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
 
-    const options: RegisterPipelineOptions = this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
+    notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
 
-    if (!(await this.kubeNamespace.exists(cliOptions.pipelineNamespace))) {
-      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace);
+    if (!options.pipelineNamespace) {
+      throw new PipelineNamespaceNotProvided('A pipeline namespace must be provided', clusterType);
+    }
+
+    if (!(await this.kubeNamespace.exists(options.pipelineNamespace))) {
+      throw new NamespaceMissingError('The pipeline namespace does not exist: ' + cliOptions.pipelineNamespace, clusterType);
     }
 
     notifyStatus('Creating secret(s) with git credentials');
@@ -81,6 +89,9 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       notifyStatus,
     );
 
+    notifyStatus('Setting up Jenkins environment');
+    await this.namespaceService.setupJenkins(options.pipelineNamespace, options.templateNamespace, clusterType, notifyStatus);
+
     notifyStatus('Registering pipeline: ' + gitParams.name);
     const gitConfig: GitConfig = this.createWebhook.extractGitConfig(gitParams.url);
 
@@ -88,7 +99,8 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
       clusterType,
       options,
       Object.assign({}, gitParams, {type: gitConfig.type}),
-      gitParams.name.toLowerCase(),
+      gitParams.name,
+      secretName,
     );
 
     if (!options.skipWebhook) {
@@ -107,12 +119,13 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     }
   }
 
-  setupDefaultOptions(clusterType: string, serverUrl: string, cliOptions: RegisterPipelineOptions): RegisterPipelineOptions {
-    const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
-
+  async setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', serverUrl: string, cliOptions: RegisterPipelineOptions): Promise<RegisterPipelineOptions> {
     return Object.assign(
       {},
-      pipeline.setupDefaultOptions(),
+      {
+        templateNamespace: 'tools',
+        pipelineNamespace: await this.namespaceService.getCurrentProject(clusterType),
+      },
       cliOptions,
       {serverUrl},
     );
@@ -122,10 +135,10 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     return clusterType === 'openshift' ? this.openshiftPipeline : this.iksPipeline;
   }
 
-  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
+  async executeRegisterPipeline(clusterType: 'openshift' | 'kubernetes', options: RegisterPipelineOptions, gitParams: GitParams, pipelineName: string, credentialsName: string): Promise<{ jenkinsUrl: string; jobName: string; jenkinsUser: string; jenkinsPassword: string }> {
     const pipeline: RegisterPipelineType = this.getPipelineType(clusterType);
 
-    return pipeline.registerPipeline(options, gitParams, credentialsName);
+    return pipeline.registerPipeline(options, gitParams, pipelineName, credentialsName);
   }
 
   buildCreateWebhookOptions(gitParams: GitParams, pipelineResult: {jenkinsUrl: string; jenkinsUser: string; jenkinsPassword: string, jobName: string, webhookUrl?: string}): CreateWebhookOptions {
