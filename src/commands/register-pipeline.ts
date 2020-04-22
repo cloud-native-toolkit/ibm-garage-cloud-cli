@@ -9,6 +9,7 @@ import {ErrorSeverity, isCommandError} from '../util/errors';
 import {isPipelineError, PipelineErrorType} from '../services/register-pipeline/register-pipeline';
 import * as chalk from 'chalk';
 import {QuestionBuilder} from '../util/question-builder';
+import {isClusterConfigNotFound} from '../util/cluster-type';
 
 export const command = 'pipeline';
 export const desc = 'Register a pipeline for the current code repository';
@@ -123,7 +124,11 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       spinner.stop();
     }
 
-    if (isCommandError(err)) {
+    if (isClusterConfigNotFound(err)) {
+      console.log(chalk.red(`Cluster configuration not found in the namespace - ${err.namespace}/${err.configMapName}`));
+      console.log('It looks like the namespace needs to be set up for development by running ' + chalk.yellow(`${argv.$0} sync ${err.namespace} --dev`));
+      process.exit(1);
+    } else if (isCommandError(err)) {
       if (err.type.severity === ErrorSeverity.WARNING) {
         console.log(`Warning: ${err.message}`);
         process.exit(0)

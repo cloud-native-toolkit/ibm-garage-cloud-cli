@@ -1,33 +1,37 @@
 import {Inject} from 'typescript-ioc';
-import {KubeConfigMap, KubeSecret} from '../api/kubectl';
+import {KubeConfigMap} from '../api/kubectl';
+
+export function isClusterConfigNotFound(error: Error): error is ClusterConfigNotFound {
+  const clusterError: ClusterConfigNotFound = error as ClusterConfigNotFound;
+
+  return !!error && !!clusterError.configMapName;
+}
+
+export class ClusterConfigNotFound extends Error {
+  constructor(
+    message: string,
+    public readonly configMapName: string,
+    public readonly namespace: string) {
+
+    super(message);
+  }
+}
+
+interface ClusterConfig {
+  CLUSTER_TYPE: 'openshift' | 'kubernetes';
+  SERVER_URL?: string;
+}
 
 export class ClusterType {
   @Inject
   private kubeConfigMap: KubeConfigMap;
-  @Inject
-  private kubeSecret: KubeSecret;
 
   async getClusterType(namespace = 'tools'): Promise<{clusterType: 'openshift' | 'kubernetes', serverUrl?: string}> {
-    try {
-      const configMap = await this.kubeConfigMap.getData<{ CLUSTER_TYPE: 'openshift' | 'kubernetes', SERVER_URL?: string }>(
-        'ibmcloud-config',
-        namespace,
-      );
-
-      return {clusterType: configMap.CLUSTER_TYPE, serverUrl: configMap.SERVER_URL};
-    } catch (configMapError) {
-
-      console.error('Error getting cluster_type from configMap `ibmcloud-config`. Attempting to retrieve it from the secret');
-
-      try {
-        const secret = await this.kubeSecret.getData<{cluster_type: 'openshift' | 'kubernetes'}>('ibmcloud-apikey', namespace);
-
-        return {clusterType: secret.cluster_type ? secret.cluster_type : 'kubernetes'};
-      } catch (secretError) {
-        console.error('Error getting cluster_type from secret `ibmcloud-apikey`. Defaulting to `kubernetes`');
-
-        return {clusterType: 'kubernetes'};
-      }
-    }
+    return this.kubeConfigMap.getData<ClusterConfig>('cluster-config', namespace)
+      .catch(err => this.kubeConfigMap.getData<ClusterConfig>('ibmcloud-config', namespace))
+      .then((value: ClusterConfig) => ({clusterType: value.CLUSTER_TYPE, serverUrl: value.SERVER_URL}))
+      .catch(err => {
+        throw new ClusterConfigNotFound('Config not found', 'ibmcloud-config', namespace);
+      });
   }
 }
