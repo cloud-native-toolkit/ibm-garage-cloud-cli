@@ -59,9 +59,15 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
 
-    const {clusterType, serverUrl} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
+    const templateConfig = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
-    const options: RegisterPipelineOptions = await this.setupDefaultOptions(clusterType, serverUrl, cliOptions);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(
+      templateConfig.clusterType,
+      templateConfig.serverUrl,
+      cliOptions
+    );
+
+    const {clusterType} = await this.clusterType.getClusterType(options.pipelineNamespace);
 
     notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
 

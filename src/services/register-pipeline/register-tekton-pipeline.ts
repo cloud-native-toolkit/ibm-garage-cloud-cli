@@ -63,9 +63,11 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
-    const {clusterType} = await this.clusterType.getClusterType(cliOptions.templateNamespace);
+    const templateConfig = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
-    const options: RegisterPipelineOptions = await this.setupDefaultOptions(clusterType, cliOptions);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(templateConfig.clusterType, cliOptions);
+
+    const {clusterType} = await this.clusterType.getClusterType(options.pipelineNamespace);
 
     notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
 
@@ -231,7 +233,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   async buildImageUrl(options: TektonPipelineOptions, params: { repo: string }): Promise<string> {
 
-    const containerConfig: ConfigMap<IBMCloudConfig> = await this.configMap.get('ibmcloud-config', options.templateNamespace);
+    const containerConfig: ConfigMap<IBMCloudConfig> = await this.configMap.get('ibmcloud-config', options.pipelineNamespace);
     if (!containerConfig || !containerConfig.data) {
       throw new Error('Unable to retrieve config map: ibmcloud-config');
     }

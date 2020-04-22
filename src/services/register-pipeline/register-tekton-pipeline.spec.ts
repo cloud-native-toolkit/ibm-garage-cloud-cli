@@ -121,7 +121,7 @@ describe('register-tekton-pipeline', () => {
     });
 
     const pipelineNamespace = 'test';
-    const templateNamespace = 'tools;';
+    const templateNamespace = 'tools';
     const notifyStatus = (text: string) => undefined;
 
     describe('when namespace exists', () => {
@@ -154,7 +154,7 @@ describe('register-tekton-pipeline', () => {
         let options = {pipelineNamespace, templateNamespace};
         await classUnderTest.registerPipeline(options, notifyStatus);
 
-        expect(getClusterType).toHaveBeenCalledWith(templateNamespace);
+        expect(getClusterType).toHaveBeenCalledWith(pipelineNamespace);
       });
 
       test('should get git parameters', async () => {
@@ -331,7 +331,7 @@ describe('register-tekton-pipeline', () => {
         const url = await classUnderTest.buildImageUrl(options, {repo});
 
         expect(url).toEqual(`${registryUrl}/${registryNamespace}/${repo}:latest`);
-        expect(kubeConfigMap.get).toHaveBeenCalledWith('ibmcloud-config', options.templateNamespace);
+        expect(kubeConfigMap.get).toHaveBeenCalledWith('ibmcloud-config', options.pipelineNamespace);
       });
     });
 
@@ -357,7 +357,7 @@ describe('register-tekton-pipeline', () => {
         const url = await classUnderTest.buildImageUrl(options, {repo});
 
         expect(url).toEqual(`${registryUrl}/${options.pipelineNamespace}/${repo}:latest`);
-        expect(kubeConfigMap.get).toHaveBeenCalledWith('ibmcloud-config', options.templateNamespace);
+        expect(kubeConfigMap.get).toHaveBeenCalledWith('ibmcloud-config', options.pipelineNamespace);
       });
     });
 
