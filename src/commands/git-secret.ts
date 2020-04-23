@@ -63,11 +63,8 @@ exports.handler = async (argv: Arguments<CreateGitSecretOptions & {namespace: st
 
   if (!argv.namespace) {
     try {
-      const clusterTypeService: ClusterType = Container.get(ClusterType);
-      const {clusterType} = await clusterTypeService.getClusterType('tools');
-
       const namespaceService: Namespace = Container.get(Namespace);
-      const currentProject: string = await namespaceService.getCurrentProject(clusterType);
+      const currentProject: string = await namespaceService.getCurrentProject();
 
       if (currentProject != 'default') {
         argv.namespace = currentProject;

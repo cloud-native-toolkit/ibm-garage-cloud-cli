@@ -21,9 +21,9 @@ import {ChildProcess} from '../../util/child-process';
 import {CreateServiceAccount} from '../create-service-account/create-service-account';
 
 export abstract class Namespace {
-  async abstract getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string>;
+  async abstract getCurrentProject(defaultValue?: string): Promise<string>;
 
-  async abstract setCurrentProject(clusterType: 'openshift' | 'kubernetes', namespace: string);
+  async abstract setCurrentProject(namespace: string);
 
   async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
 
@@ -61,34 +61,22 @@ export class NamespaceImpl implements Namespace{
   @Inject
   private createServiceAccount: CreateServiceAccount;
 
-  async getCurrentProject(clusterType: 'openshift' | 'kubernetes', defaultValue?: string): Promise<string> {
-    if (clusterType == 'openshift') {
-      const {stdout} = await this.childProcess.exec('oc project -q');
+  async getCurrentProject(defaultValue?: string): Promise<string> {
+    const currentContextResult = await this.childProcess.exec('kubectl config view -o jsonpath=\'{.current-context}\'');
 
-      if (stdout) {
+    if (currentContextResult.stdout) {
+      const currentContext = currentContextResult.stdout.toString().trim();
+
+      if (currentContext) {
+        const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`);
+
         const value = stdout.toString().trim();
 
         return value != 'default' ? value : defaultValue;
-      } else {
-        return defaultValue;
       }
-    } else {
-      const currentContextResult = await this.childProcess.exec('kubectl config view -o jsonpath=\'{.current-context}\'');
-
-      if (currentContextResult.stdout) {
-        const currentContext = currentContextResult.stdout.toString().trim();
-
-        if (currentContext) {
-          const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`);
-
-          const value = stdout.toString().trim();
-
-          return value != 'default' ? value : defaultValue;
-        }
-      }
-
-      return defaultValue;
     }
+
+    return defaultValue;
   }
 
   async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
@@ -116,7 +104,7 @@ export class NamespaceImpl implements Namespace{
     }
 
     notifyStatus(`Setting current ${clusterType === 'openshift' ? 'project' : 'namespace'} to ${namespace}`)
-    await this.setCurrentProject(clusterType, namespace);
+    await this.setCurrentProject(namespace);
 
     return namespace;
   }
@@ -370,12 +358,8 @@ export class NamespaceImpl implements Namespace{
       }, [])
   }
 
-  async setCurrentProject(clusterType: 'openshift' | 'kubernetes', namespace: string) {
-    if (clusterType === 'openshift') {
-      await this.childProcess.exec(`oc project ${namespace}`);
-    } else {
-      await this.childProcess.exec(`kubectl config set-context --current --namespace=${namespace}`);
-    }
+  async setCurrentProject(namespace: string) {
+    await this.childProcess.exec(`kubectl config set-context --current --namespace=${namespace}`);
   }
 }
 

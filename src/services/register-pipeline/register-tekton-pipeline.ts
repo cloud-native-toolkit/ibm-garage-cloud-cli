@@ -63,9 +63,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
-    const templateConfig = await this.clusterType.getClusterType(cliOptions.templateNamespace);
-
-    const options: RegisterPipelineOptions = await this.setupDefaultOptions(templateConfig.clusterType, cliOptions);
+    const options: RegisterPipelineOptions = await this.setupDefaultOptions(cliOptions);
 
     const {clusterType} = await this.clusterType.getClusterType(options.pipelineNamespace);
 
@@ -344,10 +342,10 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     );
   }
 
-  async setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', cliOptions: RegisterPipelineOptions) {
+  async setupDefaultOptions(cliOptions: RegisterPipelineOptions) {
     const defaultOptions: RegisterPipelineOptions = {
       templateNamespace: 'tools',
-      pipelineNamespace: await this.namespace.getCurrentProject(clusterType),
+      pipelineNamespace: await this.namespace.getCurrentProject(),
     };
 
     return Object.assign(

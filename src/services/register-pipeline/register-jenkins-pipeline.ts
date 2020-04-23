@@ -62,12 +62,12 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     const templateConfig = await this.clusterType.getClusterType(cliOptions.templateNamespace);
 
     const options: RegisterPipelineOptions = await this.setupDefaultOptions(
-      templateConfig.clusterType,
-      templateConfig.serverUrl,
       cliOptions
     );
 
-    const {clusterType} = await this.clusterType.getClusterType(options.pipelineNamespace);
+    const {clusterType, serverUrl} = await this.clusterType.getClusterType(options.pipelineNamespace);
+
+    options.serverUrl = serverUrl;
 
     notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
 
@@ -125,15 +125,14 @@ export class RegisterJenkinsPipeline implements RegisterPipeline {
     }
   }
 
-  async setupDefaultOptions(clusterType: 'openshift' | 'kubernetes', serverUrl: string, cliOptions: RegisterPipelineOptions): Promise<RegisterPipelineOptions> {
+  async setupDefaultOptions(cliOptions: RegisterPipelineOptions): Promise<RegisterPipelineOptions> {
     return Object.assign(
       {},
       {
         templateNamespace: 'tools',
-        pipelineNamespace: await this.namespaceService.getCurrentProject(clusterType),
+        pipelineNamespace: await this.namespaceService.getCurrentProject(),
       },
       cliOptions,
-      {serverUrl},
     );
   }
 
