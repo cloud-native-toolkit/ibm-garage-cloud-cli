@@ -8,6 +8,9 @@ import {CommandLineOptions} from '../model';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {checkKubeconfig} from '../util/kubernetes';
 import {GetEndpoints} from '../services/endpoints';
+import {ClusterType} from '../util/cluster-type';
+import {Namespace} from '../services/namespace';
+import * as chalk from 'chalk';
 
 interface SelectedIngress {
   selection: string;
@@ -17,14 +20,13 @@ export const command = 'endpoints';
 export const aliases = ['ingress', 'endpoint', 'ingresses'];
 export const desc = 'List the current ingress hosts for deployed apps in a namespace';
 export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<any>(yargs)
-  .clusterNamespace({
-    optional: false,
-    describe: 'The cluster namespace where the apps are deployed',
-    default: 'dev',
-  })
   .quiet()
   .debug()
   .build()
+  .options('namespace', {
+    alias: 'n',
+    describe: 'The namespace from which the endpoints will be read'
+  })
   .option('print', {
     requiresArg: false,
     describe: 'Flag indicating that values should simply be printed',
@@ -40,6 +42,24 @@ exports.handler =  async (argv: Arguments<{namespace: string; yaml: boolean; pri
     } else {
       spinner.text = status;
     }
+  }
+
+  if (!argv.namespace) {
+    try {
+      const namespaceService: Namespace = Container.get(Namespace);
+      const currentProject: string = await namespaceService.getCurrentProject();
+
+      if (currentProject != 'default') {
+        argv.namespace = currentProject;
+      }
+    } catch (err) {}
+  }
+
+  if (!argv.namespace) {
+    console.log(chalk.red('The namespace was not provided'));
+    console.log(`Please provide it by adding ${chalk.yellow('-n {namespace}')} or by setting the namespace/project in the current context, e.g. ${chalk.yellow('oc project {namespace}')}`);
+  } else {
+    console.log(`Getting the endpoints in the ${chalk.yellow(argv.namespace)} namespace`);
   }
 
   try {

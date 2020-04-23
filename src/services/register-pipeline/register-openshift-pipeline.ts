@@ -43,7 +43,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
   async setupDefaultOptions(): Promise<Partial<RegisterPipelineOptions>> {
     return {
       templateNamespace: 'tools',
-      pipelineNamespace: await this.namespace.getCurrentProject('openshift'),
+      pipelineNamespace: await this.namespace.getCurrentProject(),
     };
   }
 
