@@ -1,6 +1,6 @@
 import {AsyncKubeClient, KubeClient} from './client';
 import {KubeBody, KubeResource} from './kubernetes-resource-manager';
-import {Container, Provided, Provider} from 'typescript-ioc';
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 export interface Namespace extends KubeResource {
 }
@@ -10,15 +10,13 @@ export abstract class AbstractKubeNamespace<T extends KubeResource> {
   abstract async exists(name: string): Promise<boolean>;
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubeNamespace({
-      client: Container.get(AsyncKubeClient)
-    })
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubeNamespace({
+    client: context.resolve(AsyncKubeClient)
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubeNamespace implements AbstractKubeNamespace<Namespace> {
   public client: AsyncKubeClient;
 

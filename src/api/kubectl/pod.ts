@@ -1,22 +1,20 @@
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
-import {Container, Provided, Provider} from 'typescript-ioc';
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
 
 export interface Pod extends KubeResource{
   spec: any;
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubePod({
-      client: Container.get(AsyncKubeClient),
-      name: 'pod',
-      kind: 'Pod',
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubePod({
+    client: context.resolve(AsyncKubeClient),
+    name: 'pod',
+    kind: 'Pod',
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubePod extends AbstractKubernetesResourceManager<Pod> {
   constructor(props: Props) {
     super(props);

@@ -1,9 +1,8 @@
-import {Container, Provided, Provider} from 'typescript-ioc';
-import * as _ from 'lodash';
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient, AsyncOcpClient, KubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeBody, KubeResource, Props} from './kubernetes-resource-manager';
-import {AbstractKubeNamespace, Namespace} from './namespace';
+import {KubeBody, KubeResource} from './kubernetes-resource-manager';
+import {AbstractKubeNamespace} from './namespace';
 
 export interface Project extends KubeResource {
   spec?: {
@@ -12,15 +11,13 @@ export interface Project extends KubeResource {
   status: any;
 }
 
-const provider: Provider = {
-  get: () => {
-    return new OcpProject({
-      client: Container.get(AsyncOcpClient),
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new OcpProject({
+    client: context.resolve(AsyncOcpClient) as any,
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class OcpProject implements AbstractKubeNamespace<Project> {
   private client: AsyncKubeClient;
 

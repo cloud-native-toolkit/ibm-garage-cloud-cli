@@ -1,13 +1,12 @@
 import {Container} from 'typescript-ioc';
 
-import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
-import {setField, providerFromValue} from '../../testHelper';
-import {RegisterPipeline, RegisterJenkinsPipeline} from './register-jenkins-pipeline';
-import {FsPromises} from '../../util/file-util';
-import {RegisterPipelineType} from './register-pipeline-type';
-import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import Mock = jest.Mock;
+import {RegisterPipelineOptions} from './register-pipeline.api';
+import {RegisterJenkinsPipelineImpl} from './register-jenkins-pipeline';
+import {RegisterPipelineType} from './jenkins';
 import {GitParams} from '../git-secret';
+import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
+import {factoryFromValue, setField} from '../../testHelper';
+import Mock = jest.Mock;
 
 describe('register-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -15,7 +14,7 @@ describe('register-pipeline', () => {
   });
 
   describe('given RegisterPipeline', () => {
-    let classUnderTest: RegisterJenkinsPipeline;
+    let classUnderTest: RegisterJenkinsPipelineImpl;
 
     let mock_getConfigMapData: Mock;
     let mock_getSecretData: Mock;
@@ -23,12 +22,12 @@ describe('register-pipeline', () => {
     beforeEach(() => {
 
       mock_getConfigMapData = jest.fn();
-      Container.bind(KubeConfigMap).provider(providerFromValue({getData: mock_getConfigMapData}));
+      Container.bind(KubeConfigMap).factory(factoryFromValue({getData: mock_getConfigMapData}));
 
       mock_getSecretData = jest.fn();
-      Container.bind(KubeSecret).provider(providerFromValue({getData: mock_getSecretData}));
+      Container.bind(KubeSecret).factory(factoryFromValue({getData: mock_getSecretData}));
 
-      classUnderTest = Container.get(RegisterPipeline);
+      classUnderTest = Container.get(RegisterJenkinsPipelineImpl);
     });
 
     describe('executeRegisterPipeline()', () => {

@@ -1,9 +1,8 @@
-import {GetEndpoints, GetEndpointsImpl} from './endpoints';
 import {Container} from 'typescript-ioc';
+import {GetEndpointsImpl} from './endpoints';
+import {KubeIngress, OcpRoute} from '../../api/kubectl';
+import {factoryFromValue} from '../../testHelper';
 import Mock = jest.Mock;
-import {KubeIngress} from '../../api/kubectl/ingress';
-import {OcpRoute} from '../../api/kubectl/route';
-import {providerFromValue} from '../../testHelper';
 
 describe('ingress', () => {
   test('canary verifies test infrastructure', () => {
@@ -18,11 +17,11 @@ describe('ingress', () => {
 
     beforeEach(() => {
       mock_kubeGetAllUrls = jest.fn();
-      Container.bind(KubeIngress).provider(providerFromValue({getAllUrls: mock_kubeGetAllUrls}));
+      Container.bind(KubeIngress).factory(factoryFromValue({getAllUrls: mock_kubeGetAllUrls}));
       mock_ocpGetAllUrls = jest.fn();
-      Container.bind(OcpRoute).provider(providerFromValue({getAllUrls: mock_ocpGetAllUrls}));
+      Container.bind(OcpRoute).factory(factoryFromValue({getAllUrls: mock_ocpGetAllUrls}));
 
-      classUnderTest = Container.get(GetEndpoints);
+      classUnderTest = Container.get(GetEndpointsImpl);
     });
 
     describe('given getEndpoints()', () => {

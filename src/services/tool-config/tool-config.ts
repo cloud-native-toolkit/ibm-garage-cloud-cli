@@ -1,7 +1,6 @@
-import {ToolConfigOptions} from './tool-config-options.model';
 import {Inject} from 'typescript-ioc';
-import {ConfigMap, KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
-import {KubeMetadata} from '../../api/kubectl/kubernetes-resource-manager';
+import {ToolConfigOptions} from './tool-config-options.model';
+import {ConfigMap, KubeConfigMap, KubeSecret, Secret, KubeMetadata} from '../../api/kubectl';
 
 // {{- if and .Values.username .Values.password }}
 // apiVersion: v1

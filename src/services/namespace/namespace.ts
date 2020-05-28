@@ -1,39 +1,34 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Inject} from 'typescript-ioc';
 
-import {KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
+import {Namespace} from './namespace.api';
+import {NamespaceOptionsModel} from './namespace-options.model';
+import {CreateServiceAccount} from '../create-service-account';
 import {
-  AbstractKubernetesResourceManager,
+  AbstractKubeNamespace,
+  KubeConfigMap,
+  KubeNamespace,
+  KubePod,
+  KubeRole,
+  KubeRoleBinding,
+  KubeSecret,
+  KubeServiceAccount,
+  KubeTektonPipeline,
+  KubeTektonTask,
+  OcpProject,
+  Pod,
+  Secret,
+  ServiceAccount,
   KubeMetadata,
   ListOptions,
   QueryString
-} from '../../api/kubectl/kubernetes-resource-manager';
-import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
-import {AbstractKubeNamespace, KubeNamespace} from '../../api/kubectl/namespace';
-import {KubeRole} from '../../api/kubectl/role';
-import {KubeRoleBinding} from '../../api/kubectl/role-binding';
-import {KubeTektonTask} from "../../api/kubectl/tekton-task";
-import {KubeTektonPipeline} from "../../api/kubectl/tekton-pipeline";
+} from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
-import {OcpProject} from '../../api/kubectl/project';
-import {NamespaceOptionsModel} from './namespace-options.model';
-import {KubePod, Pod} from '../../api/kubectl/pod';
 import {ChildProcess} from '../../util/child-process';
-import {CreateServiceAccount} from '../create-service-account/create-service-account';
 
-export abstract class Namespace {
-  async abstract getCurrentProject(defaultValue?: string): Promise<string>;
+const noopNotifyStatus: (status: string) => void = () => {
+};
 
-  async abstract setCurrentProject(namespace: string);
-
-  async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
-
-  async abstract setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void);
-}
-
-const noopNotifyStatus: (status: string) => void = () => {};
-
-@Provides(Namespace)
-export class NamespaceImpl implements Namespace{
+export class NamespaceImpl implements Namespace {
   @Inject
   private namespaces: KubeNamespace;
   @Inject
@@ -75,7 +70,7 @@ export class NamespaceImpl implements Namespace{
 
         const value = stdout.toString()
           .trim()
-          .replace(/'/g,'');
+          .replace(/'/g, '');
 
         return value != 'default' ? value : defaultValue;
       }
@@ -223,24 +218,24 @@ export class NamespaceImpl implements Namespace{
   }
 
   containsPullSecretsMatchingPattern(serviceAccount: ServiceAccount, pattern: string): boolean {
-    const imagePullSecrets: Array<{name: string}> = serviceAccount.imagePullSecrets || [];
+    const imagePullSecrets: Array<{ name: string }> = serviceAccount.imagePullSecrets || [];
 
     const regex = new RegExp(pattern, 'g');
 
     return imagePullSecrets
-      .map((imagePullSecret: {name: string}) => imagePullSecret.name)
+      .map((imagePullSecret: { name: string }) => imagePullSecret.name)
       .some(name => regex.test(name));
   }
 
   async updateServiceAccountWithPullSecretsMatchingPattern(serviceAccount: ServiceAccount, pullSecretPattern: string): Promise<ServiceAccount> {
 
-    const pullSecrets: Array<{name: string}> = await this.listMatchingSecrets(pullSecretPattern, serviceAccount.metadata.namespace);
+    const pullSecrets: Array<{ name: string }> = await this.listMatchingSecrets(pullSecretPattern, serviceAccount.metadata.namespace);
 
     return Object.assign(
       {},
       serviceAccount,
       {
-        imagePullSecrets: pullSecrets.reduce((secrets: Array<{name: string}>, secret: {name: string}) => {
+        imagePullSecrets: pullSecrets.reduce((secrets: Array<{ name: string }>, secret: { name: string }) => {
           if (!secrets.includes(secret)) {
             secrets.push(secret);
           }
@@ -251,7 +246,7 @@ export class NamespaceImpl implements Namespace{
     );
   }
 
-  async listMatchingSecrets(pullSecretPattern: string, namespace): Promise<Array<{name: string}>> {
+  async listMatchingSecrets(pullSecretPattern: string, namespace): Promise<Array<{ name: string }>> {
 
     return (await this.secrets
       .list({
@@ -280,7 +275,8 @@ export class NamespaceImpl implements Namespace{
       try {
         notifyStatus('Copying Jenkins credentials');
         await this.copyJenkinsCredentials(templateNamespace, namespace);
-      } catch (err) {}
+      } catch (err) {
+      }
 
       if (clusterType === 'openshift') {
         notifyStatus('Adding privileged scc to jenkins serviceAccount');
@@ -348,7 +344,7 @@ export class NamespaceImpl implements Namespace{
 
   getServiceAccountSecretNames(serviceAccount: ServiceAccount = {} as any): string[] {
 
-    const serviceAccountSecrets: Array<{name: string}> = []
+    const serviceAccountSecrets: Array<{ name: string }> = []
       .concat(...(serviceAccount.secrets || []))
       .concat(...(serviceAccount.imagePullSecrets || []));
 

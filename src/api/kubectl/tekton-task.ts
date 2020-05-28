@@ -1,6 +1,6 @@
-import {Container, Provided, Provider} from 'typescript-ioc';
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
-import {AsyncKubeClient, KubeClient} from './client';
+import {AsyncKubeClient} from './client';
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface TektonTask extends KubeResource {
@@ -21,20 +21,18 @@ export interface TektonTask extends KubeResource {
   };
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubeTektonTask({
-      client: Container.get(AsyncKubeClient),
-      group: 'tekton.dev',
-      version: 'v1alpha1',
-      name: 'tasks',
-      kind: 'Task',
-      crd: true,
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubeTektonTask({
+    client: context.resolve(AsyncKubeClient),
+    group: 'tekton.dev',
+    version: 'v1alpha1',
+    name: 'tasks',
+    kind: 'Task',
+    crd: true,
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubeTektonTask extends AbstractKubernetesResourceManager<TektonTask> {
   constructor(props: Props) {
     super(props);

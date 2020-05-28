@@ -1,11 +1,9 @@
 import {Container} from 'typescript-ioc';
-import {Credentials, CredentialsImpl, Secrets} from './credentials';
+import {Credentials} from './credentials.api';
+import {CredentialsImpl} from './credentials';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
+import {factoryFromValue} from '../../testHelper';
 import Mock = jest.Mock;
-import {setField, providerFromValue} from '../../testHelper';
-import {KubeClient} from '../../api/kubectl/client';
-import {buildMockKubeClient} from '../../api/kubectl/testHelper';
-import {ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
 
 describe('credentials', () => {
   test('canary verifies test infrastructure', () => {
@@ -24,12 +22,12 @@ describe('credentials', () => {
 
     beforeEach(() => {
       secret_listData = jest.fn();
-      Container.bind(KubeSecret).provider(providerFromValue({
+      Container.bind(KubeSecret).factory(factoryFromValue({
         listData: secret_listData,
       }));
 
       configMap_listData = jest.fn();
-      Container.bind(KubeConfigMap).provider(providerFromValue({
+      Container.bind(KubeConfigMap).factory(factoryFromValue({
         listData: configMap_listData,
       }));
 

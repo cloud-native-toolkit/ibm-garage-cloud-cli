@@ -1,38 +1,47 @@
-import {Container, Provided, Provider} from 'typescript-ioc';
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
-import {AsyncKubeClient, KubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AsyncKubeClient} from './client';
+import {AbstractKubernetesResourceManager, KubeMetadata, KubeResource, Props} from './kubernetes-resource-manager';
 
-export interface TektonPipelineRun extends KubeResource {
+export interface TektonPipelineRun<M = KubeMetadata> extends KubeResource<M> {
   spec: {
-    pipelineRef?: {
-      name: string;
-    };
-    resources: Array<{
-      name: string;
-      resourceRef: {
-        name: string;
-      };
+    pipelineRef: {
+      name: string
+    }
+    resources?: Array<{
+      name: string
+      resourceRef?: {
+        name: string
+      }
+      resourceSpec?: {
+        type: string
+        params: Array<{
+          name: string
+          value: string
+        }>
+      }
+    }>
+    params?: Array<{
+      name: string,
+      value: string
     }>
     serviceAccountName?: string;
     timeout?: string;
-  };
+  }
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubeTektonPipelineRun({
-      client: Container.get(AsyncKubeClient),
-      group: 'tekton.dev',
-      version: 'v1alpha1',
-      name: 'pipelineruns',
-      kind: 'PipelineRun',
-      crd: true,
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubeTektonPipelineRun({
+    client: context.resolve(AsyncKubeClient),
+    group: 'tekton.dev',
+    version: 'v1alpha1',
+    name: 'pipelineruns',
+    kind: 'PipelineRun',
+    crd: true,
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubeTektonPipelineRun extends AbstractKubernetesResourceManager<TektonPipelineRun> {
   constructor(props: Props) {
     super(props);

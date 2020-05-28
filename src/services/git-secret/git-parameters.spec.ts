@@ -1,7 +1,7 @@
 import * as path from "path";
-import {Container} from 'typescript-ioc';
-import {GetGitParameters, GetGitParametersImpl} from './git-parameters';
-import {setField} from '../../testHelper';
+import { Container } from 'typescript-ioc';
+import {GetGitParametersImpl} from './git-parameters.impl';
+import { setField } from '../../testHelper';
 import Mock = jest.Mock;
 
 jest.mock('inquirer');
@@ -15,7 +15,7 @@ describe('git-parameters', () => {
     let classUnderTest: GetGitParametersImpl;
 
     beforeEach(() => {
-      classUnderTest = Container.get(GetGitParameters);
+      classUnderTest = Container.get(GetGitParametersImpl);
     });
 
     describe('getGitParameters()', () => {
@@ -107,7 +107,7 @@ describe('git-parameters', () => {
         const url = `https://${host}/${org}/${repo}.git`;
 
         test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo, host});
+          expect(classUnderTest.parseGitUrl(url)).toEqual({ url, org, repo, host });
         })
       });
 
@@ -118,7 +118,7 @@ describe('git-parameters', () => {
         const url = `https://${host}/${org}/${repo}.git`;
 
         test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({url, org, repo, host});
+          expect(classUnderTest.parseGitUrl(url)).toEqual({ url, org, repo, host });
         })
       });
 
@@ -130,7 +130,7 @@ describe('git-parameters', () => {
         const originalUrl = `https://github.com/${org}/${repo}`;
 
         test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({url, org, repo, host});
+          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({ url, org, repo, host });
         })
       });
 
@@ -142,7 +142,7 @@ describe('git-parameters', () => {
         const sshUrl = `git@${host}:${org}/${repo}.git`;
 
         test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(sshUrl)).toEqual({url, org, repo, host});
+          expect(classUnderTest.parseGitUrl(sshUrl)).toEqual({ url, org, repo, host });
         })
       });
 
@@ -154,7 +154,7 @@ describe('git-parameters', () => {
         const originalUrl = `git@${host}:${org}/${repo}.git`;
 
         test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({org, repo, url, host});
+          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({ org, repo, url, host });
         });
       });
 

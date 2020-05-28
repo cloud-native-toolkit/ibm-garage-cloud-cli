@@ -1,6 +1,6 @@
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
-import {Container, Provided, Provider} from 'typescript-ioc';
+import {BuildContext, Container, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
+import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface RoleRule {
   apiGroups: string[];
@@ -18,19 +18,17 @@ export interface Role extends KubeResource {
   rules: RoleRule[];
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubeRole({
-      client: Container.get(AsyncKubeClient),
-      group: 'rbac.authorization.k8s.io',
-      version: 'v1',
-      name: 'role',
-      kind: 'Role',
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubeRole({
+    client: context.resolve(AsyncKubeClient),
+    group: 'rbac.authorization.k8s.io',
+    version: 'v1',
+    name: 'role',
+    kind: 'Role',
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubeRole extends AbstractKubernetesResourceManager<Role> {
   constructor(props: Props) {
     super(props);

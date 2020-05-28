@@ -1,4 +1,4 @@
-import {Container, Provided, Provider} from 'typescript-ioc';
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import * as _ from 'lodash';
 
 import {AsyncKubeClient, KubeClient} from './client';
@@ -25,19 +25,17 @@ export interface Ingress extends KubeResource {
   status: any;
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubeIngress({
-      client: Container.get(AsyncKubeClient),
-      group: 'extension',
-      version: 'v1beta1',
-      name: 'ingress',
-      kind: 'Ingress',
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubeIngress({
+    client: context.resolve(AsyncKubeClient),
+    group: 'extension',
+    version: 'v1beta1',
+    name: 'ingress',
+    kind: 'Ingress',
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubeIngress extends AbstractKubernetesResourceManager<Ingress> {
   constructor(props: Props) {
     super(props);
@@ -76,12 +74,12 @@ export class KubeIngress extends AbstractKubernetesResourceManager<Ingress> {
     const urls = [].concat(...httpsUrls).concat(...httpUrls);
 
     return {
-      name: this.getLabel(ingress),
+      name: this.getNameFromLabels(ingress),
       urls
     };
   }
 
-  getLabel(ingress: Ingress): string {
+  getNameFromLabels(ingress: Ingress): string {
     const labels = [
       _.get(ingress, ['metadata', 'labels', 'app.kubernetes.io/name']),
       _.get(ingress, ['metadata', 'labels', 'app']),

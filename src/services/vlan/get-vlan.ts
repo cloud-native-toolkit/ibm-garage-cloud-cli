@@ -1,16 +1,10 @@
-import {Container, Inject, Provides} from 'typescript-ioc';
+import {Container, Inject} from 'typescript-ioc';
 import * as chalk from 'chalk';
 
 import {GetVlanOptions} from './get-vlan-options.model';
-import {getIBMCloudTargetInfo, IBMCloudTarget} from '../../api/ibmcloud/target';
-import {DataCenterVlans, IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
-import {Zones} from '../../api/ibmcloud/zones';
+import {DataCenterVlans, getIBMCloudTargetInfo, IBMCloudTarget, IBMCloudVlan, Vlans, Zones} from '../../api/ibmcloud';
 import {QuestionBuilder} from '../../util/question-builder';
-
-class VlanContainer {
-  private?: IBMCloudVlan;
-  public?: IBMCloudVlan;
-}
+import {GetVlan, NoVlansAvailable, TargetInfo, VlanContainer, VlanResult} from './get-vlan.api';
 
 // export interface FlattenedVlans {
 //   private_vlan_id?: string;
@@ -21,35 +15,9 @@ class VlanContainer {
 //   public_vlan_router_hostname?: string;
 // }
 
-export interface TargetInfo {
-  vlan_region: string;
-  resource_group_name: string;
-  cluster_name: string;
-}
+const noopNotifyStatus: (status: string) => void = () => {
+};
 
-export interface VlanResult extends VlanContainer, TargetInfo {
-  vlan_datacenter: string;
-}
-
-const noopNotifyStatus: (status: string) => void = () => {};
-
-export abstract class GetVlan {
-  async abstract getVlan(options: GetVlanOptions, notifyStatus?: (status: string) => void): Promise<VlanResult>;
-}
-
-export class NoVlansAvailable extends Error {
-  readonly errorType: 'NoVlansAvailable';
-
-  constructor(message: string) {
-    super(message);
-  }
-}
-
-export function isNoVlansAvailable(error: Error): error is NoVlansAvailable {
-  return (!!error) && ((error as NoVlansAvailable).errorType === 'NoVlansAvailable');
-}
-
-@Provides(GetVlan)
 export class GetVlanImpl implements GetVlan {
   @Inject
   private vlans: Vlans;
@@ -95,7 +63,7 @@ export class GetVlanImpl implements GetVlan {
     return vlanList;
   }
 
-  private async selectVlansFromDataCenter(dataCenter: string, vlanList: DataCenterVlans): Promise<{publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan}> {
+  private async selectVlansFromDataCenter(dataCenter: string, vlanList: DataCenterVlans): Promise<{ publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan }> {
     const vlanQuestion: QuestionBuilder<{ publicVlan: IBMCloudVlan, privateVlan: IBMCloudVlan }> = Container.get(QuestionBuilder);
     const {publicVlan, privateVlan} = await vlanQuestion
       .question({

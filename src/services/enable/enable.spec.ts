@@ -1,9 +1,9 @@
-import {Container, Provider} from 'typescript-ioc';
+import {Container} from 'typescript-ioc';
 import * as superagent from 'superagent';
 import * as YAML from 'js-yaml';
 
 import {EnablePipelineImpl} from './enable';
-import {mockField, providerFromValue} from '../../testHelper';
+import {factoryFromValue, mockField} from '../../testHelper';
 import {QuestionBuilder} from '../../util/question-builder';
 import Mock = jest.Mock;
 
@@ -22,7 +22,7 @@ describe('enable', () => {
         prompt: jest.fn(),
         question: jest.fn().mockReturnThis(),
       };
-      Container.bind(QuestionBuilder).provider(providerFromValue(questionBuilder));
+      Container.bind(QuestionBuilder).factory(factoryFromValue(questionBuilder));
 
       classUnderTest = Container.get(EnablePipelineImpl);
     });

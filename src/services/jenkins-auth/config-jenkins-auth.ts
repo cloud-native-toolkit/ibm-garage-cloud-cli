@@ -1,10 +1,10 @@
-import {Container, Inject, Provides} from 'typescript-ioc';
+import {Container, Inject} from 'typescript-ioc';
 
+import {JenkinsAuth} from './config-jenkins-auth.api';
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {GenerateToken, GenerateTokenOptions} from '../generate-token';
-import {KubeSecret} from '../../api/kubectl';
-import {KubeIngress} from '../../api/kubectl/ingress';
-import {DefaultBackend, InClusterBackend, KubeBackend} from '../../api/kubectl/client';
+import {KubeIngress, KubeSecret, KubeBackend} from '../../api/kubectl';
+import {DefaultBackend, InClusterBackend} from '../../api/kubectl/client.backend';
 
 interface JenkinsSecret {
   'jenkins-admin-password': string;
@@ -22,12 +22,6 @@ interface GenerateAuthSecret {
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-export abstract class JenkinsAuth {
-  abstract isAvailable(): boolean;
-  async abstract configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus?: (status: string) => void);
-}
-
-@Provides(JenkinsAuth)
 export class JenkinsAuthImpl implements JenkinsAuth {
   @Inject
   private kubeSecret: KubeSecret;

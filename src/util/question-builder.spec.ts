@@ -1,7 +1,7 @@
 import {Container} from 'typescript-ioc';
 import {prompt} from 'inquirer';
 
-import {QuestionBuilderImpl} from './question-builder';
+import {QuestionBuilderImpl} from './question-builder.impl';
 import {mockField} from '../testHelper';
 import Mock = jest.Mock;
 
@@ -163,7 +163,7 @@ describe('question-builder', () => {
 
     describe('when choice is neither a string nor ChoiceType', () => {
       test('then return undefined', async () => {
-        expect(classUnderTest.mapChoiceTypeToValue({key: 'not a ChoiceType'})).toBeUndefined();
+        expect(classUnderTest.mapChoiceTypeToValue({key: 'not a ChoiceType'} as any)).toBeUndefined();
       });
     });
   });

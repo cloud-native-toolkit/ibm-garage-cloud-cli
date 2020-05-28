@@ -1,9 +1,10 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
 
 import {KubeClient} from '../../api/kubectl/client';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {ListOptions, QueryString} from '../../api/kubectl/kubernetes-resource-manager';
+import {Credentials} from './credentials.api';
 
 export interface ComponentCredentials {
   user?: string;
@@ -77,11 +78,6 @@ type FlattenedInfo =
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-export abstract class Credentials {
-  async abstract getCredentials(namespace?: string, notifyStatus?: (status: string) => void): Promise<Secrets>;
-}
-
-@Provides(Credentials)
 export class CredentialsImpl implements Credentials {
   @Inject
   private kubeSecret: KubeSecret;

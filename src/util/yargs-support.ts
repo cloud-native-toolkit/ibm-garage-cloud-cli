@@ -58,7 +58,7 @@ export class DefaultOptionBuilder<T> {
           alias: ['region', 'r'],
           describe: options.describe || 'The IBM Cloud region for the login. The value defaults to "us-south" if not provided',
           required: !options.optional,
-          type: 'string',
+          type: 'string' as any,
         },
         options.default ? {default: options.default} : {}
         )
@@ -158,7 +158,7 @@ export class DefaultOptionBuilder<T> {
           alias: ['namespace', 'n'],
           required: !options.optional,
           describe: options.describe || 'The cluster namespace (env) into which the image will be deployed. Can also be provided as an environment property',
-          type: 'string',
+          type: 'string' as any,
         },
         options.default ? {default: options.default} : {}
       )
