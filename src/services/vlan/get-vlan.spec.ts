@@ -1,8 +1,8 @@
-import {GetVlan, GetVlanImpl, TargetInfo} from './get-vlan';
-import {IBMCloudVlan, Vlans} from '../../api/ibmcloud/vlans';
 import {Container} from 'typescript-ioc';
-import {setField, providerFromValue} from '../../testHelper';
-import {Zones} from '../../api/ibmcloud/zones';
+import {TargetInfo} from './get-vlan.api';
+import {GetVlanImpl} from './get-vlan';
+import {IBMCloudVlan, Vlans, Zones} from '../../api/ibmcloud';
+import {factoryFromValue, setField} from '../../testHelper';
 import Mock = jest.Mock;
 
 describe.skip('get-vlan', () => {
@@ -18,12 +18,12 @@ describe.skip('get-vlan', () => {
 
     beforeEach(() => {
       mock_getZones = jest.fn();
-      Container.bind(Zones).provider(providerFromValue({getZones: mock_getZones}));
+      Container.bind(Zones).factory(factoryFromValue({getZones: mock_getZones}));
 
       mock_getVlans = jest.fn();
-      Container.bind(Vlans).provider(providerFromValue({getVlans: mock_getVlans}));
+      Container.bind(Vlans).factory(factoryFromValue({getVlans: mock_getVlans}));
 
-      classUnderTest = Container.get(GetVlan);
+      classUnderTest = Container.get(GetVlanImpl);
     });
 
     test('classUnderTest should be defined', () => {

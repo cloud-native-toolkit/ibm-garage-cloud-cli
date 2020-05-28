@@ -4,9 +4,9 @@ import ora from 'ora';
 import * as YAML from 'json2yaml';
 
 import {CommandLineOptions} from '../model';
+import {Credentials} from '../services/credentials';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {checkKubeconfig} from '../util/kubernetes';
-import {Credentials} from '../services/credentials/credentials';
 
 export const command = 'credentials';
 export const desc = 'Lists the urls and credentials for the tools deployed to the cluster';

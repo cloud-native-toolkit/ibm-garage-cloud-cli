@@ -1,17 +1,12 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
 
 import {ChildProcess} from '../../util/child-process';
 import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
 import {KubeRole, Role, RoleRule} from '../../api/kubectl/role';
 import {KubeRoleBinding, RoleBinding} from '../../api/kubectl/role-binding';
+import {CreateServiceAccount} from './create-service-account.api';
 
-export abstract class CreateServiceAccount {
-  async abstract createOpenShift(namespace: string, name: string, sccs?: string[], roles?: string[], secrets?: string[]): Promise<string>;
-  async abstract createKubernetes(namespace: string, name: string, rules?: RoleRule[]): Promise<string>;
-}
-
-@Provides(CreateServiceAccount)
 export class CreateServiceAccountImpl implements CreateServiceAccount {
   @Inject
   serviceAccount: KubeServiceAccount;

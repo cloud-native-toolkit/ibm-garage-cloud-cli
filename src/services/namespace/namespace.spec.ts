@@ -1,15 +1,19 @@
 import {Container} from 'typescript-ioc';
-import {Namespace, NamespaceImpl} from './namespace';
-import Mock = jest.Mock;
-import {mockField, providerFromValue, setField} from '../../testHelper';
-import {KubeSecret, Secret} from '../../api/kubectl';
-import {KubeNamespace} from '../../api/kubectl/namespace';
-import {KubeServiceAccount, ServiceAccount} from '../../api/kubectl/service-account';
-import {KubeRole} from '../../api/kubectl/role';
-import {KubeRoleBinding} from '../../api/kubectl/role-binding';
+import {NamespaceImpl} from './namespace';
+import {factoryFromValue, mockField} from '../../testHelper';
+import {
+  KubeNamespace,
+  KubeRole,
+  KubeRoleBinding,
+  KubeSecret,
+  KubeServiceAccount,
+  Secret,
+  ServiceAccount
+} from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
 import {NamespaceOptionsModel} from './namespace-options.model';
 import {ChildProcess} from '../../util/child-process';
+import Mock = jest.Mock;
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -34,14 +38,14 @@ describe('namespace', () => {
   let childProcess_exec: Mock;
   beforeEach(() => {
     getClusterType = jest.fn();
-    Container.bind(ClusterType).provider(providerFromValue({
+    Container.bind(ClusterType).factory(factoryFromValue({
       getClusterType
     }));
 
     kubeNamespace_create = jest.fn();
     kubeNamespace_exists = jest.fn();
 
-    Container.bind(KubeNamespace).provider(providerFromValue({
+    Container.bind(KubeNamespace).factory(factoryFromValue({
       create: kubeNamespace_create,
       exists: kubeNamespace_exists,
     }));
@@ -50,7 +54,7 @@ describe('namespace', () => {
     serviceAccounts_update = jest.fn();
     serviceAccounts_copy = jest.fn();
     serviceAccounts_exists = jest.fn();
-    Container.bind(KubeServiceAccount).provider(providerFromValue({
+    Container.bind(KubeServiceAccount).factory(factoryFromValue({
       get: serviceAccounts_get,
       update: serviceAccounts_update,
       copy: serviceAccounts_copy,
@@ -59,31 +63,31 @@ describe('namespace', () => {
 
     secrets_list = jest.fn();
     secrets_copy = jest.fn();
-    Container.bind(KubeSecret).provider(providerFromValue({
+    Container.bind(KubeSecret).factory(factoryFromValue({
       list: secrets_list,
       copy: secrets_copy,
     }));
 
     roles_copy = jest.fn();
     roles_addRules = jest.fn();
-    Container.bind(KubeRole).provider(providerFromValue({
+    Container.bind(KubeRole).factory(factoryFromValue({
       copy: roles_copy,
       addRules: roles_addRules,
     }));
 
     roleBindings_copy = jest.fn();
     roleBindings_addSubject = jest.fn();
-    Container.bind(KubeRoleBinding).provider(providerFromValue({
+    Container.bind(KubeRoleBinding).factory(factoryFromValue({
       copy: roleBindings_copy,
       addSubject: roleBindings_addSubject,
     }));
 
     childProcess_exec = jest.fn();
-    Container.bind(ChildProcess).provider(providerFromValue({
+    Container.bind(ChildProcess).factory(factoryFromValue({
       exec: childProcess_exec
     }));
 
-    classUnderTest = Container.get(Namespace);
+    classUnderTest = Container.get(NamespaceImpl);
   });
 
   test('should exist', () => {
@@ -296,7 +300,7 @@ describe('namespace', () => {
     let buildPullSecretListOptions: Mock;
     beforeEach(() => {
       copyAll = jest.fn();
-      Container.bind(KubeSecret).provider(providerFromValue({
+      Container.bind(KubeSecret).factory(factoryFromValue({
         copyAll,
       }));
 

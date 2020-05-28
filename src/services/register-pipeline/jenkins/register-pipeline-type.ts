@@ -1,5 +1,5 @@
-import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {GitParams} from '../git-secret';
+import {RegisterPipelineOptions} from '../register-pipeline.api';
+import {GitParams} from '../../git-secret';
 
 export abstract class RegisterPipelineType {
   async abstract setupDefaultOptions(): Promise<Partial<RegisterPipelineOptions>>;

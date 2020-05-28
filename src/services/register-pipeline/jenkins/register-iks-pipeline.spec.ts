@@ -1,10 +1,10 @@
 import {Container} from 'typescript-ioc';
 
 import {RegisterIksPipeline} from './register-iks-pipeline';
-import {KubeSecret} from '../../api/kubectl';
-import {providerFromValue} from '../../testHelper';
-import {FsPromises} from '../../util/file-util';
+import {KubeSecret} from '../../../api/kubectl';
+import {FsPromises} from '../../../util/file-util';
 import Mock = jest.Mock;
+import {factoryFromValue} from '../../../testHelper';
 
 jest.mock('superagent');
 const superagent = require('superagent');
@@ -19,10 +19,10 @@ describe('register-iks-pipeline', () => {
     let mock_readFile: Mock;
 
     beforeEach(() => {
-      Container.bind(KubeSecret).provider(providerFromValue({}));
+      Container.bind(KubeSecret).factory(factoryFromValue({}));
 
       mock_readFile = jest.fn();
-      Container.bind(FsPromises).provider(providerFromValue({readFile: mock_readFile}));
+      Container.bind(FsPromises).factory(factoryFromValue({readFile: mock_readFile}));
 
       classUnderTest = Container.get(RegisterIksPipeline);
     });

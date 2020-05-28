@@ -1,7 +1,7 @@
-import {CreateGitSecret, CreateGitSecretImpl} from './create-git-secret';
 import {Container} from 'typescript-ioc';
+import {CreateGitSecretImpl} from './create-git-secret.impl';
 import {FsPromises} from '../../util/file-util';
-import {providerFromValue} from '../../testHelper';
+import {factoryFromValue} from '../../testHelper';
 import Mock = jest.Mock;
 
 describe('create-git-secret', () => {
@@ -16,7 +16,7 @@ describe('create-git-secret', () => {
 
     beforeEach(() => {
       mock_readFilePromise = jest.fn();
-      Container.bind(FsPromises).provider(providerFromValue({readFile: mock_readFilePromise}));
+      Container.bind(FsPromises).factory(factoryFromValue({readFile: mock_readFilePromise}));
 
       classUnderTest = Container.get(CreateGitSecretImpl);
     });

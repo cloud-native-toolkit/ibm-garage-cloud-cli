@@ -1,12 +1,7 @@
-import {Inject, Provides, Singleton} from 'typescript-ioc';
-import {KubeIngress} from '../../api/kubectl/ingress';
-import {KubeConfigMap} from '../../api/kubectl';
+import {Inject} from 'typescript-ioc';
+import {GetDashboardUrl} from './get-dashboard-url.api';
+import {KubeConfigMap, KubeIngress} from '../../api/kubectl';
 
-export abstract class GetDashboardUrl {
-  async abstract getUrl(namespace: string): Promise<string>;
-}
-
-@Provides(GetDashboardUrl)
 export class GetDashboardUrlImpl implements GetDashboardUrl {
   @Inject
   kubeIngress: KubeIngress;

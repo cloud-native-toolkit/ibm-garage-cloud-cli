@@ -1,14 +1,9 @@
-import {Inject, Provides} from 'typescript-ioc';
-import {KubeIngress} from '../../api/kubectl/ingress';
-import {OcpRoute} from '../../api/kubectl/route';
+import {Inject} from 'typescript-ioc';
+import {GetEndpoints} from './endpoints.api';
+import {KubeIngress, OcpRoute} from '../../api/kubectl';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-export abstract class GetEndpoints {
-  async abstract getEndpoints(namespace?: string, notifyStatus?: (status: string) => void): Promise<Array<{name: string, url: string}>>;
-}
-
-@Provides(GetEndpoints)
 export class GetEndpointsImpl implements GetEndpoints {
   @Inject
   private kubeIngress: KubeIngress;

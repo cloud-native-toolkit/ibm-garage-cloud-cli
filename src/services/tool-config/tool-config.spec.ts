@@ -1,9 +1,8 @@
-import {ToolsConfig} from './tool-config';
 import {Container} from 'typescript-ioc';
+import {ToolsConfig} from './tool-config';
+import {KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
+import {factoryFromValue, setField} from '../../testHelper';
 import Mock = jest.Mock;
-import {ConfigMap, KubeConfigMap, KubeSecret, Secret} from '../../api/kubectl';
-import {setField, providerFromValue} from '../../testHelper';
-import {mocked} from 'ts-jest';
 
 describe('tool-config', () => {
   test('canary verifies test infrastructure', () => {
@@ -17,10 +16,10 @@ describe('tool-config', () => {
   beforeEach(() => {
     kubeConfigMap_createOrUpdate = jest.fn();
     kubeSecret_createOrUpdate = jest.fn();
-    Container.bind(KubeConfigMap).provider(providerFromValue({
+    Container.bind(KubeConfigMap).factory(factoryFromValue({
       createOrUpdate: kubeConfigMap_createOrUpdate,
     }));
-    Container.bind(KubeSecret).provider(providerFromValue({
+    Container.bind(KubeSecret).factory(factoryFromValue({
       createOrUpdate: kubeSecret_createOrUpdate,
     }));
 

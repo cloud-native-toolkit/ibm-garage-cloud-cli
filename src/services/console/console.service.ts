@@ -1,9 +1,8 @@
-import {GetConsoleUrlApi} from './console.api';
-import {ClusterType} from '../../util/cluster-type';
 import {Inject} from 'typescript-ioc';
-import {OcpRoute} from '../../api/kubectl/route';
-import {KubeConfigMap} from '../../api/kubectl';
-import {ChildProcess, ExecResult} from '../../util/child-process';
+import {GetConsoleUrlApi} from './console.api';
+import {KubeConfigMap, OcpRoute} from '../../api/kubectl';
+import {ClusterType} from '../../util/cluster-type';
+import {ChildProcess} from '../../util/child-process';
 
 export class GetConsoleUrlService implements GetConsoleUrlApi {
   @Inject

@@ -1,5 +1,5 @@
 import Mock = jest.Mock;
-import {mockField, providerFromValue} from '../../testHelper';
+import {factoryFromValue, mockField} from '../../testHelper';
 import {YqWriteImpl} from './yq-write';
 import {Container} from 'typescript-ioc';
 import {YqWriteOptions} from './yq-write.options';
@@ -21,7 +21,7 @@ describe('yq-write', () => {
       deleteFile: jest.fn(),
       copyFile: jest.fn(),
     };
-    Container.bind(FsPromises).provider(providerFromValue(fsMock));
+    Container.bind(FsPromises).factory(factoryFromValue(fsMock));
 
     classUnderTest = Container.get(YqWriteImpl);
   });

@@ -1,51 +1,27 @@
 import {Client1_13 as Client} from 'kubernetes-client';
-import {Container, Inject, Provided, Provider, Provides} from 'typescript-ioc';
+import {BuildContext, Container, Factory, ObjectFactory} from 'typescript-ioc';
+
+import {KubeBackend} from './client.api';
+import {DefaultBackend} from './client.backend';
 const openshiftRestClient = require('openshift-rest-client').OpenshiftClient;
 
-const Request = require('kubernetes-client/backends/request');
+Container.bind(KubeBackend).to(DefaultBackend);
 
 export class KubeClient extends Client {}
 
 export class OcpClient extends Client {}
 
-export abstract class KubeBackend {
-  abstract getValue(): any;
+const kubeClientFactory: ObjectFactory = (context: BuildContext): AsyncKubeClient => {
+  const backend: KubeBackend = context.resolve(KubeBackend);
+
+  return new AsyncKubeClient(new Client(backend.getValue()));
 }
 
-export class InClusterBackend implements KubeBackend {
-  getValue(): any {
-    return {
-      backend: new Request(Request.config.getInCluster())
-    };
-  }
+const ocpClientFactory: ObjectFactory = (): AsyncOcpClient => {
+  return new AsyncOcpClient(openshiftRestClient());
 }
 
-@Provides(KubeBackend)
-export class DefaultBackend implements KubeBackend {
-  getValue(): any {
-    return { version: '1.13' };
-  }
-}
-
-class KubeClientProvider implements Provider {
-  @Inject
-  backend: KubeBackend;
-
-  get(): AsyncKubeClient {
-    return new AsyncKubeClient(new Client(this.backend.getValue()));
-  }
-}
-
-class OcpClientProvider implements Provider {
-  @Inject
-  backend: KubeBackend;
-
-  get(): AsyncOcpClient {
-    return new AsyncOcpClient(openshiftRestClient());
-  }
-}
-
-@Provided(Container.get(KubeClientProvider))
+@Factory(kubeClientFactory)
 export class AsyncKubeClient {
   constructor(private _client: KubeClient) {
   }
@@ -55,11 +31,7 @@ export class AsyncKubeClient {
   }
 }
 
-export function buildKubeClient() {
-  return Container.get(KubeClient)
-}
-
-@Provided(Container.get(OcpClientProvider))
+@Factory(ocpClientFactory)
 export class AsyncOcpClient {
   constructor(private _client: Promise<OcpClient>) {
   }

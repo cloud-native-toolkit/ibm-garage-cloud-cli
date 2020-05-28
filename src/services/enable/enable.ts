@@ -1,51 +1,22 @@
-import {Container, Inject, Provides} from 'typescript-ioc';
+import {Container, Inject} from 'typescript-ioc';
 import * as superagent from 'superagent';
 import * as YAML from 'js-yaml';
 import * as tar from 'tar';
 import * as rimraf from 'rimraf';
-
-import {EnablePipelineModel} from './enable.model';
-import {QuestionBuilder} from '../../util/question-builder';
 import {join} from 'path';
 import {existsSync, mkdirSync, readdir} from 'fs';
+
+import {
+  EnablePipeline,
+  EnablePipelineResult,
+  PipelineIndex,
+  PipelineIndicies,
+  PipelineVersionNotFound
+} from './enable.api';
+import {EnablePipelineModel} from './enable.model';
+import {QuestionBuilder} from '../../util/question-builder';
 import {FsPromises} from '../../util/file-util';
 
-export abstract class EnablePipeline {
-  async abstract enable(options: EnablePipelineModel): Promise<EnablePipelineResult>;
-}
-
-export interface PipelineIndex {
-  name?: string;
-  url?: string;
-  version?: string;
-}
-
-export interface PipelineIndicies {
-  version?: string;
-  pipelines?: {
-    [pipeline: string]: PipelineIndex;
-  };
-  branches?: {
-    [branch: string]: {
-      [pipeline: string]: PipelineIndex[];
-    }
-  }
-}
-
-export interface EnablePipelineResult {
-  repository: string;
-  pipeline: PipelineIndex;
-  branch: string;
-  filesChanged: string[];
-}
-
-export class PipelineVersionNotFound extends Error {
-  constructor(message, public readonly branch: string, public readonly pipeline, public readonly versions: string[]) {
-    super(message);
-  }
-}
-
-@Provides(EnablePipeline)
 export class EnablePipelineImpl implements EnablePipeline {
   private debug = false;
   @Inject

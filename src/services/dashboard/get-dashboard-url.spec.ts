@@ -1,10 +1,8 @@
-import {GetDashboardUrl, GetDashboardUrlImpl} from './get-dashboard-url';
 import {Container} from 'typescript-ioc';
-import {buildOptionWithEnvDefault} from '../../util/yargs-support';
+import {GetDashboardUrlImpl} from './get-dashboard-url';
+import {KubeIngress, KubeConfigMap} from '../../api/kubectl';
+import {factoryFromValue} from '../../testHelper';
 import Mock = jest.Mock;
-import {KubeIngress} from '../../api/kubectl/ingress';
-import {providerFromValue} from '../../testHelper';
-import {KubeConfigMap} from '../../api/kubectl';
 
 describe('get-dashboard-url', () => {
   test('canary verifies test infrastructure', () => {
@@ -16,13 +14,13 @@ describe('get-dashboard-url', () => {
   let kubeConfigMap_getData: Mock;
   beforeEach(() => {
     kubeIngress_getUrls = jest.fn();
-    Container.bind(KubeIngress).provider(providerFromValue({
+    Container.bind(KubeIngress).factory(factoryFromValue({
       getUrls: kubeIngress_getUrls,
     }));
     kubeIngress_getUrls.mockResolvedValue([]);
 
     kubeConfigMap_getData = jest.fn();
-    Container.bind(KubeConfigMap).provider(providerFromValue({
+    Container.bind(KubeConfigMap).factory(factoryFromValue({
       getData: kubeConfigMap_getData,
     }));
 

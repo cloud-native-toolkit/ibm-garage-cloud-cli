@@ -1,11 +1,10 @@
-import {Container, Provides} from 'typescript-ioc';
+import {Container} from 'typescript-ioc';
 import {Browser, JSHandle, launch, Page} from 'puppeteer';
 
 import {GenerateToken} from './generate-token';
 import {GenerateTokenOptions} from './generate-token-options.model';
 import {timer} from '../../util/timer';
 
-@Provides(GenerateToken)
 export class GenerateTokenImpl implements GenerateToken {
 
   isAvailable(): boolean {
@@ -78,7 +77,7 @@ export class GenerateTokenImpl implements GenerateToken {
       return !!button;
     });
 
-    const buttonClicked: boolean = await buttonHandle.jsonValue();
+    const buttonClicked: boolean = (await buttonHandle.jsonValue()) as any;
     if (!buttonClicked) {
       const content = await page.browserContext();
       console.log('content ', content);
