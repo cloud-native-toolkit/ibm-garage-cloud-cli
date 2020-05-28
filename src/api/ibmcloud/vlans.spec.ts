@@ -1,7 +1,8 @@
 import {Container} from 'typescript-ioc';
-import {IBMCloudVlan, Vlans, VlansImpl} from './vlans';
+import {IBMCloudVlan, Vlans} from './vlans';
+import {VlansImpl} from './vlans.impl';
 import {ChildProcess} from '../../util/child-process';
-import {setField, providerFromValue} from '../../testHelper';
+import {factoryFromValue, setField} from '../../testHelper';
 import Mock = jest.Mock;
 
 describe('ibmcloud-vlans', () => {
@@ -16,11 +17,11 @@ describe('ibmcloud-vlans', () => {
     beforeEach(() => {
       mock_execPromise = jest.fn();
 
-      Container.bind(ChildProcess).provider(providerFromValue({
+      Container.bind(ChildProcess).factory(factoryFromValue({
         exec: mock_execPromise
       }));
 
-      classUnderTest = Container.get(Vlans);
+      classUnderTest = Container.get(VlansImpl);
     });
 
     describe('given getVlans()', () => {

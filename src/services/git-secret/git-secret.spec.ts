@@ -1,9 +1,10 @@
 import {Container} from 'typescript-ioc';
 import * as _ from 'lodash';
 
-import {GitSecret, GitSecretImpl, SECRET_NAME} from './git-secret';
+import {SECRET_NAME} from './git-secret.api';
+import {GitSecretImpl} from './git-secret.impl';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
-import {setField, providerFromValue} from '../../testHelper';
+import {factoryFromValue, setField} from '../../testHelper';
 import {GitParams} from './git-params.model';
 import Mock = jest.Mock;
 
@@ -23,7 +24,7 @@ describe('create-git-secret', () => {
       mock_createOrUpdateSecret = jest.fn();
       Container
         .bind(KubeSecret)
-        .provider(providerFromValue({
+        .factory(factoryFromValue({
           exists: mock_existsSecret,
           createOrUpdate: mock_createOrUpdateSecret,
         }));
@@ -31,7 +32,7 @@ describe('create-git-secret', () => {
       mock_createOrUpdateConfig = jest.fn();
       Container
         .bind(KubeConfigMap)
-        .provider(providerFromValue({
+        .factory(factoryFromValue({
           createOrUpdate: mock_createOrUpdateConfig,
         }));
 

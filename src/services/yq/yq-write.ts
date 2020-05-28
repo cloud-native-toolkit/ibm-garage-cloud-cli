@@ -1,16 +1,12 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
 import {query} from 'jsonpath';
 import * as YAML from 'js-yaml';
 
 import {YqWriteOptions} from './yq-write.options';
 import {FsPromises} from '../../util/file-util';
+import {YqWrite} from './yq-write.api';
 
-export abstract class YqWrite {
-  abstract async write(options: YqWriteOptions): Promise<any>;
-}
-
-@Provides(YqWrite)
 export class YqWriteImpl implements YqWrite {
   @Inject
   fs: FsPromises;
@@ -29,7 +25,7 @@ export class YqWriteImpl implements YqWrite {
 
   async readYamlFile(filename: string): Promise<object> {
     return this.fs.readFile(filename).then((contents: Buffer) => {
-      return YAML.safeLoad(contents.toString());
+      return YAML.safeLoad(contents.toString()) as object;
     });
   }
 

@@ -1,6 +1,6 @@
+import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
+import {AsyncKubeClient} from './client';
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
-import {Container, Provided, Provider} from 'typescript-ioc';
-import {AsyncKubeClient, KubeClient} from './client';
 
 export interface RoleRef {
   apiGroup: string;
@@ -19,19 +19,17 @@ export interface RoleBinding extends KubeResource {
   subjects: RoleSubject[];
 }
 
-const provider: Provider = {
-  get: () => {
-    return new KubeRoleBinding({
-      client: Container.get(AsyncKubeClient),
-      group: 'rbac.authorization.k8s.io',
-      version: 'v1',
-      name: 'rolebindings',
-      kind: 'RoleBinding',
-    });
-  }
+const factory: ObjectFactory = (context: BuildContext) => {
+  return new KubeRoleBinding({
+    client: context.resolve(AsyncKubeClient),
+    group: 'rbac.authorization.k8s.io',
+    version: 'v1',
+    name: 'rolebindings',
+    kind: 'RoleBinding',
+  });
 };
 
-@Provided(provider)
+@Factory(factory)
 export class KubeRoleBinding extends AbstractKubernetesResourceManager<RoleBinding> {
   constructor(props: Props) {
     super(props);

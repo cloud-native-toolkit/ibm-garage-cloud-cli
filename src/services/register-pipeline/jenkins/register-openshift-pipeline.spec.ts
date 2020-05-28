@@ -5,10 +5,10 @@ import * as YAML from 'js-yaml';
 jest.mock('inquirer');
 
 import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
-import {setField, providerFromValue} from '../../testHelper';
-import {FsPromises} from '../../util/file-util';
-import {OpenshiftCommands} from '../../api/openshift';
-import {GitParams} from '../git-secret';
+import {factoryFromValue, setField} from '../../../testHelper';
+import {FsPromises} from '../../../util/file-util';
+import {OpenshiftCommands} from '../../../api/openshift';
+import {GitParams} from '../../git-secret';
 
 describe('register-openshift-pipeline', () => {
   test('canary verifies test infrastructure', () => {
@@ -27,10 +27,10 @@ describe('register-openshift-pipeline', () => {
       mock_create = jest.fn();
       mock_startBuild = jest.fn();
       mock_apply = jest.fn();
-      Container.bind(OpenshiftCommands).provider(providerFromValue({create: mock_create, startBuild: mock_startBuild, apply: mock_apply}));
+      Container.bind(OpenshiftCommands).factory(factoryFromValue({create: mock_create, startBuild: mock_startBuild, apply: mock_apply}));
 
       mock_writeFile = jest.fn();
-      Container.bind(FsPromises).provider(providerFromValue({writeFile: mock_writeFile}));
+      Container.bind(FsPromises).factory(factoryFromValue({writeFile: mock_writeFile}));
 
       classUnderTest = Container.get(RegisterOpenshiftPipeline);
     });

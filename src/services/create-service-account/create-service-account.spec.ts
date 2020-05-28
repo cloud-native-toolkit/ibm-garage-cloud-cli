@@ -1,6 +1,5 @@
 import {CreateServiceAccountImpl} from './create-service-account';
 import {Container} from 'typescript-ioc';
-import {buildOptionWithEnvDefault} from '../../util/yargs-support';
 
 describe('create-service-account', () => {
   test('canary verifies test infrastructure', () => {

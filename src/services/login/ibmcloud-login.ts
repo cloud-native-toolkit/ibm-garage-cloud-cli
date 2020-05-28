@@ -2,8 +2,7 @@ import * as path from 'path';
 import {writeFile} from 'fs';
 
 import {IbmCloudLogin} from './ibmcloud-login.model';
-import {login} from '../../api/ibmcloud/login';
-import {configCluster} from '../../api/ibmcloud/clusterConfig';
+import {login, configCluster} from '../../api/ibmcloud';
 
 export async function ibmcloudLogin(options: IbmCloudLogin): Promise<{kubeConfig: string} | undefined> {
   await login(options);

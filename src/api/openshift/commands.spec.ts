@@ -3,7 +3,7 @@ import Mock = jest.Mock;
 
 import {OpenshiftCommands} from './commands';
 import {ChildProcess} from '../../util/child-process';
-import {providerFromValue} from '../../testHelper';
+import {factoryFromValue} from '../../testHelper';
 
 describe('commands', () => {
   test('canary verifies test infrastructure', () => {
@@ -16,7 +16,7 @@ describe('commands', () => {
 
     beforeEach(() => {
       mock_spawnPromise = jest.fn();
-      Container.bind(ChildProcess).provider(providerFromValue({spawn: mock_spawnPromise}));
+      Container.bind(ChildProcess).factory(factoryFromValue({spawn: mock_spawnPromise}));
 
       classUnderTest = Container.get(OpenshiftCommands);
     });

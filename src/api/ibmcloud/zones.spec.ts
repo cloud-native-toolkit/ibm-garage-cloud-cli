@@ -1,7 +1,8 @@
 import {Container} from 'typescript-ioc';
-import {Zones, ZonesImpl} from './zones';
-import {setField, providerFromValue} from '../../testHelper';
+import {Zones} from './zones';
+import {ZonesImpl} from './zones.impl';
 import {ChildProcess} from '../../util/child-process';
+import {factoryFromValue, setField} from '../../testHelper';
 
 describe('ibmcloud-zones', () => {
   test('canary verifies test infrastructure', () => {
@@ -15,9 +16,9 @@ describe('ibmcloud-zones', () => {
 
     beforeEach(() => {
       mock_execPromise = jest.fn();
-      Container.bind(ChildProcess).provider(providerFromValue({exec: mock_execPromise}));
+      Container.bind(ChildProcess).factory(factoryFromValue({exec: mock_execPromise}));
 
-      classUnderTest = Container.get(Zones);
+      classUnderTest = Container.get(Zones) as ZonesImpl;
     });
 
     describe('given getZones()', () => {

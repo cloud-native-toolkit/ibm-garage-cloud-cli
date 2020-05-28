@@ -1,16 +1,12 @@
-import {Provider} from 'typescript-ioc';
+import {BuildContext, ObjectFactory} from 'typescript-ioc';
 import Mock = jest.Mock;
 
-export function providerFromBuilder<T>(builder: () => T): Provider {
-  return {
-    get: () => builder()
-  };
+export function factoryFromBuilder<T>(builder: (context: BuildContext) => T): ObjectFactory {
+  return (context: BuildContext) => builder(context);
 }
 
-export function providerFromValue<T>(value: T): Provider {
-  return {
-    get: () => value
-  };
+export function factoryFromValue<T>(value: T): ObjectFactory {
+  return () => value;
 }
 
 export function setField<T>(obj: T, field: keyof T, mock: Mock): () => void {

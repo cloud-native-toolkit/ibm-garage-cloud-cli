@@ -2,7 +2,7 @@ import {Container} from 'typescript-ioc';
 
 import {encode as base64encode} from '../../util/base64';
 import {KubeClient} from './client';
-import {mockKubeClientProvider} from './testHelper';
+import {mockKubeClientFactory} from './testHelper';
 import {KubeSecret} from './secrets';
 import {setField} from '../../testHelper';
 import Mock = jest.Mock;
@@ -16,7 +16,7 @@ describe('secrets', () => {
   beforeEach(() => {
     Container
       .bind(KubeClient)
-      .provider(mockKubeClientProvider);
+      .factory(mockKubeClientFactory);
 
     classUnderTest = Container.get(KubeSecret);
   });
@@ -37,7 +37,9 @@ describe('secrets', () => {
     });
 
     afterEach(() => {
-      unset_get();
+      if (unset_get) {
+        unset_get();
+      }
     });
 
     describe('when secret exists', () => {

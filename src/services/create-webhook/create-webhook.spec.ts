@@ -1,15 +1,10 @@
 import {Container} from 'typescript-ioc';
-import {
-  CreateWebhook,
-  CreateWebhookImpl,
-  GitEvents,
-  GitHookData,
-  GitHookUrlVerification,
-  GitlabHookData
-} from './create-webhook';
-import {setField} from '../../testHelper';
 import * as superagent from 'superagent';
+
 import {CreateWebhookOptions} from './create-webhook-options.model';
+import {CreateWebhookImpl} from './create-webhook';
+import {GitEvents, GitHookData, GitHookUrlVerification, GitlabHookData} from '../git-secret';
+import {setField} from '../../testHelper';
 
 jest.mock('superagent');
 
@@ -22,7 +17,7 @@ describe('create-webhook', () => {
     let classUnderTest: CreateWebhookImpl;
 
     beforeEach(() => {
-      classUnderTest = Container.get(CreateWebhook);
+      classUnderTest = Container.get(CreateWebhookImpl);
     });
 
     describe('given createWebhook()', () => {

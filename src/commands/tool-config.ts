@@ -1,8 +1,4 @@
 import {Arguments, Argv} from 'yargs';
-
-import {buildImage, BuildOptions} from '../services/build-image';
-import {CommandLineOptions} from '../model';
-import {DefaultOptionBuilder} from '../util/yargs-support';
 import {ToolConfigOptions} from '../services/tool-config/tool-config-options.model';
 import {ToolsConfig} from '../services/tool-config/tool-config';
 import {Container} from 'typescript-ioc';

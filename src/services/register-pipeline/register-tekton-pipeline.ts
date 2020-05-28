@@ -1,29 +1,50 @@
-import {Inject} from 'typescript-ioc';
+import {Container, Inject} from 'typescript-ioc';
+import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
-import inquirer from 'inquirer';
 
-import {CreateGitSecret, CreateGitSecretOptions, GitParams} from '../git-secret';
-import {KubeTektonPipelineResource, TektonPipelineResource} from '../../api/kubectl/tekton-pipeline-resource';
-import {KubeBody} from '../../api/kubectl/kubernetes-resource-manager';
-import {ConfigMap, KubeConfigMap} from '../../api/kubectl';
-import {RegisterPipeline, RegisterPipelineOptions} from './index';
-import {KubeTektonPipelineRun} from '../../api/kubectl/tekton-pipeline-run';
-import {KubeTektonPipeline, TektonPipeline} from '../../api/kubectl/tekton-pipeline';
-import {QuestionBuilder, QuestionBuilderImpl} from '../../util/question-builder';
-import {CreateServiceAccount} from '../create-service-account/create-service-account';
-import {RoleRule} from '../../api/kubectl/role';
-import {ClusterType} from '../../util/cluster-type';
-import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
-import {KubeNamespace} from '../../api/kubectl/namespace';
-import ChoiceOption = inquirer.objects.ChoiceOption;
-import {KubeTektonTask} from '../../api/kubectl/tekton-task';
+import {
+  NamespaceMissingError,
+  PipelineNamespaceNotProvided,
+  RegisterPipeline,
+  RegisterPipelineOptions
+} from './register-pipeline.api';
 import {Namespace as NamespaceService} from '../namespace';
+import {CreateGitSecret, GitParams} from '../git-secret';
+import {
+  ConfigMap,
+  KubeConfigMap,
+  KubeMetadata,
+  KubeNamespace,
+  KubeResource,
+  KubeTektonPipeline,
+  KubeTektonPipelineResource,
+  KubeTektonPipelineRun,
+  KubeTektonTask,
+  KubeTektonTriggerBinding,
+  KubeTektonTriggerEventListener,
+  KubeTektonTriggerTemplate,
+  OcpRoute,
+  RoleRule,
+  Route,
+  TektonPipeline,
+  TektonPipelineRun,
+  TemplateKubeMetadata,
+  TriggerBinding,
+  TriggerEventListener,
+  TriggerEventListener_v0_6,
+  TriggerTemplate
+} from '../../api/kubectl';
+import {CreateServiceAccount} from '../create-service-account';
+import {QuestionBuilder} from '../../util/question-builder';
+import {ClusterType} from '../../util/cluster-type';
+import {KubeDeployment} from '../../api/kubectl/deployment';
+import {CreateWebhook} from '../create-webhook';
 
 const noopNotifyStatus = (test: string) => undefined;
 
 export interface TektonPipelineOptions {
-  pipelineNamespace?: string;
-  templateNamespace?: string;
+  pipelineNamespace: string;
+  templateNamespace: string;
 }
 
 export interface IBMCloudConfig {
@@ -39,15 +60,42 @@ export interface IBMCloudConfig {
   TLS_SECRET_NAME: string;
 }
 
+interface PipelineArgs {
+  pipelineName?: string;
+  scanImage?: boolean;
+}
+
+function isPipelineArgs(value: PipelineArgs | {}): value is PipelineArgs {
+  return !!value && !!(value as PipelineArgs).pipelineName;
+}
+
+type PipelineRunBuilder = <M>(params: {gitUrl: string, gitRevision: string, template: boolean}) => TektonPipelineRun<M>;
+
+interface SemVer {
+  major: number;
+  minor: number
+  patch: number;
+}
+
 export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   createGitSecret: CreateGitSecret;
   @Inject
   kubeNamespace: KubeNamespace;
   @Inject
+  kubeDeployment: KubeDeployment;
+  @Inject
   pipelineResource: KubeTektonPipelineResource;
   @Inject
   pipelineRun: KubeTektonPipelineRun;
+  @Inject
+  triggerTemplate: KubeTektonTriggerTemplate;
+  @Inject
+  triggerBinding: KubeTektonTriggerBinding;
+  @Inject
+  triggerEventListener: KubeTektonTriggerEventListener;
+  @Inject
+  triggerRoute: OcpRoute
   @Inject
   pipeline: KubeTektonPipeline;
   @Inject
@@ -60,12 +108,14 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   clusterType: ClusterType;
   @Inject
   namespace: NamespaceService;
+  @Inject
+  createWebhook: CreateWebhook;
 
-  async registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus: (text: string) => void = noopNotifyStatus) {
+  async registerPipeline(cliOptions: Partial<RegisterPipelineOptions>, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
     const options: RegisterPipelineOptions = await this.setupDefaultOptions(cliOptions);
 
-    const {clusterType} = await this.clusterType.getClusterType(options.pipelineNamespace);
+    const { clusterType } = await this.clusterType.getClusterType(options.pipelineNamespace);
 
     notifyStatus(`Creating pipeline on ${chalk.yellow(clusterType)} cluster in ${chalk.yellow(options.pipelineNamespace)} namespace`);
 
@@ -78,7 +128,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     }
 
     notifyStatus('Getting git parameters');
-    const {gitParams, secretName} = await this.createGitSecret.getParametersAndCreateSecret(
+    const { gitParams, secretName } = await this.createGitSecret.getParametersAndCreateSecret(
       Object.assign(
         {},
         options,
@@ -92,36 +142,79 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const serviceAccount = await this.createServiceAccount(options.pipelineNamespace, clusterType, [secretName], notifyStatus);
 
-    notifyStatus('Creating Git PipelineResource');
-    const gitSource = await this.createGitPipelineResource(options, gitParams);
+    const pipelineArgs: PipelineArgs | {} = await this.getPipelineArgs(options.templateNamespace, options.pipelineName);
 
-    notifyStatus('Creating Image PipelineResource');
-    const dockerImage = await this.createImagePipelineResource(options, gitParams);
+    if (isPipelineArgs(pipelineArgs)) {
+      const templatePipelineName = pipelineArgs.pipelineName;
+      const scanImage = pipelineArgs.scanImage;
 
-    const pipelineName = await this.getPipelineName(options.templateNamespace, options.pipelineName);
-
-    if (pipelineName !== 'none') {
       notifyStatus(`Copying tasks from ${options.templateNamespace}`);
-      await this.tektonTask.copyAll({namespace: options.templateNamespace}, options.pipelineNamespace);
+      await this.tektonTask.copyAll({ namespace: options.templateNamespace }, options.pipelineNamespace);
 
-      const name = this.generatePipelineName(gitParams);
-      const pipelineValue: TektonPipeline = await this.pipeline.copy(
-        pipelineName,
+      const pipelineName: string = await this.pipeline.copy(
+        templatePipelineName,
         options.templateNamespace,
         options.pipelineNamespace,
-        name
-      );
-      notifyStatus(`Copied Pipeline from ${options.templateNamespace}/${pipelineName} to ${options.pipelineNamespace}/${pipelineValue.metadata.name}`);
+        this.generatePipelineName(gitParams),
+      ).then(pipelineValue => pipelineValue.metadata.name);
+      notifyStatus(`Copied Pipeline from ${options.templateNamespace}/${templatePipelineName} to ${options.pipelineNamespace}/${pipelineName}`);
 
-      notifyStatus(`Creating PipelineRun for pipeline: ${pipelineValue.metadata.name}`);
-      await this.createPipelineRun({
-        name,
-        gitSource,
-        dockerImage,
-        pipelineName: pipelineValue.metadata.name,
-        pipelineNamespace: options.pipelineNamespace,
-        serviceAccount
+      const pipelineRunBuilder = this.buildPipelineRunBuilder({
+        pipelineName: pipelineName,
+        imageUrl: await this.buildImageUrl(options, {repo: gitParams.repo}),
+        scanImage,
       });
+
+      notifyStatus(`Creating TriggerTemplate for pipeline: ${pipelineName}`);
+      const triggerTemplateValue: TriggerTemplate = await this.createTriggerTemplate({
+        name: pipelineName,
+        pipelineNamespace: options.pipelineNamespace,
+        pipelineRunBuilder,
+      });
+
+      notifyStatus(`Creating TriggerBinding for pipeline: ${pipelineName}`);
+      const triggerBindingValue: TriggerBinding = await this.createTriggerBinding({
+        name: pipelineName,
+        pipelineNamespace: options.pipelineNamespace,
+        gitParams: gitParams
+      });
+
+      notifyStatus(`Creating TriggerEventListener for pipeline: ${pipelineName}`);
+      await this.createTriggerEventListener({
+        name: pipelineName,
+        pipelineNamespace: options.pipelineNamespace,
+        serviceAccount,
+        triggerTemplate: triggerTemplateValue.metadata.name,
+        triggerBinding: triggerBindingValue.metadata.name,
+        gitParams: gitParams
+      });
+
+      notifyStatus(`Creating Route for pipeline: ${pipelineName}`);
+      const triggerRouteValue: Route = await this.createTriggerRoute({
+        name: `el-${pipelineName}`,
+        pipelineNamespace: options.pipelineNamespace,
+      });
+
+      notifyStatus(`Creating PipelineRun for pipeline: ${pipelineName}`);
+      await this.createPipelineRun(
+        options.pipelineNamespace,
+        pipelineRunBuilder({gitUrl: gitParams.url, gitRevision: gitParams.branch, template: false})
+      );
+
+      const webhookUrl = `https://${triggerRouteValue.spec.host}`
+      notifyStatus('Creating webhook for repo: ' + gitParams.url);
+      try {
+        await this.createWebhook.createWebhook({
+          gitUrl: gitParams.url,
+          gitToken: gitParams.password,
+          gitUsername: gitParams.username,
+          webhookUrl,
+        });
+      } catch (err) {
+        console.log('Error creating webhook', err);
+        notifyStatus(chalk.red(`Unable to create webhook automatically. Are your credentials correct?`));
+        notifyStatus(`The webhook can be manually created using the following url: ${chalk.yellow(webhookUrl)}`);
+      }
     }
   }
 
@@ -160,71 +253,19 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         ],
         verbs: ['*']
       }, {
-          apiGroups: ['apps'],
-          resources: ['deployments'],
-          verbs: ['*'],
+        apiGroups: ['apps'],
+        resources: ['deployments'],
+        verbs: ['*'],
       }, {
-          apiGroups: ['extensions'],
-          resources: ['ingresses'],
-          verbs: ['*'],
+        apiGroups: ['extensions'],
+        resources: ['ingresses'],
+        verbs: ['*'],
       }];
 
       await this.serviceAccount.createKubernetes(namespace, name, rules);
     } else {
       await this.serviceAccount.createOpenShift(namespace, name, ['privileged'], ['edit'], secrets);
     }
-
-    return name;
-  }
-
-  async createGitPipelineResource({pipelineNamespace = 'dev'}: TektonPipelineOptions, gitParams: GitParams): Promise<string> {
-    const name = `${gitParams.repo}-git`.toLowerCase();
-
-    const gitResourceParams = {
-      url: gitParams.url,
-      revision: gitParams.branch,
-    };
-
-    await this.pipelineResource.createOrUpdate(
-      name,
-      this.buildGitPipelineResourceBody(name, gitResourceParams),
-      pipelineNamespace
-    );
-
-    return name;
-  }
-
-  buildGitPipelineResourceBody(name: string, gitParams: { url: string, revision: string, username?: string, password?: string }): KubeBody<TektonPipelineResource> {
-
-    const params = Object.keys(gitParams)
-      .filter(key => !!gitParams[key])
-      .map(key => ({
-        name: key,
-        value: gitParams[key],
-      }));
-
-    return {
-      body: {
-        metadata: {
-          name,
-        },
-        spec: {
-          type: 'git',
-          params,
-        }
-      }
-    }
-  }
-
-  async createImagePipelineResource({pipelineNamespace = 'dev', templateNamespace = 'tools'}: TektonPipelineOptions, params: { repo: string }): Promise<string> {
-    const name = `${params.repo}-image`.toLowerCase();
-    const imageUrl: string = await this.buildImageUrl({pipelineNamespace, templateNamespace}, params);
-
-    await this.pipelineResource.createOrUpdate(
-      name,
-      this.buildImagePipelineResourceBody(name, imageUrl),
-      pipelineNamespace
-    );
 
     return name;
   }
@@ -243,98 +284,152 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     return `${registryUrl}/${registryNamespace}/${params.repo}:latest`;
   }
 
-  buildImagePipelineResourceBody(name: string, url: string): KubeBody<TektonPipelineResource> {
-    return {
-      body: {
-        metadata: {
-          name,
-        },
-        spec: {
-          type: 'image',
-          params: [
-            {
-              name: 'url',
-              value: url.toLowerCase(),
-            }
-          ],
-        },
-      },
-    };
-  }
+  async getPipelineArgs(namespace: string, pipelineName?: string): Promise<PipelineArgs> {
+    const pipelines: TektonPipeline[] = await this.pipeline.list({ namespace });
 
-  async getPipelineName(namespace: string, pipelineName?: string): Promise<string> {
-    const pipelines: TektonPipeline[] = await this.pipeline.list({namespace});
-
-    const pipelineChoices: Array<ChoiceOption<{ pipelineName: string }>> = pipelines
+    const pipelineChoices: Array<ChoiceOptions<{ pipelineName: string }>> = pipelines
       .map(pipeline => pipeline.metadata.name)
-      .map(name => ({name, value: name}));
+      .map(name => ({ name, value: name }));
 
     if (pipelineChoices.length === 0) {
       console.log(`No Pipelines found in ${namespace} namespace. Skipping PipelineRun creation`);
-      console.log('Install Tekton tasks and pipelines into your namespace by running: ' + chalk.yellow(`igc namespace ${namespace} --tekton`));
-      return 'none';
+      console.log('Install Tekton tasks and pipelines into your namespace by following these instructions: ' + chalk.yellow('https://github.com/IBM/ibm-garage-tekton-tasks'));
+      return {};
     }
 
-    const questionBuilder: QuestionBuilder<{ pipelineName: string }> = new QuestionBuilderImpl()
+    const questionBuilder: QuestionBuilder<PipelineArgs> = Container.get(QuestionBuilder)
       .question({
         type: 'list',
-        choices: pipelineChoices.concat({name: 'Skip PipelineRun creation', value: 'none'}),
+        choices: pipelineChoices.concat({ name: 'Skip PipelineRun creation', value: 'none' }),
         name: 'pipelineName',
         message: 'Select the Pipeline to use in the PipelineRun:',
-      }, pipelineName);
+      }, pipelineName)
+      .question({
+        type: 'confirm',
+        name: 'scanImage',
+        message: 'Would you like to enable the pipeline to scan the image for vulnerabilities?',
+        when: (val: Partial<PipelineArgs>) => val.pipelineName !== 'none',
+      });
 
     return questionBuilder.prompt()
-      .then(result => result.pipelineName);
+      .then(result => result.pipelineName === 'none' ? {} : result);
   }
 
-  async createPipelineRun(
+  buildPipelineRunBuilder(
     {
-      pipelineNamespace,
-      name,
-      gitSource,
-      dockerImage,
+      imageUrl,
       pipelineName,
-      serviceAccount,
+      scanImage = false,
+      appName = '',
+      imageTag = '',
     }: {
-      pipelineNamespace: string,
-      name: string,
-      gitSource: string,
-      dockerImage: string,
+      imageUrl: string,
       pipelineName: string,
-      serviceAccount?: string,
-    }) {
-    const dateHex = Date.now().toString(16).substring(0, 6);
-    const pipelineRunName = `${name}-${dateHex}`;
+      scanImage?: boolean,
+      appName?: string,
+      imageTag?: string,
+    }
+  ): PipelineRunBuilder {
+
+    return ({gitUrl, gitRevision, template}: {gitUrl: string, gitRevision: string, template: boolean}) => {
+      const metadata = template ? {generateName: `${pipelineName}-`} : {name: `${pipelineName}-${Date.now().toString(16)}`}
+
+      const result: TektonPipelineRun<KubeMetadata | TemplateKubeMetadata> = Object.assign(
+        {
+          metadata,
+          spec: {
+            pipelineRef: {
+              name: pipelineName
+            },
+            params: [
+              {
+                name: 'git-url',
+                value: gitUrl
+              },
+              {
+                name: 'git-revision',
+                value: gitRevision
+              },
+              {
+                name: 'image-url',
+                value: imageUrl
+              },
+              {
+                name: 'scan-image',
+                value: '' + scanImage // convert to string
+              },
+              {
+                name: 'app-name',
+                value: appName
+              },
+              {
+                name: 'image-tag',
+                value: imageTag
+              },
+            ]
+          }
+        },
+        template
+          ? {apiVersion: 'tekton.dev/v1beta1', kind: 'PipelineRun',}
+          : {}
+      )
+
+      return result as any;
+    };
+  }
+
+  async createPipelineRun(pipelineNamespace: string, body: TektonPipelineRun<KubeMetadata>) {
+    const pipelineRunName = body.metadata.name;
 
     return this.pipelineRun.create(
       pipelineRunName,
       {
+        body
+      },
+      pipelineNamespace,
+    );
+  }
+
+  async createTriggerTemplate<T extends KubeResource<TemplateKubeMetadata>>(
+    {
+      pipelineNamespace,
+      name,
+      pipelineRunBuilder,
+    }: {
+      pipelineNamespace: string,
+      name: string,
+      pipelineRunBuilder: (params: {gitRevision: string, gitUrl: string, template: boolean}) => TektonPipelineRun<TemplateKubeMetadata>
+    }
+  ) {
+
+    return this.triggerTemplate.createOrUpdate(
+      name,
+      {
         body: {
           metadata: {
-            name: pipelineRunName,
+            name: name,
             labels: {
               app: name,
             },
           },
           spec: {
-            pipelineRef: {
-              name: pipelineName,
-            },
-            resources: [
+            params: [
               {
-                name: 'git-source',
-                resourceRef: {
-                  name: gitSource,
-                },
+                name: 'gitrevision',
+                description: 'The git revision'
               },
               {
-                name: 'docker-image',
-                resourceRef: {
-                  name: dockerImage,
-                },
-              },
+                name: 'gitrepositoryurl',
+                description: 'The git repository url'
+              }
             ],
-            serviceAccountName: serviceAccount,
+            resourcetemplates: [
+              pipelineRunBuilder({
+                gitRevision: '$(params.gitrevision)',
+                gitUrl: '$(params.gitrepositoryurl)',
+                template: true
+              })
+            ]
           },
         }
       },
@@ -342,7 +437,214 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     );
   }
 
-  async setupDefaultOptions(cliOptions: RegisterPipelineOptions) {
+  async createTriggerBinding(
+    {
+      pipelineNamespace,
+      name,
+      gitParams
+    }: {
+      pipelineNamespace: string,
+      name: string,
+      gitParams: GitParams
+    }) {
+    // default to github
+    let gitrevision = '$(body.head_commit.id)'
+    let gitrepositoryurl = '$(body.repository.url)'
+    if (gitParams.url.indexOf('github') < 0) {
+      // handle as gitlab
+      gitrevision = '$(body.checkout_sha)'
+      gitrepositoryurl = '$(body.repository.git_http_url)'
+    }
+    return this.triggerBinding.createOrUpdate(
+      name,
+      {
+        body: {
+          metadata: {
+            name: name,
+            labels: {
+              app: name,
+            },
+          },
+          spec: {
+            params: [
+              {
+                name: 'gitrevision',
+                value: gitrevision
+              },
+              {
+                name: 'gitrepositoryurl',
+                value: gitrepositoryurl
+              }
+            ],
+          },
+        }
+      },
+      pipelineNamespace,
+    );
+  }
+
+  async createTriggerEventListener(
+    {
+      pipelineNamespace,
+      name,
+      serviceAccount,
+      triggerTemplate,
+      triggerBinding,
+      gitParams
+    }: {
+      pipelineNamespace: string,
+      name: string,
+      serviceAccount: string,
+      triggerTemplate: string,
+      triggerBinding: string,
+      gitParams: GitParams
+    }) {
+    // default to github
+    let headerEvent = "header.match('X-GitHub-Event', 'push')"
+    if (gitParams.url.indexOf('github') < 0) {
+      // handle as gitlab
+      headerEvent = "header.match('X-GitLab-Event', 'Push Hook')"
+    }
+
+    const filter = `${headerEvent} && body.ref == 'refs/heads/${gitParams.branch}'`
+
+    const triggerVersion: SemVer = await this.getTriggerVersion();
+    if (triggerVersion.minor >= 6) {
+      const eventListenerV06: TriggerEventListener_v0_6 = {
+        metadata: {
+          name: name,
+          labels: {
+            app: name,
+            'triggers.tekton.dev/release': `${triggerVersion.major}.${triggerVersion.minor}.${triggerVersion.patch}`
+          },
+        },
+        spec: {
+          serviceAccountName: serviceAccount,
+          triggers: [
+            {
+              name: name,
+              bindings: [{
+                ref: triggerBinding,
+              }],
+              template: {
+                name: triggerTemplate
+              },
+              interceptors: [
+                {
+                  cel: {
+                    filter: filter
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      };
+
+      return this.triggerEventListener.createOrUpdate(
+        name,
+        {body: eventListenerV06},
+        pipelineNamespace,
+      );
+    } else {
+      const eventListener: TriggerEventListener = {
+        metadata: {
+          name: name,
+          labels: {
+            app: name,
+            'triggers.tekton.dev/release': `${triggerVersion.major}.${triggerVersion.minor}.${triggerVersion.patch}`
+          },
+        },
+        spec: {
+          serviceAccountName: serviceAccount,
+            triggers: [
+            {
+              name: name,
+              bindings: [{
+                name: triggerBinding
+              }],
+              template: {
+                name: triggerTemplate
+              },
+              interceptors: [
+                {
+                  cel: {
+                    filter: filter
+                  }
+                }
+              ]
+            }
+          ]
+        },
+      }
+
+      return this.triggerEventListener.createOrUpdate(
+        name,
+        {
+          body: eventListener,
+        },
+        pipelineNamespace,
+      );
+    }
+  }
+
+  async getTriggerVersion(): Promise<SemVer> {
+    const version = await this.kubeDeployment.getLabel('tekton-triggers-controller', 'triggers.tekton.dev/release', 'openshift-pipelines');
+    if (!version) {
+      return {major: 0, minor: 4, patch: 0};
+    }
+
+    const versionNumbers: string[] = version.replace('v', '').split('.');
+    if (versionNumbers.length < 3) {
+      return {major: 0, minor: 4, patch: 0};
+    }
+
+    const major = +versionNumbers[0];
+    const minor = +versionNumbers[1];
+    const patch = +versionNumbers[2];
+
+    return {major, minor, patch};
+  }
+
+  async createTriggerRoute(
+    {
+      pipelineNamespace,
+      name,
+    }: {
+      pipelineNamespace: string,
+      name: string
+    }) {
+
+    return this.triggerRoute.createOrUpdate(
+      name,
+      {
+        body: {
+          metadata: {
+            name: name,
+            labels: {
+              app: name,
+            },
+          },
+          spec: {
+            port: {
+              targetPort: 'http-listener'
+            },
+            tls: {
+              termination: 'edge'
+            },
+            to: {
+              kind: 'Service',
+              weight: 100,
+              name: name
+            }
+          },
+        }
+      },
+      pipelineNamespace,
+    );
+  }
+
+  async setupDefaultOptions(cliOptions: Partial<RegisterPipelineOptions>) {
     const defaultOptions: RegisterPipelineOptions = {
       templateNamespace: 'tools',
       pipelineNamespace: await this.namespace.getCurrentProject(),

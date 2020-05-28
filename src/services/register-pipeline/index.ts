@@ -1,2 +1,3 @@
+export * from './register-pipeline.api';
 export * from './register-jenkins-pipeline';
-export * from './register-pipeline-options.model';
+export * from './register-tekton-pipeline';

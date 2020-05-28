@@ -1,14 +1,14 @@
 import * as path from 'path';
 import {Inject} from 'typescript-ioc';
 import * as superagent from 'superagent';
-import {prompt, Questions} from 'inquirer';
+import {prompt, QuestionCollection} from 'inquirer';
 
-import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {JenkinsAccessSecret} from '../../model/jenkins-access-secret.model';
-import {KubeSecret} from '../../api/kubectl';
+import {RegisterPipelineOptions} from '../register-pipeline.api';
 import {RegisterPipelineType} from './register-pipeline-type';
-import {FsPromises} from '../../util/file-util';
-import {GitParams} from '../git-secret';
+import {GitParams} from '../../git-secret';
+import {KubeSecret} from '../../../api/kubectl';
+import {JenkinsAccessSecret} from '../../../model/jenkins-access-secret.model';
+import {FsPromises} from '../../../util/file-util';
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -184,7 +184,7 @@ export class RegisterIksPipeline implements RegisterPipelineType {
 
   async shouldUpdateExistingBuildConfig(pipelineName: string): Promise<boolean> {
 
-    const questions: Questions<Prompt> = [{
+    const questions: QuestionCollection<Prompt> = [{
       type: 'confirm',
       name: 'shouldUpdate',
       message: `The build pipeline (${pipelineName}) already exists. Do you want to replace it?`,

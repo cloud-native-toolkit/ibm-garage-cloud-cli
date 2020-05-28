@@ -3,10 +3,10 @@ import {AsyncKubeClient, KubeClient} from './client';
 
 export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
 
-export interface KubeResource {
+export interface KubeResource<M = KubeMetadata> {
   apiVersion?: string;
   kind?: string;
-  metadata: KubeMetadata;
+  metadata: M;
 }
 
 export interface KubeResourceList<T extends KubeResource> {
@@ -18,6 +18,17 @@ export interface KubeResourceList<T extends KubeResource> {
 
 export interface KubeMetadata {
   name: string;
+  namespace?: string;
+  labels?: {[name: string]: string};
+  annotations?: {[name: string]: string};
+  uid?: string;
+  selfLink?: string;
+  resourceVersion?: string;
+  creationTimestamp?: string;
+}
+
+export interface TemplateKubeMetadata {
+  generateName: string;
   namespace?: string;
   labels?: any;
   annotations?: any;
@@ -87,6 +98,7 @@ async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): 
     const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
 
     if (!crd || !crd.body) {
+      console.log(`crd not found: ${name}`);
       return false;
     }
 
@@ -100,6 +112,7 @@ async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): 
 
     return true;
   } catch (err) {
+    console.log('Error registering crd: ', err);
     return false;
   }
 }
@@ -225,6 +238,16 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     const result = await kubeResource(name).get();
 
     return _.get(result, 'body');
+  }
+
+  async getLabel(name: string, labelName: string, namespace: string = 'default'): Promise<string> {
+    const resource = await this.get(name, namespace);
+
+    const labels: string[] = Object.keys(resource.metadata.labels || {})
+      .filter(name => name === labelName)
+      .map(name => resource.metadata.labels[name]);
+
+    return labels.length > 0 ? labels[0] : undefined;
   }
 
   async copy(name: string, fromNamespace: string, toNamespace: string, toName?: string): Promise<T> {

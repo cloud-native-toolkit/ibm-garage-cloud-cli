@@ -3,7 +3,6 @@ import {Arguments, Argv} from 'yargs';
 import * as chalk from 'chalk';
 
 import {CreateGitSecret, CreateGitSecretOptions} from '../services/git-secret';
-import {ClusterType} from '../util/cluster-type';
 import {Namespace} from '../services/namespace';
 
 export const command = 'git-secret [name]';

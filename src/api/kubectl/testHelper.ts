@@ -1,6 +1,6 @@
-import {Provider} from 'typescript-ioc';
+import {ObjectFactory} from 'typescript-ioc';
+import {factoryFromBuilder} from '../../testHelper';
 import {KubeClient} from './client';
-import {providerFromBuilder} from '../../testHelper';
 
 export function buildMockKubeClient(): KubeClient {
   return buildClientNodes({
@@ -59,4 +59,4 @@ export function buildClientNodes(config: any) {
   }, {});
 }
 
-export const mockKubeClientProvider: Provider = providerFromBuilder(buildMockKubeClient);
+export const mockKubeClientFactory: ObjectFactory = factoryFromBuilder(buildMockKubeClient);
