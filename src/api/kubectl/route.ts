@@ -1,12 +1,12 @@
-import {Container, Provided, Provider} from 'typescript-ioc';
+import { Container, Provided, Provider } from 'typescript-ioc';
 import * as _ from 'lodash';
 
-import {AsyncOcpClient, KubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import { AsyncOcpClient, KubeClient } from './client';
+import { AbstractKubernetesResourceManager, KubeResource, Props } from './kubernetes-resource-manager';
 
 export interface Route extends KubeResource {
   spec: {
-    host: string;
+    host?: string;
     port: {
       targetPort: string;
     }
@@ -18,9 +18,9 @@ export interface Route extends KubeResource {
       name: string;
       weight: number;
     }
-    wildcardPolicy: string;
+    wildcardPolicy?: string;
   };
-  status: any;
+  status?: any;
 }
 
 const provider: Provider = {
@@ -41,10 +41,10 @@ export class OcpRoute extends AbstractKubernetesResourceManager<Route> {
     super(props);
   }
 
-  async getAllUrls(namespace: string): Promise<Array<{name: string, urls: string[]}>> {
-    const routes: Route[] = await this.list({namespace});
+  async getAllUrls(namespace: string): Promise<Array<{ name: string, urls: string[] }>> {
+    const routes: Route[] = await this.list({ namespace });
 
-    const values: Array<{name: string, urls: string[]}> = routes.map(ingress => this.mapRoute(ingress));
+    const values: Array<{ name: string, urls: string[] }> = routes.map(ingress => this.mapRoute(ingress));
 
     return values;
   }
@@ -52,7 +52,7 @@ export class OcpRoute extends AbstractKubernetesResourceManager<Route> {
   async getUrls(namespace: string, ingressName: string): Promise<string[]> {
     const ingress: Route = await this.get(ingressName, namespace);
 
-    const {urls} = this.mapRoute(ingress);
+    const { urls } = this.mapRoute(ingress);
 
     if (urls.length === 0) {
       throw new Error('no hosts found');
@@ -61,7 +61,7 @@ export class OcpRoute extends AbstractKubernetesResourceManager<Route> {
     return urls;
   }
 
-  mapRoute(route: Route): {name: string, urls: string[], hosts: string[]} {
+  mapRoute(route: Route): { name: string, urls: string[], hosts: string[] } {
 
     const host: string = route.spec.host;
     const protocol: string = !!route.spec.tls ? 'https' : 'http';
@@ -88,18 +88,18 @@ export class OcpRoute extends AbstractKubernetesResourceManager<Route> {
   async getHosts(namespace: string, ingressName: string): Promise<string[]> {
     const route: Route = await this.get(ingressName, namespace);
 
-    const {hosts} = this.mapRoute(route);
+    const { hosts } = this.mapRoute(route);
 
     return hosts;
   }
 
   async getAllHosts(namespace: string): Promise<string[]> {
-    const routes: Route[] = await this.list({namespace});
+    const routes: Route[] = await this.list({ namespace });
 
     const hosts: string[] = _.flatMap(
       routes
         .map(route => this.mapRoute(route))
-        .map(({hosts}) => hosts)
+        .map(({ hosts }) => hosts)
     );
 
     return hosts;

@@ -25,6 +25,13 @@
       ],
       "extensions": "ts",
       "quiet": true
+    },
+    "build": {
+      "patterns": [
+        "src"
+      ],
+      "extensions": "ts",
+      "quiet": true
     }
   },
   "husky": {
