@@ -9,6 +9,7 @@ export const command = 'jenkins-auth';
 export const desc = 'Generate a Jenkins api token and register it as kubernetes secret';
 export const builder = (yargs: Argv<any>) => {
   return new DefaultOptionBuilder(yargs)
+    .clusterNamespace()
     .debug()
     .build()
     .options(buildOptionWithEnvDefault('JENKINS_HOST', {
