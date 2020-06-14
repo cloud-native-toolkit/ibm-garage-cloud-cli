@@ -26,6 +26,7 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCom
     builder: (yargs: Argv<any>) => {
       return new DefaultOptionBuilder(yargs)
         .debug()
+        .clusterNamespace()
         .build()
         .options(buildOptionWithEnvDefault('JENKINS_HOST', {
           description: 'The host name to the Jenkins server',

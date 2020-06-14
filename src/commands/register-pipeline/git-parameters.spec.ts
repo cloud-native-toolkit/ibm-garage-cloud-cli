@@ -173,7 +173,7 @@ describe('git-parameters', () => {
       });
     });
 
-    describe('getRemoteGitUrl()', () => {
+    describe.skip('getRemoteGitUrl()', () => {
       describe('when path provided', () => {
         test('should return url for provided directory', async () => {
           const result = await classUnderTest.getRemoteGitUrl(process.cwd());
