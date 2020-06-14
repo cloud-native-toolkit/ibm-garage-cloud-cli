@@ -2,9 +2,10 @@ import {Container} from 'typescript-ioc';
 import {KubeSecret} from '../../api/kubectl';
 import {JenkinsAuth, JenkinsAuthImpl} from './config-jenkins-auth';
 import {setField, providerFromValue} from '../../testHelper';
-import {GenerateToken, GenerateTokenOptions} from '../generate-token';
 import {KubeIngress} from '../../api/kubectl/ingress';
 import Mock = jest.Mock;
+import {GenerateTokenOptions} from '../generate-token/generate-token-options.model';
+import {GenerateToken} from '../generate-token/generate-token.api';
 
 describe('config-jenkins-auth', () => {
   test('canary verifies test infrastructure', () => {

@@ -1,10 +1,12 @@
 import {Container, Inject, Provides} from 'typescript-ioc';
 
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
-import {GenerateToken, GenerateTokenOptions} from '../generate-token';
 import {KubeSecret} from '../../api/kubectl';
 import {KubeIngress} from '../../api/kubectl/ingress';
 import {DefaultBackend, InClusterBackend, KubeBackend} from '../../api/kubectl/client';
+import {GenerateToken} from '../generate-token/generate-token.api';
+import {GenerateTokenOptions} from '../generate-token/generate-token-options.model';
+import {GenerateTokenImpl} from '..';
 
 interface JenkinsSecret {
   'jenkins-admin-password': string;
@@ -36,8 +38,12 @@ export class JenkinsAuthImpl implements JenkinsAuth {
   @Inject
   private generateToken: GenerateToken;
 
+  constructor() {
+    console.log('GenerateTokenImpl', GenerateTokenImpl);
+  }
+
   isAvailable(): boolean {
-    return this.generateToken.isAvailable();
+    return true;
   }
 
   async configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
@@ -104,7 +110,7 @@ export class JenkinsAuthImpl implements JenkinsAuth {
 
     notifyStatus(`Generating Jenkins api token: ${options.url}`);
 
-    return options.jenkinsApiToken || await this.generateToken.generateToken(options, notifyStatus);
+    return options.jenkinsApiToken || await (this.generateToken as GenerateToken).generateToken(options, notifyStatus);
   }
 
   async generateJenkinsAuthSecret({host, url, username, password, apiToken, namespace = 'tools'}: GenerateAuthSecret, notifyStatus: (status: string) => void = noopNotifyStatus) {

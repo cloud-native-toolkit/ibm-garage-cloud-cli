@@ -14,9 +14,9 @@ import {JenkinsAuth} from './config-jenkins-auth';
 export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCommandDefinitionArgs): CommandModule<T> => {
   const jenkinsAuth: JenkinsAuth = Container.get(JenkinsAuth);
 
-  if (!jenkinsAuth.isAvailable()) {
-    return;
-  }
+  // if (!jenkinsAuth.isAvailable()) {
+  //   return;
+  // }
 
   const kubeConfigSet = true;
 

@@ -1,13 +1,9 @@
 import {Browser, JSHandle, launch, Page} from 'puppeteer';
-
-import {GenerateTokenOptions} from './generate-token-options.model';
-import {timer} from '../../util/timer';
 import {Container, Provides} from 'typescript-ioc';
 
-export abstract class GenerateToken {
-  abstract isAvailable(): boolean;
-  async abstract generateToken(commandOptions: GenerateTokenOptions, notifyStatus?: (status: string) => void): Promise<string>;
-}
+import {GenerateToken} from './generate-token.api';
+import {GenerateTokenOptions} from './generate-token-options.model';
+import {timer} from '../../util/timer';
 
 @Provides(GenerateToken)
 export class GenerateTokenImpl implements GenerateToken {
@@ -112,3 +108,5 @@ export async function generateToken(commandOptions: GenerateTokenOptions, notify
 }): Promise<string> {
   return (Container.get(GenerateToken) as GenerateToken).generateToken(commandOptions, notifyStatus);
 }
+
+Container.bind(GenerateToken).to(GenerateTokenImpl);
