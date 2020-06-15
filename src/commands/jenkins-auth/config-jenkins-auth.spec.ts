@@ -95,7 +95,7 @@ describe('config-jenkins-auth', () => {
       });
 
       describe('when successful', () => {
-        const options = {} as any;
+        const options = {namespace} as any;
 
         test('should get Jenkins password, url, and apiToken then generate secret', async () => {
 
@@ -104,7 +104,7 @@ describe('config-jenkins-auth', () => {
           expect(mock_retrieveJenkinsCredentials.mock.calls[0][0]).toBe(options);
           expect(mock_retrieveJenkinsUrl.mock.calls[0][0]).toBe(options);
           expect(mock_retrieveJenkinsApiToken.mock.calls[0][0]).toEqual({url, username, password})
-          expect(mock_generateJenkinsAuthSecret.mock.calls[0][0]).toEqual({host, url, username, password, apiToken})
+          expect(mock_generateJenkinsAuthSecret.mock.calls[0][0]).toEqual({host, url, username, password, apiToken, namespace})
         });
       });
 
@@ -127,7 +127,7 @@ describe('config-jenkins-auth', () => {
             expect(actualResult).toEqual(expectedResult);
             expect(mock_retrieveJenkinsCredentials.mock.calls.length).toEqual(0);
             expect(mock_retrieveJenkinsApiToken.mock.calls[0][0]).toEqual(options);
-            expect(mock_generateJenkinsAuthSecret.mock.calls[0]).toEqual([host, url, username, password, apiToken]);
+            expect(mock_generateJenkinsAuthSecret.mock.calls[0]).toEqual([host, url, username, password, apiToken, namespace]);
           });
         });
 
@@ -174,7 +174,7 @@ describe('config-jenkins-auth', () => {
           expect(actualResult).toEqual(expectedResult);
           expect(mock_retrieveJenkinsCredentials).toHaveBeenCalledWith(options, notifyStatus);
           expect(mock_retrieveJenkinsApiToken).toHaveBeenCalledWith({url, username, password}, notifyStatus);
-          expect(mock_generateJenkinsAuthSecret).toHaveBeenCalledWith({host, url, username, password, apiToken}, notifyStatus);
+          expect(mock_generateJenkinsAuthSecret).toHaveBeenCalledWith({host, url, username, password, apiToken, namespace}, notifyStatus);
         });
       });
     });

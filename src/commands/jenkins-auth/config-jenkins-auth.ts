@@ -59,7 +59,7 @@ export class JenkinsAuthImpl implements JenkinsAuth {
     );
 
     return this.generateJenkinsAuthSecret(
-      {host, url, username, password, apiToken},
+      {host, url, username, password, apiToken, namespace: options.namespace},
       notifyStatus,
     );
   }
