@@ -59,11 +59,15 @@ export const defineJenkinsAuth: YargsCommandDefinition = <T>({command}: YargsCom
         });
     },
     handler: async (argv: Arguments<JenkinsAuthOptions>) => {
-      const spinner = ora('Configuring Jenkins auth for namespace: ' + argv.namespace).start();
+      const spinner = {
+        stop: () => undefined
+      };
 
       function statusCallback(status: string) {
-        spinner.text = status;
+        console.log(status);
       }
+
+      statusCallback('Configuring Jenkins auth for namespace: ' + argv.namespace);
 
       try {
         await jenkinsAuth.configJenkinsAuth(argv, statusCallback);

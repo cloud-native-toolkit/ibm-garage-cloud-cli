@@ -31,7 +31,7 @@ export class GenerateTokenImpl implements GenerateToken {
 
       notifyStatus(`Generating token`);
 
-      return await this.genToken(page, url);
+      return await this.genToken(page, url, notifyStatus);
     } finally {
       await browser.close();
     }
@@ -63,11 +63,14 @@ export class GenerateTokenImpl implements GenerateToken {
     }, username, password);
   }
 
-  async genToken(page: Page, url: string): Promise<string> {
+  async genToken(page: Page, url: string, notifyStatus: (text: string) => void): Promise<string> {
 
+    notifyStatus('Going to profile page: ' + url);
     await page.goto(url);
 
     await timer(2000);
+
+    notifyStatus('Clicking "Generate Token" button');
 
     const buttonHandle: JSHandle = await page.evaluateHandle(() => {
       const button = document.getElementById('yui-gen2-button');
@@ -84,16 +87,23 @@ export class GenerateTokenImpl implements GenerateToken {
       console.log('content ', content);
 
       throw new Error('Unable to login');
+    } else {
+      notifyStatus('"Generate Token" button clicked');
     }
 
     await timer(500);
 
+    const apiTokenName = 'pipeline-token';
+    notifyStatus(`Generating api token named ${apiTokenName}`);
+
     await page.evaluateHandle(() => {
-      document.querySelector<HTMLInputElement>('input[name=tokenName]').value = 'pipeline-token';
+      document.querySelector<HTMLInputElement>('input[name=tokenName]').value = apiTokenName;
       document.querySelector<HTMLButtonElement>('.token-save button').click();
     });
 
     await timer(1000);
+
+    notifyStatus('Getting value of api token');
 
     const tokenHandle: JSHandle = await page.evaluateHandle(() => {
       const tokenElement = document.querySelector('.new-token-value');
