@@ -6,6 +6,7 @@ import {KubeIngress} from '../../api/kubectl/ingress';
 import Mock = jest.Mock;
 import {GenerateTokenOptions} from '../generate-token/generate-token-options.model';
 import {GenerateToken} from '../generate-token/generate-token.api';
+import {GenerateTokenImpl} from '..';
 
 describe('config-jenkins-auth', () => {
   test('canary verifies test infrastructure', () => {
@@ -23,7 +24,7 @@ describe('config-jenkins-auth', () => {
 
     beforeEach(() => {
       mock_generateToken = jest.fn();
-      Container.bind(GenerateToken).provider(providerFromValue({generateToken: mock_generateToken}));
+      Container.bind(GenerateTokenImpl).provider(providerFromValue({generateToken: mock_generateToken}));
 
       mock_create = jest.fn();
       mock_getSecretData = jest.fn();

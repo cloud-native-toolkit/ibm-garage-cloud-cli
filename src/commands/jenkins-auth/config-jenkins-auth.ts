@@ -36,11 +36,7 @@ export class JenkinsAuthImpl implements JenkinsAuth {
   @Inject
   private kubeIngress: KubeIngress;
   @Inject
-  private generateToken: GenerateToken;
-
-  constructor() {
-    console.log('GenerateTokenImpl', GenerateTokenImpl);
-  }
+  private generateToken: GenerateTokenImpl;
 
   isAvailable(): boolean {
     return true;
