@@ -93,11 +93,10 @@ export class GenerateTokenImpl implements GenerateToken {
 
     await timer(500);
 
-    const apiTokenName = 'pipeline-token';
-    notifyStatus(`Generating api token named ${apiTokenName}`);
+    notifyStatus(`Generating api token named 'pipeline-token'`);
 
     await page.evaluateHandle(() => {
-      document.querySelector<HTMLInputElement>('input[name=tokenName]').value = apiTokenName;
+      document.querySelector<HTMLInputElement>('input[name=tokenName]').value = 'pipeline-token';
       document.querySelector<HTMLButtonElement>('.token-save button').click();
     });
 
