@@ -9,6 +9,7 @@ import {KubeRole} from '../../api/kubectl/role';
 import {KubeRoleBinding} from '../../api/kubectl/role-binding';
 import {ClusterType} from '../../util/cluster-type';
 import {NamespaceOptionsModel} from './namespace-options.model';
+import {ChildProcess} from '../../util/child-process';
 
 describe('namespace', () => {
   test('canary verifies test infrastructure', () => {
@@ -30,6 +31,7 @@ describe('namespace', () => {
   let roles_addRules: Mock;
   let roleBindings_copy: Mock;
   let roleBindings_addSubject: Mock;
+  let childProcess_exec: Mock;
   beforeEach(() => {
     getClusterType = jest.fn();
     Container.bind(ClusterType).provider(providerFromValue({
@@ -76,11 +78,113 @@ describe('namespace', () => {
       addSubject: roleBindings_addSubject,
     }));
 
+    childProcess_exec = jest.fn();
+    Container.bind(ChildProcess).provider(providerFromValue({
+      exec: childProcess_exec
+    }));
+
     classUnderTest = Container.get(Namespace);
   });
 
   test('should exist', () => {
     expect(classUnderTest).not.toBeUndefined();
+  });
+
+  describe('given getCurrentProject()', () => {
+    const defaultValue = 'default value';
+
+    describe('when current context result not found', () => {
+      beforeEach(() => {
+        childProcess_exec.mockResolvedValueOnce({stdout: ''});
+      });
+
+      test('then return the default value', async () => {
+        expect(await classUnderTest.getCurrentProject(defaultValue))
+          .toEqual(defaultValue);
+      });
+    });
+
+    describe('when current context result is an empty string', () => {
+      beforeEach(() => {
+        childProcess_exec.mockResolvedValueOnce({stdout: '   '});
+      });
+
+      test('then return the default value', async () => {
+        expect(await classUnderTest.getCurrentProject(defaultValue))
+          .toEqual(defaultValue);
+      });
+    });
+
+    describe('when current context contains a value', () => {
+      const currentContext = 'currentContext';
+
+      beforeEach(() => {
+        childProcess_exec.mockResolvedValueOnce({stdout: 'currentContext'});
+      });
+
+      describe('and when the current namespace is defined', () => {
+        const currentNamespace = 'test'
+        beforeEach(() => {
+          childProcess_exec.mockResolvedValueOnce({stdout: currentNamespace});
+        });
+
+        test('then pass the current context to `kubectl config view` command', async () => {
+          await classUnderTest.getCurrentProject(defaultValue);
+
+          expect(childProcess_exec.mock.calls[1][0])
+            .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`)
+        });
+
+        test('then return the default value', async () => {
+          expect(await classUnderTest.getCurrentProject(defaultValue))
+            .toEqual(currentNamespace);
+        });
+      });
+
+      describe('and when the current namespace is `default`', () => {
+        const currentNamespace = 'default'
+        beforeEach(() => {
+          childProcess_exec.mockResolvedValueOnce({stdout: currentNamespace});
+        });
+
+        test('then return the default value', async () => {
+          expect(await classUnderTest.getCurrentProject(defaultValue))
+            .toEqual(defaultValue);
+        });
+      });
+    });
+
+    describe('when current context value is wrapped in single quotes', () => {
+      const currentContext = 'currentContext';
+
+      beforeEach(() => {
+        childProcess_exec.mockResolvedValueOnce({stdout: '\'currentContext\''});
+        childProcess_exec.mockResolvedValueOnce({stdout: 'mynamespace'});
+      });
+
+      test('then pass the current context to `kubectl config view` command', async () => {
+        await classUnderTest.getCurrentProject(defaultValue);
+
+        expect(childProcess_exec.mock.calls[1][0])
+          .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`)
+      });
+    });
+
+    describe('when current context value is wrapped in double quotes', () => {
+      const currentContext = 'currentContext';
+
+      beforeEach(() => {
+        childProcess_exec.mockResolvedValueOnce({stdout: '"currentContext"'});
+        childProcess_exec.mockResolvedValueOnce({stdout: 'mynamespace'});
+      });
+
+      test('then pass the current context to `kubectl config view` command', async () => {
+        await classUnderTest.getCurrentProject(defaultValue);
+
+        expect(childProcess_exec.mock.calls[1][0])
+          .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`)
+      });
+    });
   });
 
   describe('given create()', () => {

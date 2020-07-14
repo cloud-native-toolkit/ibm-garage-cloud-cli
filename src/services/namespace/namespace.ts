@@ -65,7 +65,10 @@ export class NamespaceImpl implements Namespace{
     const currentContextResult = await this.childProcess.exec('kubectl config view -o jsonpath=\'{.current-context}\'');
 
     if (currentContextResult.stdout) {
-      const currentContext = currentContextResult.stdout.toString().trim();
+      const currentContext = currentContextResult.stdout.toString()
+        .trim()
+        .replace(/'/g, '')
+        .replace(/"/g, '');
 
       if (currentContext) {
         const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`);
