@@ -71,9 +71,11 @@ export class NamespaceImpl implements Namespace{
         .replace(/"/g, '');
 
       if (currentContext) {
-        const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`);
+        const {stdout} = await this.childProcess.exec(`kubectl config view -o jsonpath='{.contexts[?(@.name=="'${currentContext}'")].context.namespace}'`);
 
-        const value = stdout.toString().trim();
+        const value = stdout.toString()
+          .trim()
+          .replace(/'/g,'');
 
         return value != 'default' ? value : defaultValue;
       }
