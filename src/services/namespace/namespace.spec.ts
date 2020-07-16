@@ -132,7 +132,7 @@ describe('namespace', () => {
           await classUnderTest.getCurrentProject(defaultValue);
 
           expect(childProcess_exec.mock.calls[1][0])
-            .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`)
+            .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name=="\'${currentContext}\'")].context.namespace}'`)
         });
 
         test('then return the default value', async () => {
@@ -166,7 +166,7 @@ describe('namespace', () => {
         await classUnderTest.getCurrentProject(defaultValue);
 
         expect(childProcess_exec.mock.calls[1][0])
-          .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`)
+          .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name=="\'${currentContext}\'")].context.namespace}'`)
       });
     });
 
@@ -182,7 +182,7 @@ describe('namespace', () => {
         await classUnderTest.getCurrentProject(defaultValue);
 
         expect(childProcess_exec.mock.calls[1][0])
-          .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name == "${currentContext}")].context.namespace}'`)
+          .toEqual(`kubectl config view -o jsonpath='{.contexts[?(@.name=="\'${currentContext}\'")].context.namespace}'`)
       });
     });
   });
