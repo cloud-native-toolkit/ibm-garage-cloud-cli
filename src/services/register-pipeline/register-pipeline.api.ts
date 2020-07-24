@@ -84,5 +84,5 @@ export class WebhookError extends CommandError {
 }
 
 export abstract class RegisterPipeline {
-  async abstract registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus?: (status: string) => void);
+  abstract registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus?: (status: string) => void);
 }

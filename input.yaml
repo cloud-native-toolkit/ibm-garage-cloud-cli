@@ -1,0 +1,11 @@
+platform: ocp4
+stages:
+  - source: github.com/ibm-garage-cloud/terraform-ibm-container-platform
+  - source: github.com/ibm-garage-cloud/terraform-k8s-namespace
+    variables:
+      - name: name
+        variableName: tools_namespace
+  - source: github.com/ibm-garage-cloud/terraform-tools-artifactory
+variables:
+  - name: tools_namespace
+    defaultValue: tools

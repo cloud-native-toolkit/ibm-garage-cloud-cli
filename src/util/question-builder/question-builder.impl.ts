@@ -1,15 +1,18 @@
-import inquirer, {ChoiceOptions, ListQuestion, prompt, Question} from 'inquirer';
-import {QuestionBuilder} from './question-builder.api';
+import {ChoiceOptions, ListQuestion, prompt, Question, registerPrompt} from 'inquirer';
+import {QuestionBuilder, QuestionTypes} from './question-builder.api';
 
 function isChoiceOption<T>(choice: ChoiceOptions<T>): choice is ChoiceOptions<T> {
   return choice && !!(choice as ChoiceOptions<T>).value;
 }
 
-export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
+registerPrompt('suggest', require('inquirer-prompt-suggest'));
+registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'));
+
+export class QuestionBuilderImpl<T = any> implements QuestionBuilder<T> {
   readonly _questions: Array<Question<T>> = [];
   readonly answers: T = {} as any;
 
-  question(question: Question<T> | ListQuestion<T>, value?: string): QuestionBuilder<T> {
+  question(question: QuestionTypes<T>, value?: string): QuestionBuilder<T> {
     if (!this.valueProvided(question, value)) {
       this._questions.push(question);
     } else {
@@ -17,6 +20,16 @@ export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
     }
 
     return this;
+  }
+
+  questions(questions: Array<QuestionTypes<T>>): QuestionBuilder<T> {
+    questions.forEach(q => this._questions.push(q));
+
+    return this;
+  }
+
+  hasQuestions(): boolean {
+    return this._questions.length > 0;
   }
 
   valueProvided(

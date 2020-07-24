@@ -83,11 +83,11 @@ export class CreateGitSecretOptions extends GitParametersOptions {
 }
 
 export abstract class CreateGitSecret {
-  abstract async getParametersAndCreateSecret(options: CreateGitSecretOptions, notifyStatus?: (s: string) => void): Promise<{gitParams: GitParams, secretName: string, configMapName: string}>;
+  abstract getParametersAndCreateSecret(options: CreateGitSecretOptions, notifyStatus?: (s: string) => void): Promise<{gitParams: GitParams, secretName: string, configMapName: string}>;
 
-  abstract async getGitParameters(options: GitParametersOptions, notifyStatus?: (s: string) => void): Promise<GitParams>;
+  abstract getGitParameters(options: GitParametersOptions, notifyStatus?: (s: string) => void): Promise<GitParams>;
 
-  abstract async createGitSecret(params: CreateGitSecretParams): Promise<{secretName: string, configMapName: string}>;
+  abstract createGitSecret(params: CreateGitSecretParams): Promise<{secretName: string, configMapName: string}>;
 }
 
 export interface CreateGitSecretParams {

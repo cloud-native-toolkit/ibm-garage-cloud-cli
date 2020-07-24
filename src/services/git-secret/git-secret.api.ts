@@ -12,5 +12,5 @@ export interface GitSecretParams {
 }
 
 export abstract class GitSecret {
-  async abstract create(params: GitSecretParams): Promise<{secretName: string, configMapName: string}>;
+  abstract create(params: GitSecretParams): Promise<{secretName: string, configMapName: string}>;
 }

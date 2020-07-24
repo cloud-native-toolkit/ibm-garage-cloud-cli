@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
 import ora from 'ora';
-import * as YAML from 'json2yaml';
+import {safeDump as safeDumpYaml} from 'js-yaml';
 
 import {CommandLineOptions} from '../model';
 import {Credentials} from '../services/credentials';
@@ -46,7 +46,7 @@ exports.handler = async (argv: Arguments<{namespace: string; yaml: boolean} & Co
 
     if (argv.yaml) {
       console.log('Credentials:');
-      console.log(YAML.stringify(result));
+      console.log(safeDumpYaml(result));
     } else {
       console.log('Credentials: ', result);
     }

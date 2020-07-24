@@ -23,9 +23,9 @@ export class YqWriteImpl implements YqWrite {
     return updatedObj;
   }
 
-  async readYamlFile(filename: string): Promise<object> {
+  async readYamlFile<T extends object = object>(filename: string): Promise<T> {
     return this.fs.readFile(filename).then((contents: Buffer) => {
-      return YAML.safeLoad(contents.toString()) as object;
+      return YAML.safeLoad(contents.toString()) as T;
     });
   }
 

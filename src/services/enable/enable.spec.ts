@@ -21,6 +21,8 @@ describe('enable', () => {
       questionBuilder =  {
         prompt: jest.fn(),
         question: jest.fn().mockReturnThis(),
+        questions: jest.fn().mockReturnThis(),
+        hasQuestions: jest.fn(),
       };
       Container.bind(QuestionBuilder).factory(factoryFromValue(questionBuilder));
 

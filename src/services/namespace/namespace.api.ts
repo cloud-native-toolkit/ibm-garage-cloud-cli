@@ -1,13 +1,13 @@
 import {NamespaceOptionsModel} from './namespace-options.model';
 
 export abstract class Namespace {
-  async abstract getCurrentProject(defaultValue?: string): Promise<string>;
+  abstract getCurrentProject(defaultValue?: string): Promise<string>;
 
-  async abstract setCurrentProject(namespace: string);
+  abstract setCurrentProject(namespace: string);
 
-  async abstract pullSecret(namespaceOptions: NamespaceOptionsModel, notifyStatus: (status: string) => void): Promise<string>;
+  abstract pullSecret(namespaceOptions: NamespaceOptionsModel, notifyStatus: (status: string) => void): Promise<string>;
 
-  async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
+  abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
 
-  async abstract setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void);
+  abstract setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void);
 }

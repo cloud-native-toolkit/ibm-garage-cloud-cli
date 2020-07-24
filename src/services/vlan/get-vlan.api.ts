@@ -17,7 +17,7 @@ export interface VlanResult extends VlanContainer, TargetInfo {
 }
 
 export abstract class GetVlan {
-  async abstract getVlan(options: GetVlanOptions, notifyStatus?: (status: string) => void): Promise<VlanResult>;
+  abstract getVlan(options: GetVlanOptions, notifyStatus?: (status: string) => void): Promise<VlanResult>;
 }
 
 export class NoVlansAvailable extends Error {

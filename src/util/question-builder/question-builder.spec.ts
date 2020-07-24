@@ -2,7 +2,7 @@ import {Container} from 'typescript-ioc';
 import {prompt} from 'inquirer';
 
 import {QuestionBuilderImpl} from './question-builder.impl';
-import {mockField} from '../testHelper';
+import {mockField} from '../../testHelper';
 import Mock = jest.Mock;
 
 jest.mock('inquirer');
