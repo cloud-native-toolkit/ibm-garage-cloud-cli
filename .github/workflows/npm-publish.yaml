@@ -13,6 +13,12 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
+      - uses: actions/setup-node@v2-beta
+        with:
+          node-version: '12'
+
+      - run: npm install
+
       - name: Publish to npm
         uses: JS-DevTools/npm-publish@v1
         with:
