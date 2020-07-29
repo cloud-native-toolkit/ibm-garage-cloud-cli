@@ -53,14 +53,15 @@ jobs:
       - name: Update package.json
         run: |
           npm version ${{ steps.create-release.outputs.tag_name }}
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git commit -a -m "Updates package version to ${{ steps.create-release.outputs.tag_name }}"
+          git status
 
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          commit_message: "Updates package version to ${{ steps.create-release.outputs.tag_name }}"
+          commit_options: --no-verify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: eregon/publish-release@v1
         env:
