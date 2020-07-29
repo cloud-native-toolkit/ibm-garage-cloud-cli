@@ -53,8 +53,8 @@ jobs:
       - name: Update package.json
         run: |
           npm version ${{ steps.create-release.outputs.tag_name }}
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
           git commit -a -m "Updates package version to ${{ steps.create-release.outputs.tag_name }}"
 
       - name: Push changes
