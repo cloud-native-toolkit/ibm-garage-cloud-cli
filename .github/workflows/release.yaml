@@ -4,9 +4,9 @@ name: Release
 # events but only for the master branch
 on:
   push:
-    branches: [ master ]
+    branches: [ master, beta ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, beta ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -41,8 +41,9 @@ jobs:
         uses: release-drafter/release-drafter@v5
         with:
           # (Optional) specify config name to use, relative to .github/. Default: release-drafter.yml
-          config-name: release-drafter.yaml
+          config-name: release-drafter-${{ github.ref }}.yaml
           publish: false
+          prerelease: ${{ github.ref != "master" }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -63,6 +64,6 @@ jobs:
 
       - uses: eregon/publish-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           release_id: ${{ steps.create-release.outputs.id }}
