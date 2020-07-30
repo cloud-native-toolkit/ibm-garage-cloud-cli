@@ -19,41 +19,9 @@
     "kubectl-sync": "dist/script-namespace.js",
     "kubectl-tool-config": "dist/script-tool-config.js"
   },
-  "watch": {
-    "test": {
-      "patterns": [
-        "src"
-      ],
-      "extensions": "ts",
-      "quiet": true
-    },
-    "build": {
-      "patterns": [
-        "src"
-      ],
-      "extensions": "ts",
-      "quiet": true
-    }
-  },
   "husky": {
     "hooks": {
       "pre-commit": "npm test"
-    }
-  },
-  "release-it": {
-    "git": {
-      "tagName": "v${version}",
-      "commitMessage": "Release ${version}\n[skip ci]"
-    },
-    "github": {
-      "release": true
-    },
-    "hooks": {
-      "before:init": [
-        "npm test"
-      ],
-      "after:bump": "npm run build",
-      "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     }
   },
   "scripts": {
@@ -65,12 +33,10 @@
     "link": "npm link $npm_package_name",
     "unlink": "npm unlink $npm_package_name",
     "prepare": "npm run build",
-    "watch": "npm-watch",
     "prestart": "npm run build",
     "start": "./dist/script.js",
     "igc": "./dist/script.js",
-    "release": "release-it --verbose",
-    "update-interactive": "npm-check --update"
+    "release": "release-it --verbose"
   },
   "devDependencies": {
     "@babel/core": "^7.10.5",
@@ -95,9 +61,6 @@
     "jest": "^26.0.7",
     "jest-plugin-context": "^2.9.0",
     "jest-sonar-reporter": "^2.0.0",
-    "npm-check": "^5.9.2",
-    "npm-watch": "^0.6.0",
-    "release-it": "^13.6.6",
     "ts-jest": "^26.1.4",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.7"
