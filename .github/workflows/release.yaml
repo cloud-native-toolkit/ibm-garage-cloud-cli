@@ -35,6 +35,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - id: check-branch
+        run: |
+          if [[ "${GITHUB_REF}" != "master" ]]; then
+            echo "##[set-output name=prerelease;]true"
+          else
+            echo "##[set-output name=prerelease;]false"
+          fi
+
       # Drafts your next Release notes as Pull Requests are merged into "master"
       - name: Create release
         id: create-release
@@ -43,7 +51,7 @@ jobs:
           # (Optional) specify config name to use, relative to .github/. Default: release-drafter.yml
           config-name: release-drafter-${{ github.ref }}.yaml
           publish: false
-          prerelease: ${{ github.ref != "master" }}
+          prerelease: ${{ steps.check-branch.outputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
