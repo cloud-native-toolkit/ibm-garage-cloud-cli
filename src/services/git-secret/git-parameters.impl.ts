@@ -20,7 +20,7 @@ export class GetGitParametersImpl implements GetGitParameters {
 
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
-    const parsedGitUrl: {url: string; host: string; org: string; repo: string} = this.parseGitUrl(await this.getRemoteGitUrl(options.workingDir));
+    const parsedGitUrl: {url: string; host: string; org: string; repo: string} = await this.getGitConfig(options.remote, options.workingDir);
     const currentBranch: string = await this.getCurrentBranch(options.workingDir);
 
     console.log(`  Project git repo: ${parsedGitUrl.url}`);
@@ -57,6 +57,10 @@ export class GetGitParametersImpl implements GetGitParameters {
     return result;
   }
 
+  async getGitConfig(remote: string = 'origin', workingDir: string = process.cwd()): Promise<{url: string; host: string; org: string; repo: string}> {
+    return this.parseGitUrl(await this.getRemoteGitUrl(remote, workingDir));
+  }
+
   parseGitUrl(url: string): {url: string; host: string; org: string; repo: string} {
     const pattern = this.GIT_URL_PATTERNS[url.substring(0, 4)];
 
@@ -83,9 +87,9 @@ export class GetGitParametersImpl implements GetGitParameters {
     };
   }
 
-  async getRemoteGitUrl(workingDir: string = process.cwd()): Promise<string> {
+  async getRemoteGitUrl(remote: string = 'origin', workingDir: string = process.cwd()): Promise<string> {
     return execPromise(
-      'git remote get-url origin',
+      `git remote get-url ${remote}`,
       {
         cwd: workingDir
       },
