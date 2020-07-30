@@ -17,9 +17,19 @@ jobs:
         with:
           node-version: '12'
 
+      - id: release_tag
+        run: |
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            echo "##[set-output name=tag;]beta"
+          else
+            echo "##[set-output name=tag;]latest"
+          fi
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
+
       - run: npm install
 
       - name: Publish to npm
-        uses: JS-DevTools/npm-publish@v1
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --tag ${{ steps.release_tag.outputs.tag }} --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
