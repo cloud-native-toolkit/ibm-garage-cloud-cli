@@ -161,7 +161,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
       const pipelineRunBuilder = this.buildPipelineRunBuilder({
         pipelineName: pipelineName,
-        imageUrl: await this.buildImageUrl(options, {repo: gitParams.repo}),
         scanImage,
       });
 
@@ -317,17 +316,11 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   buildPipelineRunBuilder(
     {
-      imageUrl,
       pipelineName,
       scanImage = false,
-      appName = '',
-      imageTag = '',
     }: {
-      imageUrl: string,
       pipelineName: string,
       scanImage?: boolean,
-      appName?: string,
-      imageTag?: string,
     }
   ): PipelineRunBuilder {
 
@@ -351,20 +344,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
                 value: gitRevision
               },
               {
-                name: 'image-url',
-                value: imageUrl
-              },
-              {
                 name: 'scan-image',
                 value: '' + scanImage // convert to string
-              },
-              {
-                name: 'app-name',
-                value: appName
-              },
-              {
-                name: 'image-tag',
-                value: imageTag
               },
             ]
           }
