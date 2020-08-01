@@ -6,6 +6,7 @@ import {CommandLineOptions} from '../model';
 import {GetGitParameters} from '../services/git-secret';
 
 export const command = 'git-repo [remote]';
+export const aliases = ['git'];
 export const desc = 'Launches a browser to the git repo url specified by the origin remote';
 export const builder = (argv: Argv<any>) => argv
   .positional('remote', {
