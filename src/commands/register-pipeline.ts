@@ -136,7 +136,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       process.exit(1);
     } else if (isCommandError(err)) {
       if (err.type.severity === ErrorSeverity.WARNING) {
-        console.log(`Warning: ${err.message}`);
+        console.log(`${chalk.yellow('Warning:')} ${err.message}`);
         process.exit(0)
       } else {
         console.log(`${err.type.severity}: ${err.message}`);
