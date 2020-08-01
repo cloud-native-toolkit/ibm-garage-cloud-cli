@@ -1,3 +1,5 @@
+import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
+
 export enum PipelineErrorType {
   JENKINS_MISSING = 'JENKINS_MISSING',
   NAMESPACE_MISSING = 'NAMESPACE_MISSING',
@@ -67,6 +69,16 @@ export class RegisterPipelineOptions {
   serverUrl?: string;
   pipelineName?: string;
   replaceGitSecret?: boolean;
+}
+
+export const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {
+  WEBHOOK: {name: 'WEBHOOK', severity: ErrorSeverity.WARNING}
+}
+
+export class WebhookError extends CommandError {
+  constructor(message: string) {
+    super(message, REGISTER_PIPELINE_ERROR_TYPES.WEBHOOK);
+  }
 }
 
 export abstract class RegisterPipeline {
