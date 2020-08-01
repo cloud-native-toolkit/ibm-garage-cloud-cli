@@ -5,7 +5,7 @@ import {
   NamespaceMissingError,
   PipelineNamespaceNotProvided,
   RegisterPipeline,
-  RegisterPipelineOptions
+  RegisterPipelineOptions, WebhookError
 } from './register-pipeline.api';
 import {RegisterIksPipeline, RegisterOpenshiftPipeline, RegisterPipelineType} from './jenkins';
 import {CreateWebhook, CreateWebhookErrorTypes, CreateWebhookOptions, isCreateWebhookError} from '../create-webhook';
@@ -16,16 +16,6 @@ import {ClusterType} from '../../util/cluster-type';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 
 const noopNotifyStatus: (status: string) => void = () => {};
-
-const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {
-  WEBHOOK: {name: 'WEBHOOK', severity: ErrorSeverity.WARNING}
-}
-
-class WebhookError extends CommandError {
-  constructor(message: string) {
-    super(message, REGISTER_PIPELINE_ERROR_TYPES.WEBHOOK);
-  }
-}
 
 export class RegisterJenkinsPipelineImpl implements RegisterPipeline {
   @Inject

@@ -6,7 +6,7 @@ import {
   NamespaceMissingError,
   PipelineNamespaceNotProvided,
   RegisterPipeline,
-  RegisterPipelineOptions
+  RegisterPipelineOptions, WebhookError
 } from './register-pipeline.api';
 import {Namespace as NamespaceService} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
@@ -38,7 +38,7 @@ import {CreateServiceAccount} from '../create-service-account';
 import {QuestionBuilder} from '../../util/question-builder';
 import {ClusterType} from '../../util/cluster-type';
 import {KubeDeployment} from '../../api/kubectl/deployment';
-import {CreateWebhook} from '../create-webhook';
+import {CreateWebhook, CreateWebhookErrorTypes, isCreateWebhookError} from '../create-webhook';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -210,9 +210,14 @@ export class RegisterTektonPipeline implements RegisterPipeline {
           webhookUrl,
         });
       } catch (err) {
-        console.log('Error creating webhook', err);
-        notifyStatus(chalk.red(`Unable to create webhook automatically. Are your credentials correct?`));
-        notifyStatus(`The webhook can be manually created using the following url: ${chalk.yellow(webhookUrl)}`);
+        if (isCreateWebhookError(err) && err.errorType === CreateWebhookErrorTypes.alreadyExists) {
+          throw new WebhookError('Webhook already exists for this trigger in this repository.');
+        }  else {
+          throw new WebhookError(
+            `Error creating webhook.
+  Check your access token is correct and that it has permission to create webhooks.
+  The webhook can be manually created by sending push events to ${chalk.yellow(webhookUrl)}}`)
+        }
       }
     }
   }
