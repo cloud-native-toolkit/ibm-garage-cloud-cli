@@ -21,6 +21,21 @@ Command-line tool to simplify activities related to IBM Cloud.
     ```
     igc --help
     ```
+   
+### Beta release
+
+Release candidate commands are made available for early use and testing via the beta release
+of the CLI. The beta release of the CLI can be installed by running:
+
+```
+npm i -g @ibmgaragecloud/cloud-native-toolkit-cli@beta
+```
+
+To return to the non-beta version of the cli, simply run:
+
+```
+npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
+```
 
 ## Available commands
 
