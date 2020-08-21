@@ -46,7 +46,7 @@ export const builder = (yargs: Argv<any>) => {
       require: false,
     });
 };
-exports.handler = async (argv: Arguments<CreateGitSecretOptions & {namespace: string}>) => {
+export const handler = async (argv: Arguments<CreateGitSecretOptions & {namespace: string}>) => {
   const cmd: CreateGitSecret = Container.get(CreateGitSecret);
 
   let spinner;
