@@ -1,18 +1,17 @@
 import {Inject} from 'typescript-ioc';
-import {prompt, Questions} from 'inquirer';
+import {prompt, QuestionCollection} from 'inquirer';
 import * as YAML from 'js-yaml';
-
-import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {ChildProcess} from '../../util/child-process';
-import {FsPromises} from '../../util/file-util';
-import * as openshift from '../../api/openshift';
-import {OpenshiftCommands} from '../../api/openshift';
-import {RegisterPipelineType} from './register-pipeline-type';
-import {GitParams} from '../git-secret';
 import path = require('path');
-import {JenkinsMissingError} from './register-pipeline';
-import {Namespace} from '../namespace';
-import {OcpRoute} from '../../api/kubectl/route';
+
+import {JenkinsMissingError, RegisterPipelineOptions} from '../register-pipeline.api';
+import {ChildProcess} from '../../../util/child-process';
+import {FsPromises} from '../../../util/file-util';
+import * as openshift from '../../../api/openshift';
+import {OpenshiftCommands} from '../../../api/openshift';
+import {RegisterPipelineType} from './register-pipeline-type';
+import {GitParams} from '../../git-secret';
+import {Namespace} from '../../namespace';
+import {OcpRoute} from '../../../api/kubectl';
 
 interface Prompt {
   shouldUpdate: boolean;
@@ -172,7 +171,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
   async shouldUpdateExistingBuildConfig(pipelineName: string): Promise<boolean> {
 
-    const questions: Questions<Prompt> = [{
+    const questions: QuestionCollection<Prompt> = [{
       type: 'confirm',
       name: 'shouldUpdate',
       message: `The build pipeline (${pipelineName}) already exists. Do you want to update it?`,

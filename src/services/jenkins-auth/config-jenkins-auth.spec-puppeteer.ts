@@ -1,9 +1,8 @@
 import {Container} from 'typescript-ioc';
-import {KubeSecret} from '../../api/kubectl';
-import {JenkinsAuth, JenkinsAuthImpl} from './config-jenkins-auth';
-import {setField, providerFromValue} from '../../testHelper';
+import {KubeIngress, KubeSecret} from '../../api/kubectl';
+import {JenkinsAuthImpl} from './config-jenkins-auth';
+import {factoryFromValue, setField} from '../../testHelper';
 import {GenerateToken, GenerateTokenOptions} from '../generate-token';
-import {KubeIngress} from '../../api/kubectl/ingress';
 import Mock = jest.Mock;
 
 describe('config-jenkins-auth', () => {
@@ -22,23 +21,23 @@ describe('config-jenkins-auth', () => {
 
     beforeEach(() => {
       mock_generateToken = jest.fn();
-      Container.bind(GenerateToken).provider(providerFromValue({generateToken: mock_generateToken}));
+      Container.bind(GenerateToken).factory(factoryFromValue({generateToken: mock_generateToken}));
 
       mock_create = jest.fn();
       mock_getSecretData = jest.fn();
-      Container.bind(KubeSecret).provider(providerFromValue({
+      Container.bind(KubeSecret).factory(factoryFromValue({
         createOrUpdate: mock_create,
         getData: mock_getSecretData,
       }));
 
       mock_getIngressHosts = jest.fn();
       mock_getIngressUrls = jest.fn();
-      Container.bind(KubeIngress).provider(providerFromValue({
+      Container.bind(KubeIngress).factory(factoryFromValue({
         getHosts: mock_getIngressHosts,
         getUrls: mock_getIngressUrls,
       }));
 
-      classUnderTest = Container.get(JenkinsAuth);
+      classUnderTest = Container.get(JenkinsAuthImpl);
     });
 
     test('classUnderTest should be defined', () => {
@@ -318,7 +317,7 @@ describe('config-jenkins-auth', () => {
       beforeEach(() => {
         mock_create = jest.fn();
 
-        Container.bind(KubeSecret).provider({get: () => ({createOrUpdate: mock_create})});
+        Container.bind(KubeSecret).factory(() => ({createOrUpdate: mock_create}));
       });
 
       describe('when successful', () => {

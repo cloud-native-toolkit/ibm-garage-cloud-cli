@@ -1,43 +1,23 @@
-import {Inject, Provides} from 'typescript-ioc';
+import {Inject} from 'typescript-ioc';
 import * as chalk from 'chalk';
 
-import {RegisterPipelineOptions} from './register-pipeline-options.model';
-import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
-import {RegisterIksPipeline} from './register-iks-pipeline';
-import {RegisterOpenshiftPipeline} from './register-openshift-pipeline';
-import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
-import {RegisterPipelineType} from './register-pipeline-type';
-import {CreateGitSecret, GitParams} from '../git-secret';
 import {
-  CreateWebhook,
-  CreateWebhookErrorTypes,
-  CreateWebhookOptions,
-  GitConfig,
-  isCreateWebhookError
-} from '../create-webhook';
-import {ClusterType} from '../../util/cluster-type';
-import {KubeNamespace} from '../../api/kubectl/namespace';
-import {NamespaceMissingError, PipelineNamespaceNotProvided} from './register-pipeline';
+  NamespaceMissingError,
+  PipelineNamespaceNotProvided,
+  RegisterPipeline,
+  RegisterPipelineOptions, WebhookError
+} from './register-pipeline.api';
+import {RegisterIksPipeline, RegisterOpenshiftPipeline, RegisterPipelineType} from './jenkins';
+import {CreateWebhook, CreateWebhookErrorTypes, CreateWebhookOptions, isCreateWebhookError} from '../create-webhook';
+import {CreateGitSecret, GitConfig, GitParams} from '../git-secret';
 import {Namespace as NamespaceService} from '../namespace';
+import {KubeConfigMap, KubeNamespace, KubeSecret} from '../../api/kubectl';
+import {ClusterType} from '../../util/cluster-type';
+import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 
-const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {
-  WEBHOOK: {name: 'WEBHOOK', severity: ErrorSeverity.WARNING}
-}
-
-class WebhookError extends CommandError {
-  constructor(message: string) {
-    super(message, REGISTER_PIPELINE_ERROR_TYPES.WEBHOOK);
-  }
-}
-
-export abstract class RegisterPipeline {
-  async abstract registerPipeline(cliOptions: RegisterPipelineOptions, notifyStatus?: (status: string) => void);
-}
-
-@Provides(RegisterPipeline)
-export class RegisterJenkinsPipeline implements RegisterPipeline {
+export class RegisterJenkinsPipelineImpl implements RegisterPipeline {
   @Inject
   private createGitSecret: CreateGitSecret;
   @Inject

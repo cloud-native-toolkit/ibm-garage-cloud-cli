@@ -1,13 +1,19 @@
+import {Container} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
+import * as chalk from 'chalk';
+
 import {CommandLineOptions} from '../model';
 import {DefaultOptionBuilder} from '../util/yargs-support';
-import {RegisterJenkinsPipeline, RegisterPipeline, RegisterPipelineOptions} from '../services/register-pipeline';
+import {
+  isPipelineError,
+  PipelineErrorType,
+  RegisterJenkinsPipelineImpl,
+  RegisterPipeline,
+  RegisterPipelineOptions,
+  RegisterTektonPipeline
+} from '../services/register-pipeline';
 import {checkKubeconfig} from '../util/kubernetes';
-import {Container} from 'typescript-ioc';
-import {RegisterTektonPipeline} from '../services/register-pipeline/register-tekton-pipeline';
 import {ErrorSeverity, isCommandError} from '../util/errors';
-import {isPipelineError, PipelineErrorType} from '../services/register-pipeline/register-pipeline';
-import * as chalk from 'chalk';
 import {QuestionBuilder} from '../util/question-builder';
 import {isClusterConfigNotFound} from '../util/cluster-type';
 
@@ -110,7 +116,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
 
     const command: RegisterPipeline = argv.tekton
       ? Container.get(RegisterTektonPipeline)
-      : Container.get(RegisterJenkinsPipeline);
+      : Container.get(RegisterJenkinsPipelineImpl);
 
     await command.registerPipeline(argv, statusCallback);
 
@@ -130,7 +136,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       process.exit(1);
     } else if (isCommandError(err)) {
       if (err.type.severity === ErrorSeverity.WARNING) {
-        console.log(`Warning: ${err.message}`);
+        console.log(`${chalk.yellow('Warning:')} ${err.message}`);
         process.exit(0)
       } else {
         console.log(`${err.type.severity}: ${err.message}`);

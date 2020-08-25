@@ -1,8 +1,8 @@
 import {Container} from 'typescript-ioc';
 
 import {ClusterType, isClusterConfigNotFound} from './cluster-type';
-import {KubeConfigMap, KubeSecret} from '../api/kubectl';
-import {providerFromValue} from '../testHelper';
+import {KubeConfigMap} from '../api/kubectl';
+import {factoryFromValue} from '../testHelper';
 import Mock = jest.Mock;
 
 describe('cluster-type', () => {
@@ -20,7 +20,7 @@ describe('cluster-type', () => {
     const kubeConfigMap = {
       getData,
     };
-    Container.bind(KubeConfigMap).provider(providerFromValue(kubeConfigMap));
+    Container.bind(KubeConfigMap).factory(factoryFromValue(kubeConfigMap));
 
     classUnderTest = Container.get(ClusterType);
   });

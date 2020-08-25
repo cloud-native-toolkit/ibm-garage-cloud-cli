@@ -3,7 +3,6 @@ import {Arguments, Argv} from 'yargs';
 import * as chalk from 'chalk';
 
 import {CreateGitSecret, CreateGitSecretOptions} from '../services/git-secret';
-import {ClusterType} from '../util/cluster-type';
 import {Namespace} from '../services/namespace';
 
 export const command = 'git-secret [name]';
@@ -47,7 +46,7 @@ export const builder = (yargs: Argv<any>) => {
       require: false,
     });
 };
-exports.handler = async (argv: Arguments<CreateGitSecretOptions & {namespace: string}>) => {
+export const handler = async (argv: Arguments<CreateGitSecretOptions & {namespace: string}>) => {
   const cmd: CreateGitSecret = Container.get(CreateGitSecret);
 
   let spinner;

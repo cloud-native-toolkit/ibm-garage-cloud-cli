@@ -1,7 +1,6 @@
 import {Inject} from 'typescript-ioc';
 import {ChildProcess} from '../../util/child-process';
 
-
 export class OpenshiftCommands {
   @Inject
   private childProcess: ChildProcess;

@@ -7,9 +7,9 @@ import {
 } from './kubernetes-resource-manager';
 import {AsyncKubeClient, KubeClient} from './client';
 import {buildMockKubeClient} from './testHelper';
-import {Container, Provided, Provider} from 'typescript-ioc';
-import {mockField, providerFromValue, setField} from '../../testHelper';
 import {Secret} from './secrets';
+import {BuildContext, Container, Factory, ObjectFactory} from 'typescript-ioc';
+import {factoryFromValue, mockField, setField} from '../../testHelper';
 import Mock = jest.Mock;
 
 class TestResource implements KubeResource {
@@ -21,34 +21,30 @@ class TestResource implements KubeResource {
   }
 }
 
-export const testV1Provider: Provider = {
-  get: () => {
-    return new TestV1KubernetesResource({
-      client: Container.get(AsyncKubeClient),
-      name: 'secret',
-      kind: 'Secret',
-    })
-  }
+export const testV1Provider: ObjectFactory = (context: BuildContext) => {
+  return new TestV1KubernetesResource({
+    client: context.resolve(AsyncKubeClient),
+    name: 'secret',
+    kind: 'Secret',
+  });
 };
 
-@Provided(testV1Provider)
+@Factory(testV1Provider)
 class TestV1KubernetesResource extends AbstractKubernetesResourceManager<TestResource> {
 }
 
 
-export const testV1Beta1Provider: Provider = {
-  get: () => {
-    return new TestV1Beta1KubernetesResource({
-      client: Container.get(AsyncKubeClient),
-      group: 'extension',
-      version: 'v1beta1',
-      name: 'ingress',
-      kind: 'Ingress',
-    })
-  }
+export const testV1Beta1Provider: ObjectFactory = (context: BuildContext) => {
+  return new TestV1Beta1KubernetesResource({
+    client: context.resolve(AsyncKubeClient),
+    group: 'extension',
+    version: 'v1beta1',
+    name: 'ingress',
+    kind: 'Ingress',
+  });
 };
 
-@Provided(testV1Beta1Provider)
+@Factory(testV1Beta1Provider)
 class TestV1Beta1KubernetesResource extends AbstractKubernetesResourceManager<TestResource> {
   constructor(props: Props) {
     super(props);
@@ -66,7 +62,7 @@ describe('kubernetes-resource-manager', () => {
     mockClient = buildMockKubeClient();
 
     Container.bind(AsyncKubeClient)
-      .provider(providerFromValue(new AsyncKubeClient(mockClient)));
+      .factory(factoryFromValue(new AsyncKubeClient(mockClient)));
     classUnderTest = Container.get(TestV1KubernetesResource);
   });
 

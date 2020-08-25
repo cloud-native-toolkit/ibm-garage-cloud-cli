@@ -1,8 +1,9 @@
-import {FromFile, FromFileImpl} from './from-file';
 import {Container} from 'typescript-ioc';
-import {setField, providerFromValue} from '../../testHelper';
-import Mock = jest.Mock;
+import {FromFileImpl} from './from-file.impl';
+import {FromFile} from './from-file';
 import {ChildProcess} from '../../util/child-process';
+import {factoryFromValue} from '../../testHelper';
+import Mock = jest.Mock;
 
 describe('from-file', () => {
   test('canary verifies test infrastructure', () => {
@@ -16,9 +17,9 @@ describe('from-file', () => {
 
     beforeEach(() => {
       mock_spawn = jest.fn();
-      Container.bind(ChildProcess).provider(providerFromValue({spawn: mock_spawn}));
+      Container.bind(ChildProcess).factory(factoryFromValue({spawn: mock_spawn}));
 
-      classUnderTest = Container.get(FromFile);
+      classUnderTest = Container.get(FromFile) as FromFileImpl;
     });
 
     describe('apply()', () => {

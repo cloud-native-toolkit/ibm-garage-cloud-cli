@@ -1,9 +1,9 @@
-import {buildMockKubeClient, mockKubeClientProvider} from './testHelper';
+import {mockKubeClientFactory} from './testHelper';
 import {Ingress, KubeIngress} from './ingress';
 import {Container} from 'typescript-ioc';
 import {KubeClient} from './client';
-import Mock = jest.Mock;
 import {setField} from '../../testHelper';
+import Mock = jest.Mock;
 
 describe('ingress', () => {
   test('canary verifies test infrastructure', () => {
@@ -16,7 +16,7 @@ describe('ingress', () => {
     beforeEach(() => {
       Container
         .bind(KubeClient)
-        .provider(mockKubeClientProvider);
+        .factory(mockKubeClientFactory);
 
       classUnderTest = Container.get(KubeIngress);
     });
