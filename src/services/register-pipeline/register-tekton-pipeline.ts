@@ -15,7 +15,7 @@ import {
   KubeConfigMap,
   KubeMetadata,
   KubeNamespace,
-  KubeResource,
+  KubeResource, KubeSecret,
   KubeTektonPipeline,
   KubeTektonPipelineResource,
   KubeTektonPipelineRun,
@@ -25,7 +25,7 @@ import {
   KubeTektonTriggerTemplate,
   OcpRoute,
   RoleRule,
-  Route,
+  Route, Secret,
   TektonPipeline,
   TektonPipelineRun,
   TemplateKubeMetadata,
@@ -58,6 +58,11 @@ export interface IBMCloudConfig {
   CLUSTER_NAME: string;
   INGRESS_SUBDOMAIN: string;
   TLS_SECRET_NAME: string;
+}
+
+export interface RegistryAccess {
+  REGISTRY_NAMESPACE?: string;
+  REGISTRY_URL: string;
 }
 
 interface PipelineArgs {
@@ -101,7 +106,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   tektonTask: KubeTektonTask;
   @Inject
-  configMap: KubeConfigMap;
+  secret: KubeSecret;
   @Inject
   serviceAccount: CreateServiceAccount;
   @Inject
@@ -276,14 +281,13 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   async buildImageUrl(options: TektonPipelineOptions, params: { repo: string }): Promise<string> {
 
-    const containerConfig: ConfigMap<IBMCloudConfig> = await this.configMap.get('ibmcloud-config', options.pipelineNamespace);
-    if (!containerConfig || !containerConfig.data) {
-      throw new Error('Unable to retrieve config map: ibmcloud-config');
+    const registryConfig: RegistryAccess = await this.secret.getData<RegistryAccess>('registry-access', options.pipelineNamespace);
+    if (!registryConfig) {
+      throw new Error('Unable to retrieve Image Registry secret (registry-access) in namespace: ' + options.pipelineNamespace);
     }
 
-    const registryUrl = containerConfig.data.REGISTRY_URL;
-    // Not sure of pipelineNamespace is the right default...
-    const registryNamespace = containerConfig.data.REGISTRY_NAMESPACE || options.pipelineNamespace;
+    const registryUrl = registryConfig.REGISTRY_URL || 'image-registry.openshift-image-registry.svc:5000';
+    const registryNamespace = registryConfig.REGISTRY_NAMESPACE || options.pipelineNamespace;
 
     return `${registryUrl}/${registryNamespace}/${params.repo}:latest`;
   }

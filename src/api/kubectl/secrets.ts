@@ -3,10 +3,10 @@ import {AsyncKubeClient} from './client';
 import {AbstractKubernetesResourceManager, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
 import {decode as base64decode} from '../../util/base64';
 
-export interface Secret extends KubeResource {
+export interface Secret<T = any> extends KubeResource {
   type: string;
-  stringData?: any;
-  data?: any;
+  stringData?: T;
+  data?: T;
 }
 
 const factory: ObjectFactory = (context: BuildContext) => {
@@ -24,7 +24,7 @@ export class KubeSecret extends AbstractKubernetesResourceManager<Secret> {
   }
 
   async getData<U>(secretName: string, namespace: string): Promise<U> {
-    const secret: Secret = await this.get(secretName, namespace);
+    const secret: Secret<U> = await this.get(secretName, namespace);
 
     if (!secret || !secret.data) {
       return {} as any;
@@ -33,7 +33,7 @@ export class KubeSecret extends AbstractKubernetesResourceManager<Secret> {
     return this.decodeSecretData(secret.data);
   }
 
-  decodeSecretData<U>(secretData: U): any {
+  decodeSecretData<U>(secretData: U): U {
     return Object.keys(secretData).reduce((decodedResults, currentKey) => {
       if (secretData[currentKey]) {
         decodedResults[currentKey] = base64decode(secretData[currentKey]);

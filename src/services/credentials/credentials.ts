@@ -97,7 +97,7 @@ export class CredentialsImpl implements Credentials {
         this.getJenkinsCredentials(namespace),
       ]),
       this.kubeSecret.listData(listOptions, ['jenkins-access']),
-      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
+      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config', 'cloud-config']),
     ]);
 
     return this.group(_.assign({}, ...(_.flatten(results))));

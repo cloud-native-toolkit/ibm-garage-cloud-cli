@@ -1,17 +1,17 @@
 import {Container} from 'typescript-ioc';
 import {RegisterPipelineOptions} from './register-pipeline.api';
-import {IBMCloudConfig, RegisterTektonPipeline} from './register-tekton-pipeline';
+import {IBMCloudConfig, RegisterTektonPipeline, RegistryAccess} from './register-tekton-pipeline';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {factoryFromValue, mockField} from '../../testHelper';
 import {Namespace} from '../namespace';
 import {
   ConfigMap,
   KubeConfigMap,
-  KubeNamespace,
+  KubeNamespace, KubeSecret,
   KubeTektonPipeline,
   KubeTektonPipelineResource,
   KubeTektonPipelineRun,
-  KubeTektonTask
+  KubeTektonTask, Secret
 } from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
 import Mock = jest.Mock;
@@ -26,7 +26,7 @@ describe('register-tekton-pipeline', () => {
   let kubePipeline: KubeTektonPipeline;
   let kubePipelineResource: KubeTektonPipelineResource;
   let kubePipelineRun: KubeTektonPipelineRun;
-  let kubeConfigMap: KubeConfigMap;
+  let kubeSecret: KubeSecret;
   let namespaceBuilder: Namespace;
   let getClusterType: Mock;
   let kubeNamespace_exists: Mock;
@@ -69,11 +69,11 @@ describe('register-tekton-pipeline', () => {
     Container.bind(KubeTektonPipelineRun)
       .factory(factoryFromValue(kubePipelineRun));
 
-    kubeConfigMap = {
-      get: jest.fn(),
+    kubeSecret = {
+      getData: jest.fn(),
     } as any;
-    Container.bind(KubeConfigMap)
-      .factory(factoryFromValue(kubeConfigMap));
+    Container.bind(KubeSecret)
+      .factory(factoryFromValue(kubeSecret));
 
     getClusterType = jest.fn();
     Container.bind(ClusterType)
@@ -241,43 +241,33 @@ describe('register-tekton-pipeline', () => {
       const registryUrl = 'registry-url';
       const registryNamespace = 'registry-ns';
       beforeEach(() => {
-        let ibmcloudConfig: ConfigMap<IBMCloudConfig> = {
-          metadata: {
-            name: 'ibmcloud-config',
-          },
-          data: {
-            REGISTRY_URL: registryUrl,
-            REGISTRY_NAMESPACE: registryNamespace,
-          } as any
+        let registryConfig: RegistryAccess = {
+          REGISTRY_URL: registryUrl,
+          REGISTRY_NAMESPACE: registryNamespace,
         };
 
-        (kubeConfigMap.get as Mock).mockResolvedValue(ibmcloudConfig);
+        (kubeSecret.getData as Mock).mockResolvedValue(registryConfig);
       });
 
-      test('should get registry url from config map', async () => {
+      test('should get registry url from secret', async () => {
         const options = { pipelineNamespace: 'pipeline', templateNamespace: 'template' };
         const repo = 'git-repo';
 
         const url = await classUnderTest.buildImageUrl(options, { repo });
 
         expect(url).toEqual(`${registryUrl}/${registryNamespace}/${repo}:latest`);
-        expect(kubeConfigMap.get).toHaveBeenCalledWith('ibmcloud-config', options.pipelineNamespace);
+        expect(kubeSecret.getData).toHaveBeenCalledWith('registry-access', options.pipelineNamespace);
       });
     });
 
     describe('when registry namespace not set', () => {
       const registryUrl = 'registry-url';
       beforeEach(() => {
-        let ibmcloudConfig: ConfigMap<IBMCloudConfig> = {
-          metadata: {
-            name: 'ibmcloud-config',
-          },
-          data: {
-            REGISTRY_URL: registryUrl,
-          } as any
+        let registryConfig: RegistryAccess = {
+          REGISTRY_URL: registryUrl,
         };
 
-        (kubeConfigMap.get as Mock).mockResolvedValue(ibmcloudConfig);
+        (kubeSecret.getData as Mock).mockResolvedValue(registryConfig);
       });
 
       test('should get default registry namespace to pipeline namespace', async () => {
@@ -287,11 +277,11 @@ describe('register-tekton-pipeline', () => {
         const url = await classUnderTest.buildImageUrl(options, { repo });
 
         expect(url).toEqual(`${registryUrl}/${options.pipelineNamespace}/${repo}:latest`);
-        expect(kubeConfigMap.get).toHaveBeenCalledWith('ibmcloud-config', options.pipelineNamespace);
+        expect(kubeSecret.getData).toHaveBeenCalledWith('registry-access', options.pipelineNamespace);
       });
     });
 
-    describe('when configmap not found', () => {
+    describe('when secret not found', () => {
       test('should throw error', () => {
         const options = { pipelineNamespace: 'pipeline', templateNamespace: 'template' };
         const repo = 'git-repo';
@@ -300,7 +290,7 @@ describe('register-tekton-pipeline', () => {
           .then(
             result => fail('Should throw error'),
             error => {
-              expect(error.message).toEqual('Unable to retrieve config map: ibmcloud-config');
+              expect(error.message).toEqual('Unable to retrieve Image Registry secret (registry-access) in namespace: ' + options.pipelineNamespace);
             }
           );
       });
