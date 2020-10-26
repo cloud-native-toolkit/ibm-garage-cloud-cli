@@ -2,15 +2,15 @@ import {Container} from 'typescript-ioc';
 import {prompt} from 'inquirer';
 import * as open from 'open';
 import {Arguments, Argv} from 'yargs';
-import ora from 'ora';
 
 import {CommandLineOptions} from '../model';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {checkKubeconfig} from '../util/kubernetes';
 import {GetEndpoints} from '../services/endpoints';
-import {ClusterType} from '../util/cluster-type';
 import {Namespace} from '../services/namespace';
 import * as chalk from 'chalk';
+
+const ora = require('ora');
 
 interface SelectedIngress {
   selection: string;
