@@ -88,7 +88,7 @@ export class CredentialsImpl implements Credentials {
 
   async getCredentials(namespace: string = 'tools', notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secrets> {
 
-    const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
+    const qs: QueryString = {labelSelector: 'grouping=garage-cloud-native-toolkit'};
     const listOptions: ListOptions<any> = {namespace, qs};
 
     const results: Array<Array<object>> = await Promise.all([
@@ -96,8 +96,8 @@ export class CredentialsImpl implements Credentials {
         this.getArgoCdCredentials(namespace),
         this.getJenkinsCredentials(namespace),
       ]),
-      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
       this.kubeSecret.listData(listOptions, ['jenkins-access']),
+      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config']),
     ]);
 
     return this.group(_.assign({}, ...(_.flatten(results))));
