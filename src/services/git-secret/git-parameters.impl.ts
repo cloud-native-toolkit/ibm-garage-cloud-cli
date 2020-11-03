@@ -88,12 +88,25 @@ export class GetGitParametersImpl implements GetGitParameters {
   }
 
   async getRemoteGitUrl(remote: string = 'origin', workingDir: string = process.cwd()): Promise<string> {
-    return execPromise(
-      `git remote get-url ${remote}`,
+    const {stdout} = await execPromise(
+      `git remote -v`,
       {
         cwd: workingDir
       },
-    ).then(({stdout}: ExecResult) => stdout.toString().trim());
+    );
+
+    const lines: string[] = stdout.toString().trim().split(/\r?\n/);
+
+    const test = new RegExp(`${remote}\\s+(.*)\\s+.push.*`);
+    const gitUrls = lines
+      .filter(line => test.test(line))
+      .map(line => line.replace(test, '$1'));
+
+    if (gitUrls.length == 0) {
+      throw new Error('Git url not found');
+    }
+
+    return gitUrls[0];
   }
 
   async getCurrentBranch(workingDir: string = process.cwd()): Promise<string> {
