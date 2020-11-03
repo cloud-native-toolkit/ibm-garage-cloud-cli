@@ -1,8 +1,8 @@
 import {Container} from 'typescript-ioc';
 
-import {ClusterType, isClusterConfigNotFound} from './cluster-type';
-import {KubeConfigMap} from '../api/kubectl';
-import {factoryFromValue} from '../testHelper';
+import {ClusterType} from './cluster-type';
+import {OcpProject} from '../api/kubectl';
+import {ServerUrl} from './server-url';
 import Mock = jest.Mock;
 
 describe('cluster-type', () => {
@@ -12,65 +12,71 @@ describe('cluster-type', () => {
 
   let classUnderTest: ClusterType;
 
-  let getData: Mock;
+  let projectExists: Mock;
+  let getServerUrl: Mock;
 
   beforeEach(() => {
-    getData = jest.fn();
-
-    const kubeConfigMap = {
-      getData,
+    projectExists = jest.fn();
+    const project = {
+      exists: projectExists
     };
-    Container.bind(KubeConfigMap).factory(factoryFromValue(kubeConfigMap));
+    Container.bind(OcpProject).factory(() => project);
+
+    getServerUrl = jest.fn();
+    const serverUrl = {
+      getServerUrl
+    };
+    Container.bind(ServerUrl).factory(() => serverUrl);
 
     classUnderTest = Container.get(ClusterType);
   });
 
   describe('given getClusterType()', () => {
-    const clusterType = 'cluster type';
     const serverUrl = 'server url';
 
-    describe('when cluster-config config map exists', () => {
+    beforeEach(() => {
+      getServerUrl.mockResolvedValue(serverUrl);
+    });
+
+    describe('when openshift project exists', () => {
       beforeEach(() => {
-        getData.mockResolvedValue({CLUSTER_TYPE: clusterType, SERVER_URL: serverUrl});
+        projectExists.mockResolvedValue(true);
       });
 
-      test('then return clusterType and serverUrl', async () => {
-        const namespace = 'namespace';
-        expect(await classUnderTest.getClusterType(namespace))
+      test('then clusterType should be openshift', async () => {
+        const clusterType = 'openshift';
+        expect(await classUnderTest.getClusterType('namespace'))
           .toEqual({clusterType, serverUrl});
 
-        expect(getData).toHaveBeenCalledWith('cluster-config', namespace);
+        expect(projectExists).toHaveBeenCalledWith('openshift');
       });
     });
 
-    describe('when cluster-config config map does not exist', () => {
+    describe('when openshift project does not exist', () => {
       beforeEach(() => {
-        getData.mockRejectedValueOnce(new Error('not found'));
-        getData.mockResolvedValue({CLUSTER_TYPE: clusterType, SERVER_URL: serverUrl});
+        projectExists.mockResolvedValue(false);
       });
 
-      test('then get clusterType and serverUrl from ibmcloud-config config map', async () => {
-        const namespace = 'namespace';
-        expect(await classUnderTest.getClusterType(namespace))
+      test('then clusterType should be kubernetes', async () => {
+        const clusterType = 'kubernetes';
+        expect(await classUnderTest.getClusterType('namespace'))
           .toEqual({clusterType, serverUrl});
 
-        expect(getData).toHaveBeenCalledTimes(2);
-        expect(getData.mock.calls[0]).toEqual(['cluster-config', namespace]);
-        expect(getData.mock.calls[1]).toEqual(['ibmcloud-config', namespace]);
+        expect(projectExists).toHaveBeenCalledWith('openshift');
+      });
+    });
+
+    describe('when project.exists throws an error', () => {
+      beforeEach(() => {
+        projectExists.mockRejectedValue(new Error('no resource named project'));
       });
 
-      describe('and when ibmcloud-config does not exist', () => {
-        beforeEach(() => {
-          getData.mockRejectedValue(new Error('not found'));
-        });
+      test('then clusterType should be kubernetes', async () => {
+        const clusterType = 'kubernetes';
+        expect(await classUnderTest.getClusterType('namespace'))
+          .toEqual({clusterType, serverUrl});
 
-        test('then throw ClusterConfigNotFound', async () => {
-          return classUnderTest.getClusterType('my-namespace')
-            .then(value => fail('should throw error'))
-            .catch(err => {
-              expect(isClusterConfigNotFound(err)).toEqual(true);
-            });
-        });
+        expect(projectExists).toHaveBeenCalledWith('openshift');
       });
     });
   });

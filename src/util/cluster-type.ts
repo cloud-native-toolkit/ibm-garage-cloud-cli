@@ -1,5 +1,6 @@
 import {Inject} from 'typescript-ioc';
-import {KubeConfigMap} from '../api/kubectl';
+import {OcpProject} from '../api/kubectl';
+import {ServerUrl} from './server-url';
 
 export function isClusterConfigNotFound(error: Error): error is ClusterConfigNotFound {
   const clusterError: ClusterConfigNotFound = error as ClusterConfigNotFound;
@@ -24,14 +25,26 @@ interface ClusterConfig {
 
 export class ClusterType {
   @Inject
-  private kubeConfigMap: KubeConfigMap;
+  private project: OcpProject;
+  @Inject
+  private serverUrl: ServerUrl;
 
   async getClusterType(namespace = 'tools'): Promise<{clusterType: 'openshift' | 'kubernetes', serverUrl?: string}> {
-    return this.kubeConfigMap.getData<ClusterConfig>('cluster-config', namespace)
-      .catch(err => this.kubeConfigMap.getData<ClusterConfig>('ibmcloud-config', namespace))
-      .then((value: ClusterConfig) => ({clusterType: value.CLUSTER_TYPE, serverUrl: value.SERVER_URL}))
-      .catch(err => {
-        throw new ClusterConfigNotFound('Config not found', 'ibmcloud-config', namespace);
-      });
+    const clusterType = await this.getClusterTypeInternal();
+
+    return {
+      clusterType,
+      serverUrl: await this.serverUrl.getServerUrl(),
+    };
+  }
+
+  async getClusterTypeInternal(): Promise<"openshift" | "kubernetes"> {
+    try {
+      const isOpenShift = await this.project.exists("openshift");
+
+      return isOpenShift ? "openshift" : "kubernetes";
+    } catch (err) {
+      return "kubernetes";
+    }
   }
 }
