@@ -80,6 +80,17 @@ export class NamespaceImpl implements Namespace {
     return defaultValue;
   }
 
+  async pullSecret({namespace, templateNamespace, serviceAccount}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+
+    notifyStatus('Setting up pull secrets');
+    await this.setupPullSecrets(namespace, templateNamespace);
+
+    notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
+    await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
+
+    return namespace;
+  }
+
   async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
