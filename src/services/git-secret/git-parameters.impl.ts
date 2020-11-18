@@ -14,8 +14,8 @@ interface GitQuestion {
 export class GetGitParametersImpl implements GetGitParameters {
 
   private readonly GIT_URL_PATTERNS = {
-    'http': 'https{0,1}://(.*)/(.*)/(.*).git',
-    'git@': 'git@(.*):(.*)/(.*).git'
+    'http': '(https{0,1})://(.*)/(.*)/(.*).git',
+    'git@': '(git@)(.*):(.*)/(.*).git'
   };
 
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
@@ -75,12 +75,13 @@ export class GetGitParametersImpl implements GetGitParameters {
       throw new Error(`invalid git url: ${url}`);
     }
 
-    const host = results[1];
-    const org = results[2];
-    const repo = results[3];
+    const protocol = results[1] == "git@" ? "https" : results[1];
+    const host = results[2];
+    const org = results[3];
+    const repo = results[4];
 
     return {
-      url: `https://${host}/${org}/${repo}.git`,
+      url: `${protocol}://${host}/${org}/${repo}.git`,
       host,
       org,
       repo
