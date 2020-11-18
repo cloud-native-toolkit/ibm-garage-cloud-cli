@@ -8,9 +8,10 @@ import {
   RegisterPipelineOptions, WebhookError
 } from './register-pipeline.api';
 import {RegisterIksPipeline, RegisterOpenshiftPipeline, RegisterPipelineType} from './jenkins';
-import {CreateWebhook, CreateWebhookErrorTypes, CreateWebhookOptions, isCreateWebhookError} from '../create-webhook';
+import {CreateWebhook, CreateWebhookOptions} from '../create-webhook';
 import {CreateGitSecret, GitConfig, GitParams} from '../git-secret';
 import {Namespace as NamespaceService} from '../namespace';
+import {gitRepoConfigFromUrl, isCreateWebhookError, TypedGitRepoConfig, UnknownWebhookError, WebhookAlreadyExists, CreateWebhookErrorTypes} from '../../api/git'
 import {KubeConfigMap, KubeNamespace, KubeSecret} from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
 import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
@@ -79,7 +80,7 @@ export class RegisterJenkinsPipelineImpl implements RegisterPipeline {
     await this.namespaceService.setupJenkins(options.pipelineNamespace, options.templateNamespace, clusterType, notifyStatus);
 
     notifyStatus('Registering pipeline: ' + gitParams.name);
-    const gitConfig: GitConfig = this.createWebhook.extractGitConfig(gitParams.url);
+    const gitConfig: TypedGitRepoConfig = await gitRepoConfigFromUrl(gitParams.url, gitParams);
 
     const pipelineResult = await this.executeRegisterPipeline(
       clusterType,

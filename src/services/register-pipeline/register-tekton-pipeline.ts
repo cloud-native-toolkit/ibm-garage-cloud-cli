@@ -1,21 +1,22 @@
 import {Container, Inject} from 'typescript-ioc';
 import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
+import {get} from 'superagent';
 
 import {
   NamespaceMissingError,
   PipelineNamespaceNotProvided,
   RegisterPipeline,
-  RegisterPipelineOptions, WebhookError
+  RegisterPipelineOptions,
+  WebhookError
 } from './register-pipeline.api';
 import {Namespace as NamespaceService} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {
-  ConfigMap,
-  KubeConfigMap,
   KubeMetadata,
   KubeNamespace,
-  KubeResource, KubeSecret,
+  KubeResource,
+  KubeSecret,
   KubeTektonPipeline,
   KubeTektonPipelineResource,
   KubeTektonPipelineRun,
@@ -25,7 +26,7 @@ import {
   KubeTektonTriggerTemplate,
   OcpRoute,
   RoleRule,
-  Route, Secret,
+  Route,
   TektonPipeline,
   TektonPipelineRun,
   TemplateKubeMetadata,
@@ -38,7 +39,16 @@ import {CreateServiceAccount} from '../create-service-account';
 import {QuestionBuilder} from '../../util/question-builder';
 import {ClusterType} from '../../util/cluster-type';
 import {KubeDeployment} from '../../api/kubectl/deployment';
-import {CreateWebhook, CreateWebhookErrorTypes, isCreateWebhookError} from '../create-webhook';
+import {CreateWebhook} from '../create-webhook';
+import {
+  apiFromUrl,
+  CreateWebhookErrorTypes,
+  GitApi,
+  GitEvent,
+  GitHeader,
+  isCreateWebhookError,
+  WebhookParams
+} from '../../api/git'
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -100,7 +110,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   triggerEventListener: KubeTektonTriggerEventListener;
   @Inject
-  triggerRoute: OcpRoute
+  triggerRoute: OcpRoute;
   @Inject
   pipeline: KubeTektonPipeline;
   @Inject
@@ -176,11 +186,13 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         pipelineRunBuilder,
       });
 
+      const gitApi: GitApi = await apiFromUrl(gitParams.url, gitParams);
+
       notifyStatus(`Creating TriggerBinding for pipeline: ${pipelineName}`);
       const triggerBindingValue: TriggerBinding = await this.createTriggerBinding({
         name: pipelineName,
         pipelineNamespace: options.pipelineNamespace,
-        gitParams: gitParams
+        gitApi,
       });
 
       notifyStatus(`Creating TriggerEventListener for pipeline: ${pipelineName}`);
@@ -190,7 +202,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         serviceAccount,
         triggerTemplate: triggerTemplateValue.metadata.name,
         triggerBinding: triggerBindingValue.metadata.name,
-        gitParams: gitParams
+        gitApi,
       });
 
       notifyStatus(`Creating Route for pipeline: ${pipelineName}`);
@@ -205,7 +217,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         pipelineRunBuilder({gitUrl: gitParams.url, gitRevision: gitParams.branch, template: false})
       );
 
-      const webhookUrl = `https://${triggerRouteValue.spec.host}`
+      const webhookUrl = await this.getWebhookUrl(triggerRouteValue.spec.host);
       notifyStatus('Creating webhook for repo: ' + gitParams.url);
       try {
         await this.createWebhook.createWebhook({
@@ -224,6 +236,17 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   The webhook can be manually created by sending push events to ${chalk.yellow(webhookUrl)}}`)
         }
       }
+    }
+  }
+
+  async getWebhookUrl(webhookHost: string): Promise<string> {
+    const url = `https://${webhookHost}`;
+    try {
+      await get(url);
+
+      return url;
+    } catch (err) {
+      return `http://${webhookHost}`;
     }
   }
 
@@ -431,20 +454,15 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     {
       pipelineNamespace,
       name,
-      gitParams
+      gitApi,
     }: {
       pipelineNamespace: string,
       name: string,
-      gitParams: GitParams
+      gitApi: GitApi
     }) {
-    // default to github
-    let gitrevision = '$(body.head_commit.id)'
-    let gitrepositoryurl = '$(body.repository.url)'
-    if (gitParams.url.indexOf('github') < 0) {
-      // handle as gitlab
-      gitrevision = '$(body.checkout_sha)'
-      gitrepositoryurl = '$(body.repository.git_http_url)'
-    }
+
+    const webhookParams: WebhookParams = gitApi.buildWebhookParams(GitEvent.PUSH);
+
     return this.triggerBinding.createOrUpdate(
       name,
       {
@@ -459,11 +477,11 @@ export class RegisterTektonPipeline implements RegisterPipeline {
             params: [
               {
                 name: 'gitrevision',
-                value: gitrevision
+                value: `$(${webhookParams.revisionPath})`
               },
               {
                 name: 'gitrepositoryurl',
-                value: gitrepositoryurl
+                value: `$(${webhookParams.repositoryUrlPath})`
               }
             ],
           },
@@ -480,23 +498,19 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       serviceAccount,
       triggerTemplate,
       triggerBinding,
-      gitParams
+      gitApi
     }: {
       pipelineNamespace: string,
       name: string,
       serviceAccount: string,
       triggerTemplate: string,
       triggerBinding: string,
-      gitParams: GitParams
+      gitApi: GitApi
     }) {
-    // default to github
-    let headerEvent = "header.match('X-GitHub-Event', 'push')"
-    if (gitParams.url.indexOf('github') < 0) {
-      // handle as gitlab
-      headerEvent = "header.match('X-GitLab-Event', 'Push Hook')"
-    }
 
-    const filter = `${headerEvent} && body.ref == 'refs/heads/${gitParams.branch}'`
+    const webhookParams: WebhookParams = gitApi.buildWebhookParams(GitEvent.PUSH);
+
+    const filter = `header.match('${webhookParams.headerName}', '${webhookParams.eventName}') && body.ref == 'refs/heads/${webhookParams.branchName}'`
 
     const triggerVersion: SemVer = await this.getTriggerVersion();
     if (triggerVersion.minor >= 6) {
@@ -519,13 +533,11 @@ export class RegisterTektonPipeline implements RegisterPipeline {
               template: {
                 name: triggerTemplate
               },
-              interceptors: [
-                {
-                  cel: {
-                    filter: filter
-                  }
+              interceptors: [{
+                cel: {
+                  filter: filter
                 }
-              ]
+              }]
             }
           ]
         }
@@ -547,7 +559,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         },
         spec: {
           serviceAccountName: serviceAccount,
-            triggers: [
+          triggers: [
             {
               name: name,
               bindings: [{
@@ -620,12 +632,13 @@ export class RegisterTektonPipeline implements RegisterPipeline {
               targetPort: 'http-listener'
             },
             tls: {
-              termination: 'edge'
+              termination: 'edge',
+              insecureEdgeTerminationPolicy: 'Allow'
             },
             to: {
               kind: 'Service',
               weight: 100,
-              name: name
+              name,
             }
           },
         }
