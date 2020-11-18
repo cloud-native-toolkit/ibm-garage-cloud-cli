@@ -44,7 +44,7 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
     process.exit(1);
   }
 
-  console.log(`Setting up namespace ${chalk.yellow(argv.namespace)} and serviceAccount ${chalk.yellow(argv.serviceAccount)}`);
+  console.log(`Setting up namespace ${chalk.yellow(argv.namespace)}`);
 
   const spinner: Logger = argv.verbose ? new VerboseLogger() : ora('Setting up namespace: ' + argv.namespace).start();
 

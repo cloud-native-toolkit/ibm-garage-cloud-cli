@@ -38,13 +38,13 @@ export class ClusterType {
     };
   }
 
-  async getClusterTypeInternal(): Promise<"openshift" | "kubernetes"> {
+  async getClusterTypeInternal(): Promise<'openshift' | 'kubernetes'> {
     try {
-      const isOpenShift = await this.project.exists("openshift");
+      await this.project.list();
 
-      return isOpenShift ? "openshift" : "kubernetes";
+      return 'openshift';
     } catch (err) {
-      return "kubernetes";
+      return 'kubernetes';
     }
   }
 }

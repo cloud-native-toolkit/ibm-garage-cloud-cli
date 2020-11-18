@@ -7,6 +7,7 @@ export interface Namespace extends KubeResource {
 
 export abstract class AbstractKubeNamespace<T extends KubeResource> {
   abstract async create(name: string): Promise<T>;
+  abstract async list(name: string): Promise<T[]>;
   abstract async exists(name: string): Promise<boolean>;
 }
 
@@ -33,6 +34,12 @@ export class KubeNamespace implements AbstractKubeNamespace<Namespace> {
     }} as KubeBody<Namespace>);
 
     return result.body;
+  }
+
+  async list(): Promise<Namespace[]> {
+    const client: KubeClient = await this.client.get();
+
+    return client.api.v1.namespace.get();
   }
 
   async exists(name: string): Promise<boolean> {
