@@ -173,6 +173,17 @@ describe('git-parameters', () => {
           }).toThrowError('invalid git url');
         })
       });
+
+      describe('when http gogs url', () => {
+        const org = 'org';
+        const repo = 'repo';
+        const host = 'gogs.mycluster.com';
+        const url = `http://${host}/${org}/${repo}.git`;
+
+        test('should return {url, org, repo}', () => {
+          expect(classUnderTest.parseGitUrl(url)).toEqual({ url, org, repo, host });
+        })
+      });
     });
 
     describe.skip('getRemoteGitUrl()', () => {
