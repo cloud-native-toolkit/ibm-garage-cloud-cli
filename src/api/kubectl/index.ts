@@ -7,6 +7,7 @@ export * from './kubernetes-resource-manager';
 export * from './namespace';
 export * from './pod';
 export * from './project';
+export * from './project-cli';
 export * from './role';
 export * from './role-binding';
 export * from './route';

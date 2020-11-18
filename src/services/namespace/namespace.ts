@@ -15,6 +15,7 @@ import {
   KubeTektonPipeline,
   KubeTektonTask,
   OcpProject,
+  OcpProjectCli,
   Pod,
   Secret,
   ServiceAccount,
@@ -28,47 +29,11 @@ import {ChildProcess} from '../../util/child-process';
 const noopNotifyStatus: (status: string) => void = () => {
 };
 
-class CliOcpProject implements AbstractKubeNamespace<Project> {
-
-  async create(name: string): Promise<Project> {
-    const childProcess = new ChildProcess();
-
-    await childProcess.exec(`oc new-project ${name}`);
-
-    return this.buildProject(name);
-  }
-
-  buildProject(name: string): Project {
-    return {
-      apiVersion: 'project.openshift.io/v1',
-      kind: 'Project',
-      metadata: {
-        name
-      },
-      status: {}
-    }
-  }
-
-  async list(): Promise<Project[]> {
-    const childProcess = new ChildProcess();
-
-    const {stdout, stderr} = await childProcess.exec('oc projects -q');
-
-    return stdout.toString().split(/\r?\n/).map(this.buildProject);
-  }
-
-  async exists(name: string): Promise<boolean> {
-    const projects: Project[] = await this.list();
-
-    return projects.filter(p => p.metadata.name === name).length > 0;
-  }
-}
-
 export class NamespaceImpl implements Namespace {
   @Inject
   private namespaces: KubeNamespace;
-  // @Inject
-  // private projects: OcpProject;
+  @Inject
+  private projects: OcpProjectCli;
   @Inject
   private secrets: KubeSecret;
   @Inject
@@ -119,7 +84,7 @@ export class NamespaceImpl implements Namespace {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
-    const nsManager: AbstractKubeNamespace<any> = clusterType === 'openshift' ? new CliOcpProject() : this.namespaces;
+    const nsManager: AbstractKubeNamespace<any> = clusterType === 'openshift' ? this.projects : this.namespaces;
     const label = clusterType === 'openshift' ? 'project' : 'namespace';
 
     notifyStatus(`Checking for existing ${label}: ${namespace}`);

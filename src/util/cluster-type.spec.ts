@@ -12,13 +12,13 @@ describe('cluster-type', () => {
 
   let classUnderTest: ClusterType;
 
-  let projectExists: Mock;
+  let projectList: Mock;
   let getServerUrl: Mock;
 
   beforeEach(() => {
-    projectExists = jest.fn();
+    projectList = jest.fn();
     const project = {
-      exists: projectExists
+      list: projectList
     };
     Container.bind(OcpProject).factory(() => project);
 
@@ -38,9 +38,9 @@ describe('cluster-type', () => {
       getServerUrl.mockResolvedValue(serverUrl);
     });
 
-    describe('when openshift project exists', () => {
+    describe('when openshift list returns a value', () => {
       beforeEach(() => {
-        projectExists.mockResolvedValue(true);
+        projectList.mockResolvedValue([]);
       });
 
       test('then clusterType should be openshift', async () => {
@@ -48,13 +48,13 @@ describe('cluster-type', () => {
         expect(await classUnderTest.getClusterType('namespace'))
           .toEqual({clusterType, serverUrl});
 
-        expect(projectExists).toHaveBeenCalledWith('openshift');
+        expect(projectList).toHaveBeenCalled();
       });
     });
 
-    describe('when openshift project does not exist', () => {
+    describe('when project list throws an error', () => {
       beforeEach(() => {
-        projectExists.mockResolvedValue(false);
+        projectList.mockRejectedValue(new Error('no resource named project'));
       });
 
       test('then clusterType should be kubernetes', async () => {
@@ -62,21 +62,7 @@ describe('cluster-type', () => {
         expect(await classUnderTest.getClusterType('namespace'))
           .toEqual({clusterType, serverUrl});
 
-        expect(projectExists).toHaveBeenCalledWith('openshift');
-      });
-    });
-
-    describe('when project.exists throws an error', () => {
-      beforeEach(() => {
-        projectExists.mockRejectedValue(new Error('no resource named project'));
-      });
-
-      test('then clusterType should be kubernetes', async () => {
-        const clusterType = 'kubernetes';
-        expect(await classUnderTest.getClusterType('namespace'))
-          .toEqual({clusterType, serverUrl});
-
-        expect(projectExists).toHaveBeenCalledWith('openshift');
+        expect(projectList).toHaveBeenCalled();
       });
     });
   });
