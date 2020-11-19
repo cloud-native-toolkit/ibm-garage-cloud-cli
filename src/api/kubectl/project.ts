@@ -2,7 +2,7 @@ import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient, AsyncOcpClient, KubeClient} from './client';
 import {KubeBody, KubeResource} from './kubernetes-resource-manager';
-import {AbstractKubeNamespace} from './namespace';
+import {AbstractKubeNamespace, Namespace} from './namespace';
 
 export interface Project extends KubeResource {
   spec?: {
@@ -34,6 +34,12 @@ export class OcpProject implements AbstractKubeNamespace<Project> {
       }} as KubeBody<Project>);
 
     return result.body;
+  }
+
+  async list(): Promise<Project[]> {
+    const client: KubeClient = await this.client.get();
+
+    return client.apis['project.openshift.io'].v1.project.get();
   }
 
   async exists(name: string): Promise<boolean> {

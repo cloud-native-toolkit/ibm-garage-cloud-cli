@@ -47,6 +47,7 @@ describe('register-tekton-pipeline', () => {
       getCurrentProject: jest.fn(),
       setCurrentProject: jest.fn(),
       setupJenkins: jest.fn(),
+      pullSecret: jest.fn(),
     };
     Container.bind(Namespace)
       .factory(factoryFromValue(namespaceBuilder));

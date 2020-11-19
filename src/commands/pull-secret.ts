@@ -6,14 +6,13 @@ import * as chalk from 'chalk';
 import {Namespace, NamespaceOptionsModel} from '../services/namespace';
 import {Logger, VerboseLogger} from '../util/logger';
 
-export const command = 'sync [namespace]';
-export const aliases = ['project', 'namespace'];
-export const desc = 'Create a namespace (if it doesn\'t exist) and prepare it with the necessary configuration';
+export const command = 'pull-secret [namespace]';
+export const desc = 'Copy pull secrets into the provided project from the template namespace';
 export const builder = (yargs: Argv<any>) => {
   return yargs
     .positional('namespace', {
-      require: true,
-      describe: 'The namespace that will be created and/or prepared',
+      require: false,
+      describe: 'The namespace into which the pull-secret(s) will be created',
     })
     .option('templateNamespace', {
       alias: 't',
@@ -40,22 +39,26 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
   const namespaceBuilder: Namespace = Container.get(Namespace);
 
   if (!argv.namespace) {
+    argv.namespace = await namespaceBuilder.getCurrentProject();
+  }
+
+  if (!argv.namespace) {
     console.log(chalk.red(`Please specify the namespace as the first argument. Run '${argv.$0} namespace --help' for more information`));
     process.exit(1);
   }
 
-  console.log(`Setting up namespace ${chalk.yellow(argv.namespace)}`);
+  console.log(`Setting up pull secrets in ${chalk.yellow(argv.namespace)}`);
 
-  const spinner: Logger = argv.verbose ? new VerboseLogger() : ora('Setting up namespace: ' + argv.namespace).start();
+  const spinner: Logger = argv.verbose ? new VerboseLogger() : ora('Setting up pull secrets: ' + argv.namespace).start();
 
   function statusCallback(status: string) {
     spinner.text = status;
   }
 
   try {
-    return await namespaceBuilder.create(argv, statusCallback);
+    return await namespaceBuilder.pullSecret(argv, statusCallback);
   } catch (err) {
-    console.log('Error preparing namespace', err);
+    console.log('Error setting up secrets', err);
     process.exit(1);
   } finally {
     spinner.stop();

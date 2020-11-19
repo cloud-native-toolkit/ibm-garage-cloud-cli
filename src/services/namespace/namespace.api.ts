@@ -5,6 +5,8 @@ export abstract class Namespace {
 
   async abstract setCurrentProject(namespace: string);
 
+  async abstract pullSecret(namespaceOptions: NamespaceOptionsModel, notifyStatus: (status: string) => void): Promise<string>;
+
   async abstract create(namespaceOptions: NamespaceOptionsModel, notifyStatus?: (status: string) => void): Promise<string>;
 
   async abstract setupJenkins(namespace: string, templateNamespace: string, clusterType: string, notifyStatus: (status: string) => void);

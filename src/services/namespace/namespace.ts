@@ -15,12 +15,13 @@ import {
   KubeTektonPipeline,
   KubeTektonTask,
   OcpProject,
+  OcpProjectCli,
   Pod,
   Secret,
   ServiceAccount,
   KubeMetadata,
   ListOptions,
-  QueryString
+  QueryString, KubeClient, KubeBody, Project
 } from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
 import {ChildProcess} from '../../util/child-process';
@@ -32,7 +33,7 @@ export class NamespaceImpl implements Namespace {
   @Inject
   private namespaces: KubeNamespace;
   @Inject
-  private projects: OcpProject;
+  private projects: OcpProjectCli;
   @Inject
   private secrets: KubeSecret;
   @Inject
@@ -79,22 +80,29 @@ export class NamespaceImpl implements Namespace {
     return defaultValue;
   }
 
-  async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
-
-    const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
-
-    const nsManager: AbstractKubeNamespace<any> = clusterType === 'openshift' ? this.projects : this.namespaces;
-    notifyStatus('Checking for existing namespace: ' + namespace);
-    if (!(await nsManager.exists(namespace))) {
-      notifyStatus('Creating namespace: ' + namespace);
-      await nsManager.create(namespace);
-    }
+  async pullSecret({namespace, templateNamespace, serviceAccount}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     notifyStatus('Setting up pull secrets');
     await this.setupPullSecrets(namespace, templateNamespace);
 
     notifyStatus(`Adding pull secrets to serviceAccount: ${serviceAccount}`);
     await this.setupServiceAccountWithPullSecrets(namespace, serviceAccount);
+
+    return namespace;
+  }
+
+  async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+
+    const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
+
+    const nsManager: AbstractKubeNamespace<any> = clusterType === 'openshift' ? this.projects : this.namespaces;
+    const label = clusterType === 'openshift' ? 'project' : 'namespace';
+
+    notifyStatus(`Checking for existing ${label}: ${namespace}`);
+    if (!(await nsManager.exists(namespace))) {
+      notifyStatus(`Creating ${label}: ${namespace}`);
+      await nsManager.create(namespace);
+    }
 
     if (dev) {
       notifyStatus('Copying ConfigMaps');
@@ -103,7 +111,7 @@ export class NamespaceImpl implements Namespace {
       await this.copySecrets(namespace, templateNamespace);
     }
 
-    notifyStatus(`Setting current ${clusterType === 'openshift' ? 'project' : 'namespace'} to ${namespace}`)
+    notifyStatus(`Setting current ${label} to ${namespace}`)
     await this.setCurrentProject(namespace);
 
     return namespace;

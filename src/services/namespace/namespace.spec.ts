@@ -245,18 +245,6 @@ describe('namespace', () => {
         });
       });
 
-      test('then should setup pull secrets from tools namespace', async () => {
-        await classUnderTest.create(namespaceOptions);
-
-        expect(setupPullSecrets).toHaveBeenCalledWith(namespace, templateNamespace);
-      });
-
-      test('then should setup service account with pull secrets', async () => {
-        await classUnderTest.create(namespaceOptions);
-
-        expect(setupServiceAccountWithPullSecrets).toHaveBeenCalledWith(namespace, serviceAccount);
-      });
-
       describe('and when dev flag is false', () => {
         beforeEach(() => {
           namespaceOptions.dev = false;
