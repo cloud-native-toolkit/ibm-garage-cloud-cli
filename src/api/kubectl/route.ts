@@ -12,6 +12,7 @@ export interface Route extends KubeResource {
     }
     tls?: {
       termination?: string;
+      insecureEdgeTerminationPolicy?: 'Allow' | 'None' | 'Redirect'
     }
     to: {
       kind: string;
