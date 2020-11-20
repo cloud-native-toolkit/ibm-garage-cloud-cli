@@ -4,6 +4,7 @@ import {GitParametersOptions} from './git-parameters-options.model';
 import {GitParams} from './git-params.model';
 import {execPromise, ExecResult} from '../../util/child-process';
 import {QuestionBuilder} from '../../util/question-builder';
+import {parseGitUrl} from '../../api/git';
 
 interface GitQuestion {
   username: string;
@@ -13,14 +14,9 @@ interface GitQuestion {
 
 export class GetGitParametersImpl implements GetGitParameters {
 
-  private readonly GIT_URL_PATTERNS = {
-    'http': '(https{0,1})://(.*)/(.*)/(.*).git',
-    'git@': '(git@)(.*):(.*)/(.*).git'
-  };
-
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
-    const parsedGitUrl: {url: string; host: string; org: string; repo: string} = await this.getGitConfig(options.remote, options.workingDir);
+    const parsedGitUrl: {url: string; host: string; owner: string; repo: string} = await this.getGitConfig(options.remote, options.workingDir);
     const currentBranch: string = await this.getCurrentBranch(options.workingDir);
 
     console.log(`  Project git repo: ${parsedGitUrl.url}`);
@@ -49,7 +45,7 @@ export class GetGitParametersImpl implements GetGitParameters {
       {},
       parsedGitUrl,
       {
-        name: options.name || `${parsedGitUrl.org}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
+        name: options.name || `${parsedGitUrl.owner}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
       },
       answers,
     );
@@ -57,35 +53,8 @@ export class GetGitParametersImpl implements GetGitParameters {
     return result;
   }
 
-  async getGitConfig(remote: string = 'origin', workingDir: string = process.cwd()): Promise<{url: string; host: string; org: string; repo: string}> {
-    return this.parseGitUrl(await this.getRemoteGitUrl(remote, workingDir));
-  }
-
-  parseGitUrl(url: string): {url: string; host: string; org: string; repo: string} {
-    const pattern = this.GIT_URL_PATTERNS[url.substring(0, 4)];
-
-    if (!pattern) {
-      throw new Error(`invalid git url: ${url}`);
-    }
-
-    const results = new RegExp(pattern, 'gi')
-      .exec(url.endsWith('.git') ? url : `${url}.git`);
-
-    if (!results || results.length < 4) {
-      throw new Error(`invalid git url: ${url}`);
-    }
-
-    const protocol = results[1] == "git@" ? "https" : results[1];
-    const host = results[2];
-    const org = results[3];
-    const repo = results[4];
-
-    return {
-      url: `${protocol}://${host}/${org}/${repo}.git`,
-      host,
-      org,
-      repo
-    };
+  async getGitConfig(remote: string = 'origin', workingDir: string = process.cwd()): Promise<{url: string; host: string; owner: string; repo: string}> {
+    return parseGitUrl(await this.getRemoteGitUrl(remote, workingDir));
   }
 
   async getRemoteGitUrl(remote: string = 'origin', workingDir: string = process.cwd()): Promise<string> {

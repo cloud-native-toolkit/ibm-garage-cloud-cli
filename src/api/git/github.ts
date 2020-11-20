@@ -53,12 +53,20 @@ abstract class GithubCommon extends GitBase implements GitApi {
     }
   }
 
+  getRefPath(): string {
+    return 'body.ref';
+  }
+
+  getRef(): string {
+    return `refs/heads/${this.config.branch}`;
+  }
+
   getRevisionPath(): string {
     return 'body.head_commit.id';
   }
 
   getRepositoryUrlPath(): string {
-    return 'repository.url';
+    return 'body.repository.url';
   }
 
   getRepositoryNamePath(): string {

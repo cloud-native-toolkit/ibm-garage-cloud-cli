@@ -1,5 +1,5 @@
 import {GitApi, GitEvent, GitHeader, WebhookParams} from './git.api';
-import {TypedGitRepoConfig} from './git.model';
+import {TypedGitRepoConfig, GitHost} from './git.model';
 import {Inject} from 'typescript-ioc';
 import {Logger} from '../../util/logger';
 
@@ -11,6 +11,10 @@ export abstract class GitBase extends GitApi {
     super();
   }
 
+  getType(): GitHost {
+    return this.config.type;
+  }
+
   buildWebhookParams(eventId: GitEvent): WebhookParams {
     return {
       revisionPath: this.getRevisionPath(),
@@ -19,9 +23,15 @@ export abstract class GitBase extends GitApi {
       eventName: this.getEventName(eventId),
       branchName: this.config.branch,
       repositoryNamePath: 'body.repository.full_name',
-      repositoryName: `${this.config.owner}/${this.config.repo}`
+      repositoryName: `${this.config.owner}/${this.config.repo}`,
+      refPath: this.getRefPath(),
+      ref: this.getRef(),
     }
   }
+
+  abstract getRefPath(): string;
+
+  abstract getRef(): string;
 
   abstract getRevisionPath(): string;
 

@@ -186,7 +186,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         pipelineRunBuilder,
       });
 
-      const gitApi: GitApi = await apiFromUrl(gitParams.url, gitParams);
+      const gitApi: GitApi = await apiFromUrl(gitParams.url, gitParams, gitParams.branch);
 
       notifyStatus(`Creating TriggerBinding for pipeline: ${pipelineName}`);
       const triggerBindingValue: TriggerBinding = await this.createTriggerBinding({
@@ -218,7 +218,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       );
 
       const webhookUrl = await this.getWebhookUrl(triggerRouteValue.spec.host);
-      notifyStatus('Creating webhook for repo: ' + gitParams.url);
+      notifyStatus(`Creating ${gitApi.getType()} webhook for repo: ${gitParams.url}`);
       try {
         await this.createWebhook.createWebhook({
           gitUrl: gitParams.url,
@@ -510,7 +510,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const webhookParams: WebhookParams = gitApi.buildWebhookParams(GitEvent.PUSH);
 
-    const filter = `header.match('${webhookParams.headerName}', '${webhookParams.eventName}') && body.ref == 'refs/heads/${webhookParams.branchName}'`
+    const filter = `header.match('${webhookParams.headerName}', '${webhookParams.eventName}') && ${webhookParams.refPath} == '${webhookParams.ref}'`
 
     const triggerVersion: SemVer = await this.getTriggerVersion();
     if (triggerVersion.minor >= 6) {

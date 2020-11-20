@@ -1,9 +1,12 @@
 import {get, Response} from 'superagent';
+import * as _ from 'lodash';
+
 import {GitApi} from './git.api';
-import {GitHost, AuthGitRepoConfig, GitRepoConfig, TypedGitRepoConfig} from './git.model';
+import {AuthGitRepoConfig, GitHost, GitRepoConfig, TypedGitRepoConfig} from './git.model';
 import {Github, GithubEnterprise} from './github';
 import {Gitlab} from './gitlab';
 import {Gogs} from './gogs';
+import {Bitbucket} from './bitbucket';
 
 export * from './git.api';
 export * from './git.model';
@@ -13,30 +16,40 @@ const GIT_URL_PATTERNS = {
   'git@': '(git@)(.*):(.*)/(.*).git'
 };
 
-const API_FACTORIES = {
-  github: Github,
-  ghe: GithubEnterprise,
-  gitlab: Gitlab,
-  gogs: Gogs,
-}
+const API_FACTORIES = [
+  {key: GitHost.github, value: Github},
+  {key: GitHost.ghe, value: GithubEnterprise},
+  {key: GitHost.gitlab, value: Gitlab},
+  {key: GitHost.gogs, value: Gogs},
+  {key: GitHost.bitbucket, value: Bitbucket},
+].reduce((result: {[key: string]: any}, current: {key: GitHost, value: any}) => {
+    result[current.key] = current.value;
 
-export async function apiFromUrl(repoUrl: string, credentials: {username: string, password: string}): Promise<GitApi> {
-  const config: TypedGitRepoConfig = await gitRepoConfigFromUrl(repoUrl, credentials);
+    return result;
+}, {})
+
+
+export async function apiFromUrl(repoUrl: string, credentials: {username: string, password: string}, branch?: string): Promise<GitApi> {
+  const config: TypedGitRepoConfig = await gitRepoConfigFromUrl(repoUrl, credentials, branch);
 
   return new API_FACTORIES[config.type](config);
 }
 
-export async function gitRepoConfigFromUrl(repoUrl: string, credentials: {username: string, password: string}): Promise<TypedGitRepoConfig> {
-  const config: AuthGitRepoConfig = Object.assign({}, parseGitUrl(repoUrl), credentials);
+export async function gitRepoConfigFromUrl(repoUrl: string, credentials: {username: string, password: string}, branch = 'master'): Promise<TypedGitRepoConfig> {
+  const config: AuthGitRepoConfig = Object.assign({}, parseGitUrl(repoUrl), _.pick(credentials, ['username', 'password']), {branch});
 
   const type: GitHost = await getGitRepoType(config);
 
-  return Object.assign({}, config, credentials, {type});
+  return Object.assign({}, config, {type});
 }
 
 async function getGitRepoType(config: AuthGitRepoConfig): Promise<GitHost> {
   if (config.host === 'github.com') {
     return GitHost.github;
+  }
+
+  if (config.host === 'bitbucket.org') {
+    return GitHost.bitbucket;
   }
 
   if (await hasHeader(`${config.protocol}://${config.host}/api/v3`, 'X-GitHub-Enterprise-Version', config)) {
@@ -93,7 +106,7 @@ export function parseGitUrl(url: string): GitRepoConfig {
   }
 
   const protocol = results[1] === 'git@' ? 'https' : results[1];
-  const host = results[2];
+  const host = /.*@.*/.test(results[2]) ? results[2].split('@')[1] : results[2];
   const owner = results[3];
   const repo = results[4];
 

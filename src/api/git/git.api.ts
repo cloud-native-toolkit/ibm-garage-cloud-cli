@@ -1,3 +1,4 @@
+import {GitHost} from './git.model';
 
 export class CreateWebhook {
   jenkinsUrl?: string;
@@ -48,6 +49,8 @@ export interface WebhookParams {
   branchName: string;
   repositoryNamePath: string;
   repositoryName: string;
+  refPath: string;
+  ref: string;
 }
 
 export enum GitHeader {
@@ -59,6 +62,8 @@ export enum GitEvent {
 }
 
 export abstract class GitApi {
+  abstract getType(): GitHost;
+
   async abstract createWebhook(request: CreateWebhook): Promise<string>;
 
   abstract buildWebhookParams(eventId: GitEvent): WebhookParams;

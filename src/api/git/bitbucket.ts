@@ -1,43 +1,32 @@
 import {post, Response} from 'superagent';
 
 import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
-import {GitBase} from './git.base';
 import {TypedGitRepoConfig} from './git.model';
+import {GitBase} from './git.base';
 import {isResponseError} from '../../util/superagent-support';
 
-enum GogsEvent {
-  create = 'create',
-  'delete' = 'delete',
-  fork = 'fork',
-  push = 'push',
-  issues = 'issues',
-  issue_comment = 'issue_comment',
-  pull_request = 'pull_request',
-  release = 'release',
+enum BitbucketHeader {
+  event = 'X-Event-Key'
 }
 
-interface GogsHookData {
-  type: 'gogs' | 'slack';
-  config: {
-    url: string;
-    content_type: 'json' | 'form';
-    secret?: string;
-  }
-  events: GogsEvent[];
+enum BitbucketEvent {
+  push = 'repo:push'
+}
+
+interface BitbucketHookData {
+  description: string;
+  url: string;
   active: boolean;
+  events: BitbucketEvent[],
 }
 
-enum GogsHeader {
-  event = 'X-Gogs-Event'
-}
-
-export class Gogs extends GitBase implements GitApi {
+export class Bitbucket extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
   }
 
   getBaseUrl(): string {
-    return `${this.config.protocol}://${this.config.host}/api/v1/repos/${this.config.owner}/${this.config.repo}`;
+    return `${this.config.protocol}://api.bitbucket.org/2.0/repositories/${this.config.owner}/${this.config.repo}`;
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {
@@ -62,32 +51,29 @@ export class Gogs extends GitBase implements GitApi {
     }
   }
 
-  buildWebhookData({webhookUrl}: {webhookUrl?: string}): GogsHookData {
+  buildWebhookData({webhookUrl}: {webhookUrl?: string}): BitbucketHookData {
     return {
-      type: 'gogs',
-      config: {
-        url: webhookUrl,
-        content_type: 'json'
-      },
-      events: [GogsEvent.push],
+      description: 'Webhook',
+      url: webhookUrl,
       active: true,
-    };
+      events: [BitbucketEvent.push],
+    }
   }
 
   getRefPath(): string {
-    return 'body.ref';
+    return 'body.push.changes[0].new.name';
   }
 
   getRef(): string {
-    return `refs/heads/${this.config.branch}`;
+    return this.config.branch;
   }
 
   getRevisionPath(): string {
-    return 'body.after';
+    return 'body.push.changes[0].new.target.hash';
   }
 
   getRepositoryUrlPath(): string {
-    return 'body.repository.clone_url';
+    return 'body.repository.links.html.href';
   }
 
   getRepositoryNamePath(): string {
@@ -95,10 +81,10 @@ export class Gogs extends GitBase implements GitApi {
   }
 
   getHeader(headerId: GitHeader): string {
-    return GogsHeader[headerId];
+    return BitbucketHeader[headerId];
   }
 
   getEventName(eventId: GitEvent): string {
-    return GogsEvent[eventId];
+    return BitbucketEvent[eventId];
   }
 }
