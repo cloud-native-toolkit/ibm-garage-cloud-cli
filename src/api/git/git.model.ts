@@ -1,8 +1,9 @@
 export enum GitHost {
-  github = 'github',
-  gitlab = 'gitlab',
-  ghe = 'ghe',
-  gogs = 'gogs'
+  github = 'Github',
+  gitlab = 'Gitlab',
+  ghe = 'GHE',
+  gogs = 'Gogs',
+  bitbucket = 'Bitbucket',
 }
 
 export interface GitRepoConfig {

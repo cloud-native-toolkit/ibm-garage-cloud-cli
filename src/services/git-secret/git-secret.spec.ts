@@ -95,7 +95,7 @@ describe('create-git-secret', () => {
         username,
         password,
         branch,
-        org,
+        owner: org,
         repo,
         host,
       };

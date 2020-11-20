@@ -83,6 +83,14 @@ export class Gitlab extends GitBase implements GitApi {
     };
   }
 
+  getRefPath(): string {
+    return 'body.ref';
+  }
+
+  getRef(): string {
+    return `refs/heads/${this.config.branch}`;
+  }
+
   getRevisionPath(): string {
     return 'body.checkout_sha';
   }

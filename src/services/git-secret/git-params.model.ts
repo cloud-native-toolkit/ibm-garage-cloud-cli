@@ -2,7 +2,7 @@
 export class GitParams {
   name: string;
   url: string;
-  org: string;
+  owner: string;
   repo: string;
   username: string;
   password: string;

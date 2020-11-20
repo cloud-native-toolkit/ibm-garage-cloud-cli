@@ -93,7 +93,7 @@ describe('register-iks-pipeline', () => {
           username: 'username',
           password: 'password',
           branch: 'master',
-          org: 'org',
+          owner: 'org',
           repo: 'repo',
         };
         const credentialsName = 'credentialsName';

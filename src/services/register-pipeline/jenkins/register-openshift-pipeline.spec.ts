@@ -43,7 +43,7 @@ describe('register-openshift-pipeline', () => {
       const username = 'username';
       const password = 'password';
       const branch = 'branch';
-      const gitParams: GitParams = {name, url, username, password, branch, org, repo};
+      const gitParams: GitParams = {name, url, username, password, branch, owner: org, repo};
 
       let mock_generateBuildConfig;
       let unset_generateBuildConfig;

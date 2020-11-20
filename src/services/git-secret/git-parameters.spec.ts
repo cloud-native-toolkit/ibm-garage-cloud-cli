@@ -22,33 +22,27 @@ describe('git-parameters', () => {
       let mock_getRemoteGitUrl: Mock;
       let unset_getRemoteGitUrl: () => void;
 
-      let mock_parseGitUrl: Mock;
-      let unset_parseGitUrl: () => void;
-
       let mock_prompt: Mock;
 
       beforeEach(() => {
         mock_getRemoteGitUrl = jest.fn();
-        mock_parseGitUrl = jest.fn();
 
         mock_prompt = require('inquirer').prompt;
 
         unset_getRemoteGitUrl = setField(classUnderTest, 'getRemoteGitUrl', mock_getRemoteGitUrl);
-        unset_parseGitUrl = setField(classUnderTest, 'parseGitUrl', mock_parseGitUrl);
-      });
+       });
 
       afterEach(() => {
         unset_getRemoteGitUrl();
-        unset_parseGitUrl();
       });
 
       describe('when called with non-master branch', () => {
-        const url = 'url';
-        const org = 'org';
+        const url = 'https://host/owner/repo.git';
+        const owner = 'owner';
         const repo = 'repo';
         const parseGitUrlResult = {
           url,
-          org,
+          owner,
           repo,
         };
 
@@ -63,7 +57,6 @@ describe('git-parameters', () => {
 
         beforeEach(() => {
           mock_getRemoteGitUrl.mockReturnValue(url);
-          mock_parseGitUrl.mockReturnValue(parseGitUrlResult);
           mock_prompt.mockResolvedValue(answers);
         });
 
@@ -78,111 +71,20 @@ describe('git-parameters', () => {
           const value = await classUnderTest.getGitParameters();
 
           expect(value.url).toEqual(url);
-          expect(value.name).toEqual(`${org}.${repo}.${branch}`);
+          expect(value.name).toEqual(`${owner}.${repo}.${branch}`);
           expect(value.username).toEqual(username);
           expect(value.password).toEqual(password);
-
-          expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
         });
 
         test('should return url and name from git url', async () => {
           const value = await classUnderTest.getGitParameters();
 
           expect(value.url).toEqual(url);
-          expect(value.name).toEqual(`${org}.${repo}.${branch}`);
+          expect(value.name).toEqual(`${owner}.${repo}.${branch}`);
           expect(value.username).toEqual(username);
           expect(value.password).toEqual(password);
           expect(value.branch).toEqual(branch);
-
-          expect(mock_parseGitUrl.mock.calls[0][0]).toBe(url);
         });
-      });
-    });
-
-    describe('parseGitUrl', () => {
-      describe('when https github url', () => {
-        const org = 'org';
-        const repo = 'repo';
-        const host = 'github.com';
-        const url = `https://${host}/${org}/${repo}.git`;
-
-        test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({ url, org, repo, host });
-        })
-      });
-
-      describe('when https ibm GHE url', () => {
-        const org = 'org';
-        const repo = 'repo';
-        const host = 'github.ibm.com';
-        const url = `https://${host}/${org}/${repo}.git`;
-
-        test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({ url, org, repo, host });
-        })
-      });
-
-      describe('when https github url without .git extension', () => {
-        const org = 'org';
-        const repo = 'repo';
-        const host = 'github.com';
-        const url = `https://${host}/${org}/${repo}.git`;
-        const originalUrl = `https://github.com/${org}/${repo}`;
-
-        test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({ url, org, repo, host });
-        })
-      });
-
-      describe('when ssh github url', () => {
-        const org = 'org';
-        const repo = 'repo';
-        const host = 'github.com';
-        const url = `https://${host}/${org}/${repo}.git`;
-        const sshUrl = `git@${host}:${org}/${repo}.git`;
-
-        test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(sshUrl)).toEqual({ url, org, repo, host });
-        })
-      });
-
-      describe('when long ssh github url', () => {
-        const org = 'ibm-garage-cloud';
-        const repo = 'template-watson-banking-chatbot';
-        const host = 'github.com';
-        const url = `https://${host}/${org}/${repo}.git`;
-        const originalUrl = `git@${host}:${org}/${repo}.git`;
-
-        test('should return {url, host, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(originalUrl)).toEqual({ org, repo, url, host });
-        });
-      });
-
-      describe('when invalid text for url', () => {
-        test('should throw error', () => {
-          expect(() => {
-            classUnderTest.parseGitUrl('invalid');
-          }).toThrowError('invalid git url');
-        })
-      });
-
-      describe('when invalid url', () => {
-        test('should throw error', () => {
-          expect(() => {
-            classUnderTest.parseGitUrl('https://bogus');
-          }).toThrowError('invalid git url');
-        })
-      });
-
-      describe('when http gogs url', () => {
-        const org = 'org';
-        const repo = 'repo';
-        const host = 'gogs.mycluster.com';
-        const url = `http://${host}/${org}/${repo}.git`;
-
-        test('should return {url, org, repo}', () => {
-          expect(classUnderTest.parseGitUrl(url)).toEqual({ url, org, repo, host });
-        })
       });
     });
 
