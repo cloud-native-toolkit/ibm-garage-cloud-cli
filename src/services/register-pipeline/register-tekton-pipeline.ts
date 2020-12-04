@@ -49,6 +49,7 @@ import {
   isCreateWebhookError,
   WebhookParams
 } from '../../api/git'
+import {GetConsoleUrlApi} from '../console';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -125,6 +126,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   namespace: NamespaceService;
   @Inject
   createWebhook: CreateWebhook;
+  @Inject
+  consoleUrl: GetConsoleUrlApi;
 
   async registerPipeline(cliOptions: Partial<RegisterPipelineOptions>, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
@@ -212,7 +215,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       });
 
       notifyStatus(`Creating PipelineRun for pipeline: ${pipelineName}`);
-      await this.createPipelineRun(
+      const pipelineRun = await this.createPipelineRun(
         options.pipelineNamespace,
         pipelineRunBuilder({gitUrl: gitParams.url, gitRevision: gitParams.branch, template: false})
       );
@@ -225,18 +228,40 @@ export class RegisterTektonPipeline implements RegisterPipeline {
           gitToken: gitParams.password,
           gitUsername: gitParams.username,
           webhookUrl,
-        });
+        })
       } catch (err) {
+        let errorMessage: string;
         if (isCreateWebhookError(err) && err.errorType === CreateWebhookErrorTypes.alreadyExists) {
-          throw new WebhookError('Webhook already exists for this trigger in this repository.');
+          errorMessage = 'Webhook already exists for this trigger in this repository.';
         }  else {
-          throw new WebhookError(
-            `Error creating webhook.
+          errorMessage = `Error creating webhook.
   Check your access token is correct and that it has permission to create webhooks.
-  The webhook can be manually created by sending push events to ${chalk.yellow(webhookUrl)}}`)
+  The webhook can be manually created by sending push events to ${chalk.yellow(webhookUrl)}}`
         }
+
+        notifyStatus(`${chalk.yellow('Warning:')} ${errorMessage}`)
+      }
+
+      notifyStatus('');
+      notifyStatus(`Pipeline run started: ${chalk.whiteBright(pipelineRun.metadata.name)}`);
+      notifyStatus('');
+      notifyStatus(`Next steps:`);
+      notifyStatus(`  Tekton cli:`);
+      notifyStatus(`    View PipelineRun info - ${chalk.whiteBright(`tkn pr describe ${pipelineRun.metadata.name}`)}`);
+      notifyStatus(`    View PipelineRun logs - ${chalk.whiteBright(`tkn pr logs ${pipelineRun.metadata.name}`)}`);
+
+      const pipelineRunUrl: string = await this.buildPipelineRunUrl(pipelineRun.metadata.name, pipelineRun.metadata.namespace).catch(err => '');
+      if (pipelineRunUrl) {
+        notifyStatus(`  OpenShift console:`);
+        notifyStatus(`    View PipelineRun - ${chalk.whiteBright(pipelineRunUrl)}`);
       }
     }
+  }
+
+  async buildPipelineRunUrl(pipelineRunName: string, namespace: string): Promise<string> {
+    const consoleUrl: string = await this.consoleUrl.getConsoleUrl();
+
+    return `${consoleUrl}/k8s/ns/${namespace}/tekton.dev~v1beta1~PipelineRun/${pipelineRunName}`;
   }
 
   async getWebhookUrl(webhookHost: string): Promise<string> {
@@ -391,7 +416,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     };
   }
 
-  async createPipelineRun(pipelineNamespace: string, body: TektonPipelineRun<KubeMetadata>) {
+  async createPipelineRun(pipelineNamespace: string, body: TektonPipelineRun<KubeMetadata>): Promise<TektonPipelineRun> {
     const pipelineRunName = body.metadata.name;
 
     return this.pipelineRun.create(
