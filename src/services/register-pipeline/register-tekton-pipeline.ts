@@ -158,7 +158,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       notifyStatus,
     );
 
-    const serviceAccount = await this.createServiceAccount(options.pipelineNamespace, clusterType, [secretName], notifyStatus);
+    const serviceAccount = 'pipeline';
 
     const pipelineArgs: PipelineArgs | {} = await this.getPipelineArgs(options.templateNamespace, options.pipelineName);
 
