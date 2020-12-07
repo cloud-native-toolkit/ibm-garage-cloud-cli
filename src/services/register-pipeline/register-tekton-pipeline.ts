@@ -537,14 +537,12 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const filter = `header.match('${webhookParams.headerName}', '${webhookParams.eventName}') && ${webhookParams.refPath} == '${webhookParams.ref}'`
 
-    const triggerVersion: SemVer = await this.getTriggerVersion();
-    if (triggerVersion.minor >= 6) {
+    try {
       const eventListenerV06: TriggerEventListener_v0_6 = {
         metadata: {
           name: name,
           labels: {
             app: name,
-            'triggers.tekton.dev/release': `${triggerVersion.major}.${triggerVersion.minor}.${triggerVersion.patch}`
           },
         },
         spec: {
@@ -573,13 +571,12 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         {body: eventListenerV06},
         pipelineNamespace,
       );
-    } else {
+    } catch (err) {
       const eventListener: TriggerEventListener = {
         metadata: {
           name: name,
           labels: {
             app: name,
-            'triggers.tekton.dev/release': `${triggerVersion.major}.${triggerVersion.minor}.${triggerVersion.patch}`
           },
         },
         spec: {
@@ -613,24 +610,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         pipelineNamespace,
       );
     }
-  }
-
-  async getTriggerVersion(): Promise<SemVer> {
-    const version = await this.kubeDeployment.getLabel('tekton-triggers-controller', 'triggers.tekton.dev/release', 'openshift-pipelines');
-    if (!version) {
-      return {major: 0, minor: 4, patch: 0};
-    }
-
-    const versionNumbers: string[] = version.replace('v', '').split('.');
-    if (versionNumbers.length < 3) {
-      return {major: 0, minor: 4, patch: 0};
-    }
-
-    const major = +versionNumbers[0];
-    const minor = +versionNumbers[1];
-    const patch = +versionNumbers[2];
-
-    return {major, minor, patch};
   }
 
   async createTriggerRoute(
