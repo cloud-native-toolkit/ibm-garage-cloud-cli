@@ -11,7 +11,7 @@ export async function checkKubeconfig() {
   const currentNamespace: string = await namespaceSvc.getCurrentProject('default');
 
   try {
-    await kubeClient.api.v1.namespace(undefined).pods.get();
+    await kubeClient.api.v1.namespace(currentNamespace).pods.get();
   } catch (err) {
     console.log('It appears the kubernetes environment has not been initialized.');
     console.log('To initialize kubernetes:');
