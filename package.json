@@ -15,6 +15,7 @@
     "kubectl-enable": "dist/script-enable.js",
     "kubectl-endpoints": "dist/script-endpoints.js",
     "kubectl-git": "dist/script-git.js",
+    "kubectl-gitops": "dist/script-gitops.js",
     "kubectl-git-secret": "dist/script-git-secret.js",
     "kubectl-pipeline": "dist/script-pipeline.js",
     "kubectl-sync": "dist/script-namespace.js",
