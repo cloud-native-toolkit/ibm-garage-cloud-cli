@@ -2,12 +2,16 @@ import * as readline from 'readline';
 import * as opn from 'open';
 import {AsyncKubeClient} from '../api/kubectl/client';
 import {Container} from 'typescript-ioc';
+import {Namespace} from '../services/namespace';
 
 export async function checkKubeconfig() {
   const kubeClient = await Container.get(AsyncKubeClient).get();
 
+  const namespaceSvc: Namespace = Container.get(Namespace);
+  const currentNamespace: string = await namespaceSvc.getCurrentProject('default');
+
   try {
-    await kubeClient.api.v1.pods.get();
+    await kubeClient.api.v1.namespace(currentNamespace).pods.get();
   } catch (err) {
     console.log('It appears the kubernetes environment has not been initialized.');
     console.log('To initialize kubernetes:');

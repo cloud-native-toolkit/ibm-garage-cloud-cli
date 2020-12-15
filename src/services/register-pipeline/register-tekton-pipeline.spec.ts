@@ -181,12 +181,6 @@ describe('register-tekton-pipeline', () => {
         );
       });
 
-      test('should setup serviceAccount', async () => {
-        await classUnderTest.registerPipeline({ pipelineNamespace, templateNamespace }, notifyStatus);
-
-        expect(createServiceAccount).toHaveBeenCalledWith(pipelineNamespace, clusterType, [secretName], notifyStatus);
-      });
-
       test('should get pipeline name', async () => {
         const options = { pipelineNamespace, templateNamespace, pipelineName };
         await classUnderTest.registerPipeline(options, notifyStatus);
