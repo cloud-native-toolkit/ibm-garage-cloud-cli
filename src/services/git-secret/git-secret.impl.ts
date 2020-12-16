@@ -91,6 +91,9 @@ export class GitSecretImpl implements GitSecret {
   }
 
   buildGitConfigBody(configName: string, gitParams: GitParams): ConfigMap {
+    const ownerOrg = _.get(gitParams, 'owner', _.get(gitParams, 'org'));
+    const data = Object.assign(_.pick(gitParams, ['url', 'host', 'repo', 'branch', 'protocol']), {org: ownerOrg, owner: ownerOrg});
+
     return {
       apiVersion: 'v1',
       kind: 'ConfigMap',
@@ -102,7 +105,7 @@ export class GitSecretImpl implements GitSecret {
           type: 'git',
         },
       },
-      data:  _.pick(gitParams, ['url', 'host', 'org', 'repo', 'branch']),
+      data,
     };
   }
 }
