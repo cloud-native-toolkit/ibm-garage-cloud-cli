@@ -12,8 +12,8 @@ export * from './git.api';
 export * from './git.model';
 
 const GIT_URL_PATTERNS = {
-  'http': '(https{0,1})://(.*)/(.*)/(.*).git',
-  'git@': '(git@)(.*):(.*)/(.*).git'
+  'http': '(https{0,1})://(.*)/(.*)/([^#]*)#{0,1}(.*)',
+  'git@': '(git@)(.*):(.*)/([^#]*)#{0,1}(.*)'
 };
 
 const API_FACTORIES = [
@@ -98,23 +98,50 @@ export function parseGitUrl(url: string): GitRepoConfig {
     throw new Error(`invalid git url: ${url}`);
   }
 
-  const results = new RegExp(pattern, 'gi')
-    .exec(url.endsWith('.git') ? url : `${url}.git`);
+  const results = new RegExp(pattern, 'gi').exec(url);
 
   if (!results || results.length < 4) {
     throw new Error(`invalid git url: ${url}`);
   }
 
   const protocol = results[1] === 'git@' ? 'https' : results[1];
-  const host = /.*@.*/.test(results[2]) ? results[2].split('@')[1] : results[2];
+  const host = parseRepoHost(results[2]);
   const owner = results[3];
-  const repo = results[4];
+  const repo = parseRepoName(results[4]);
+  const branch = parseBranch(results[5]);
 
   return {
     url: `${protocol}://${host}/${owner}/${repo}.git`,
     protocol,
     host,
     owner,
-    repo
+    repo,
+    branch,
   };
+}
+
+function parseRepoHost(host: string): string {
+  if (!/.*@.*/.test(host)) {
+    return host;
+  }
+
+  return host.split('@')[1];
+}
+
+function parseRepoName(repo: string): string {
+  if (!repo.endsWith('.git')) {
+    return repo;
+  }
+
+  return repo.replace(/[.]git$/, '');
+}
+
+function parseBranch(branch: string): string | undefined {
+  console.log('Parsing branch: ' + branch);
+
+  if (branch) {
+    return branch;
+  }
+
+  return undefined;
 }

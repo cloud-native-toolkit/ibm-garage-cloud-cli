@@ -17,12 +17,17 @@ import {ErrorSeverity, isCommandError} from '../util/errors';
 import {QuestionBuilder} from '../util/question-builder';
 import {isClusterConfigNotFound} from '../util/cluster-type';
 
-export const command = 'pipeline';
+export const command = 'pipeline [gitUrl]';
 export const desc = 'Register a pipeline for the current code repository';
 export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPipelineOptions>(yargs)
   .quiet()
   .debug()
   .build()
+  .positional('gitUrl', {
+    description: 'Provides the git url for the repository that should be registered in the pipeline. The branch can be added by appending `#{branch-name}`, If not provided the git url will be read from the current directory',
+    type: 'string',
+    demandOption: false,
+  })
   .option('templateNamespace', {
     type: 'string',
     alias: 'j',
@@ -37,8 +42,12 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     type: 'boolean',
     describe: 'flag indicating that the webhook should not be created'
   })
+  .option('gitBranch', {
+    alias: ['b', 'branch'],
+    description: 'username used to access the git repository'
+  })
   .option('gitUsername', {
-    alias: 'u',
+    alias: ['u', 'username'],
     description: 'username used to access the git repository'
   })
   .option('gitPat', {

@@ -64,7 +64,7 @@ describe('git-parameters', () => {
           const value = await classUnderTest.getGitParameters();
 
           const questions = mock_prompt.mock.calls[0][0];
-          expect(questions.map(q => q.name)).toEqual(['username', 'password', 'branch']);
+          expect(questions.map(q => q.name)).toEqual(['username', 'password']);
         });
 
         test('should return url and name from git url', async () => {
