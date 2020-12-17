@@ -541,6 +541,9 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       const eventListenerV06: TriggerEventListener_v0_6 = {
         metadata: {
           name: name,
+          annotations: {
+            version: "0.6.0"
+          },
           labels: {
             app: name,
           },
@@ -566,7 +569,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         }
       };
 
-      return this.triggerEventListener.createOrUpdate(
+      return await this.triggerEventListener.createOrUpdate(
         name,
         {body: eventListenerV06},
         pipelineNamespace,
@@ -575,6 +578,9 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       const eventListener: TriggerEventListener = {
         metadata: {
           name: name,
+          annotations: {
+            version: "0.6.0"
+          },
           labels: {
             app: name,
           },
@@ -602,7 +608,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         },
       }
 
-      return this.triggerEventListener.createOrUpdate(
+      return await this.triggerEventListener.createOrUpdate(
         name,
         {
           body: eventListener,
