@@ -63,8 +63,6 @@ export class GetGitParametersImpl implements GetGitParameters {
       gitUrl = `${url}#${branch}`;
     }
 
-    console.log('Parsing gitUrl: ' + gitUrl);
-
     return parseGitUrl(gitUrl);
   }
 
