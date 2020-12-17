@@ -579,7 +579,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         metadata: {
           name: name,
           annotations: {
-            version: "0.6.0"
+            version: "0.4.0"
           },
           labels: {
             app: name,
