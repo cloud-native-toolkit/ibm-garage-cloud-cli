@@ -62,6 +62,8 @@ export class RegisterPipelineOptions {
   pipelineNamespace: string;
   skipWebhook?: boolean;
   workingDir?: string;
+  gitUrl?: string;
+  gitBranch?: string;
   gitUsername?: string;
   gitPat?: string;
   values?: string;

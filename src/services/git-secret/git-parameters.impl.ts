@@ -16,10 +16,12 @@ export class GetGitParametersImpl implements GetGitParameters {
 
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
-    const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string} = await this.getGitConfig(options.remote, options.workingDir);
-    const currentBranch: string = await this.getCurrentBranch(options.workingDir);
+    const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string; branch?: string} = await this.getGitConfig(options.remote, options.workingDir, options.gitUrl);
 
     console.log(`  Project git repo: ${parsedGitUrl.url}`);
+    if (parsedGitUrl.branch) {
+      console.log(`            branch: ${parsedGitUrl.branch}`);
+    }
 
     const questionBuilder: QuestionBuilder<GitQuestion> = Container.get(QuestionBuilder)
       .question({
@@ -36,8 +38,8 @@ export class GetGitParametersImpl implements GetGitParameters {
         type: 'input',
         name: 'branch',
         message: `Provide the git branch that should be used:`,
-        default: currentBranch,
-      });
+        default: 'master',
+      }, parsedGitUrl.branch);
 
     const answers: GitQuestion = await questionBuilder.prompt();
 
@@ -53,8 +55,17 @@ export class GetGitParametersImpl implements GetGitParameters {
     return result;
   }
 
-  async getGitConfig(remote: string = 'origin', workingDir: string = process.cwd()): Promise<{url: string; host: string; owner: string; repo: string; protocol: string}> {
-    return parseGitUrl(await this.getRemoteGitUrl(remote, workingDir));
+  async getGitConfig(remote: string = 'origin', workingDir: string = process.cwd(), gitUrl?: string): Promise<{url: string; host: string; owner: string; repo: string; protocol: string; branch?: string}> {
+    if (!gitUrl) {
+      const url = await this.getRemoteGitUrl(remote, workingDir);
+      const branch = await this.getCurrentBranch(workingDir);
+
+      gitUrl = `${url}#${branch}`;
+    }
+
+    console.log('Parsing gitUrl: ' + gitUrl);
+
+    return parseGitUrl(gitUrl);
   }
 
   async getRemoteGitUrl(remote: string = 'origin', workingDir: string = process.cwd()): Promise<string> {
