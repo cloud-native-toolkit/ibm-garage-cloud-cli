@@ -109,7 +109,7 @@ describe('register-tekton-pipeline', () => {
 
   describe('given registerPipeline()', () => {
     let createServiceAccount: Mock;
-    let getPipelineName: Mock;
+    let getPipelineArgs: Mock;
     let createPipelineRun: Mock;
     let generatePipelineName: Mock;
     let createTriggerTemplate: Mock;
@@ -118,12 +118,12 @@ describe('register-tekton-pipeline', () => {
     let createTriggerRoute: Mock;
     beforeEach(() => {
       createServiceAccount = mockField(classUnderTest, 'createServiceAccount');
-      getPipelineName = mockField(classUnderTest, 'getPipelineArgs');
+      getPipelineArgs = mockField(classUnderTest, 'getPipelineArgs');
       createPipelineRun = mockField(classUnderTest, 'createPipelineRun');
       generatePipelineName = mockField(classUnderTest, 'generatePipelineName');
       createTriggerTemplate = mockField(classUnderTest, 'createTriggerTemplate');
       createTriggerBinding = mockField(classUnderTest, 'createTriggerBinding');
-      createTriggerEventListener = mockField(classUnderTest, 'createTriggerEventListener');
+      createTriggerEventListener = mockField(classUnderTest, 'createUpdateTriggerEventListener');
       createTriggerRoute = mockField(classUnderTest, 'createTriggerRoute');
     });
 
@@ -149,7 +149,7 @@ describe('register-tekton-pipeline', () => {
         kubeNamespace_exists.mockResolvedValue(true);
         (createGitSecret.getParametersAndCreateSecret as Mock).mockResolvedValue({ gitParams, secretName, configMapName: 'configMapName' });
         createServiceAccount.mockResolvedValue(serviceAccount);
-        getPipelineName.mockResolvedValue(pipelineName);
+        getPipelineArgs.mockResolvedValue(pipelineName);
         (kubePipeline.copy as Mock).mockResolvedValue({ metadata: { name: newPipelineName } });
         generatePipelineName.mockReturnValue(repoName);
         pipeline_copy.mockResolvedValue({ metadata: { name: newPipelineName } });
@@ -182,10 +182,10 @@ describe('register-tekton-pipeline', () => {
       });
 
       test('should get pipeline name', async () => {
-        const options = { pipelineNamespace, templateNamespace, pipelineName };
+        const options = { pipelineNamespace, templateNamespace, pipeline: pipelineName };
         await classUnderTest.registerPipeline(options, notifyStatus);
 
-        expect(getPipelineName).toHaveBeenCalledWith(templateNamespace, pipelineName);
+        expect(getPipelineArgs).toHaveBeenCalledWith(templateNamespace, pipelineName);
       });
 
       test.skip('should create pipeline run', async () => {
@@ -203,7 +203,7 @@ describe('register-tekton-pipeline', () => {
 
       describe('and when pipelineName is `none`', () => {
         beforeEach(() => {
-          getPipelineName.mockResolvedValueOnce('none');
+          getPipelineArgs.mockResolvedValueOnce('none');
         });
 
         test('should not create pipeline run', async () => {

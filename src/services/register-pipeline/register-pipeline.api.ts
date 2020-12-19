@@ -63,13 +63,12 @@ export class RegisterPipelineOptions {
   skipWebhook?: boolean;
   workingDir?: string;
   gitUrl?: string;
-  gitBranch?: string;
   gitUsername?: string;
   gitPat?: string;
   values?: string;
   generateCrumb?: boolean = false;
   serverUrl?: string;
-  pipelineName?: string;
+  pipeline?: string;
   replaceGitSecret?: boolean;
 }
 

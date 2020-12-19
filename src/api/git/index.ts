@@ -137,8 +137,6 @@ function parseRepoName(repo: string): string {
 }
 
 function parseBranch(branch: string): string | undefined {
-  console.log('Parsing branch: ' + branch);
-
   if (branch) {
     return branch;
   }

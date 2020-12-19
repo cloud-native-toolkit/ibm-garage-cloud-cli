@@ -42,10 +42,6 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     type: 'boolean',
     describe: 'flag indicating that the webhook should not be created'
   })
-  .option('gitBranch', {
-    alias: ['b', 'branch'],
-    description: 'username used to access the git repository'
-  })
   .option('gitUsername', {
     alias: ['u', 'username'],
     description: 'username used to access the git repository'
@@ -72,7 +68,7 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     description: 'register a jenkins pipeline',
     type: 'boolean',
   })
-  .option('pipelineName', {
+  .option('pipeline', {
     description: 'the name of the Tekton pipeline to use',
     type: 'string',
   })

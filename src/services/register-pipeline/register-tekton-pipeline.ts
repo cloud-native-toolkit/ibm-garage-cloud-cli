@@ -2,13 +2,13 @@ import {Container, Inject} from 'typescript-ioc';
 import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
 import {get} from 'superagent';
+import * as _ from 'lodash';
 
 import {
   NamespaceMissingError,
   PipelineNamespaceNotProvided,
   RegisterPipeline,
-  RegisterPipelineOptions,
-  WebhookError
+  RegisterPipelineOptions
 } from './register-pipeline.api';
 import {Namespace as NamespaceService} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
@@ -31,24 +31,22 @@ import {
   TektonPipelineRun,
   TemplateKubeMetadata,
   TriggerBinding,
+  TriggerBindingsArrays,
+  TriggerDefinition,
+  TriggerDefinition_v0_4,
+  TriggerDefinition_v0_6,
+  TriggerDefinitionVersion,
   TriggerEventListener,
-  TriggerEventListener_v0_6,
-  TriggerTemplate
+  TriggerTemplate,
+  TriggerBindings,
+  isTriggerBinding_v0_6
 } from '../../api/kubectl';
 import {CreateServiceAccount} from '../create-service-account';
 import {QuestionBuilder} from '../../util/question-builder';
 import {ClusterType} from '../../util/cluster-type';
 import {KubeDeployment} from '../../api/kubectl/deployment';
 import {CreateWebhook} from '../create-webhook';
-import {
-  apiFromUrl,
-  CreateWebhookErrorTypes,
-  GitApi,
-  GitEvent,
-  GitHeader,
-  isCreateWebhookError,
-  WebhookParams
-} from '../../api/git'
+import {apiFromUrl, CreateWebhookErrorTypes, GitApi, GitEvent, isCreateWebhookError, WebhookParams} from '../../api/git'
 import {GetConsoleUrlApi} from '../console';
 
 const noopNotifyStatus = (test: string) => undefined;
@@ -91,6 +89,14 @@ interface SemVer {
   major: number;
   minor: number
   patch: number;
+}
+
+interface TriggerConfig {
+  name: string;
+  triggerBinding: string;
+  triggerTemplate: string;
+  filter: string;
+  serviceAccount: string;
 }
 
 export class RegisterTektonPipeline implements RegisterPipeline {
@@ -160,7 +166,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const serviceAccount = 'pipeline';
 
-    const pipelineArgs: PipelineArgs | {} = await this.getPipelineArgs(options.templateNamespace, options.pipelineName);
+    const pipelineArgs: PipelineArgs | {} = await this.getPipelineArgs(options.templateNamespace, options.pipeline);
 
     if (isPipelineArgs(pipelineArgs)) {
       const templatePipelineName = pipelineArgs.pipelineName;
@@ -191,16 +197,20 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
       const gitApi: GitApi = await apiFromUrl(gitParams.url, gitParams, gitParams.branch);
 
+      const bindingName = 'trigger-binding';
+
       notifyStatus(`Creating TriggerBinding for pipeline: ${pipelineName}`);
       const triggerBindingValue: TriggerBinding = await this.createTriggerBinding({
-        name: pipelineName,
+        name: bindingName,
         pipelineNamespace: options.pipelineNamespace,
         gitApi,
       });
 
-      notifyStatus(`Creating TriggerEventListener for pipeline: ${pipelineName}`);
-      await this.createTriggerEventListener({
-        name: pipelineName,
+      const eventListenerName = 'tekton';
+
+      notifyStatus(`Creating/updating TriggerEventListener for pipeline: ${eventListenerName}`);
+      await this.createUpdateTriggerEventListener({
+        name: eventListenerName,
         pipelineNamespace: options.pipelineNamespace,
         serviceAccount,
         triggerTemplate: triggerTemplateValue.metadata.name,
@@ -208,9 +218,9 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         gitApi,
       });
 
-      notifyStatus(`Creating Route for pipeline: ${pipelineName}`);
+      notifyStatus(`Creating/updating Route for pipeline: ${eventListenerName}`);
       const triggerRouteValue: Route = await this.createTriggerRoute({
-        name: `el-${pipelineName}`,
+        name: `el-${eventListenerName}`,
         pipelineNamespace: options.pipelineNamespace,
       });
 
@@ -384,6 +394,24 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     return ({gitUrl, gitRevision, template}: {gitUrl: string, gitRevision: string, template: boolean}) => {
       const metadata = template ? {generateName: `${pipelineName}-`} : {name: `${pipelineName}-${Date.now().toString(16)}`}
 
+      const params = [
+        {
+          name: 'git-url',
+          value: gitUrl
+        },
+        {
+          name: 'git-revision',
+          value: gitRevision
+        },
+      ];
+
+      if (!template) {
+        params.push(              {
+          name: 'scan-image',
+          value: '' + scanImage // convert to string
+        });
+      }
+
       const result: TektonPipelineRun<KubeMetadata | TemplateKubeMetadata> = Object.assign(
         {
           metadata,
@@ -391,21 +419,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
             pipelineRef: {
               name: pipelineName
             },
-            params: [
-              {
-                name: 'git-url',
-                value: gitUrl
-              },
-              {
-                name: 'git-revision',
-                value: gitRevision
-              },
-              {
-                name: 'scan-image',
-                value: '' + scanImage // convert to string
-              },
-            ]
-          }
+            params: params,
+          },
         },
         template
           ? {apiVersion: 'tekton.dev/v1beta1', kind: 'PipelineRun',}
@@ -516,7 +531,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     );
   }
 
-  async createTriggerEventListener(
+  async createUpdateTriggerEventListener(
     {
       pipelineNamespace,
       name,
@@ -535,86 +550,147 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const webhookParams: WebhookParams = gitApi.buildWebhookParams(GitEvent.PUSH);
 
-    const filter = `header.match('${webhookParams.headerName}', '${webhookParams.eventName}') && ${webhookParams.refPath} == '${webhookParams.ref}'`
+    const filter = `header.match('${webhookParams.headerName}', '${webhookParams.eventName}') && ${webhookParams.refPath} == '${webhookParams.ref}' && ${webhookParams.repositoryNamePath} == '${webhookParams.repositoryName}'`
 
+    const eventListener: TriggerEventListener<TriggerDefinition> = await this.triggerEventListener.get(name, pipelineNamespace).catch(err => undefined);
+
+    const bindingName: string = this.buildTriggerBindingName(webhookParams.repositoryName, webhookParams.branchName);
     try {
-      const eventListenerV06: TriggerEventListener_v0_6 = {
-        metadata: {
-          name: name,
-          annotations: {
-            version: "0.6.0"
-          },
-          labels: {
-            app: name,
-          },
+      const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
+        TriggerDefinitionVersion.V0_6,
+        name,
+        {
+          name: bindingName,
+          triggerBinding,
+          triggerTemplate,
+          filter,
+          serviceAccount
         },
-        spec: {
-          serviceAccountName: serviceAccount,
-          triggers: [
-            {
-              name: name,
-              bindings: [{
-                ref: triggerBinding,
-              }],
-              template: {
-                name: triggerTemplate
-              },
-              interceptors: [{
-                cel: {
-                  filter: filter
-                }
-              }]
-            }
-          ]
-        }
-      };
+        eventListener,
+      );
 
       return await this.triggerEventListener.createOrUpdate(
         name,
-        {body: eventListenerV06},
+        {body},
         pipelineNamespace,
       );
     } catch (err) {
-      const eventListener: TriggerEventListener = {
+      const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
+        TriggerDefinitionVersion.V0_4,
+        name,
+        {
+          name: bindingName,
+          triggerBinding,
+          triggerTemplate,
+          filter,
+          serviceAccount
+        },
+        eventListener,
+      );
+
+      return await this.triggerEventListener.createOrUpdate(
+        name,
+        {body},
+        pipelineNamespace,
+      );
+    }
+  }
+
+  buildTriggerBindingName(repo: string, branch: string): string {
+    return repo.replace('/', '-') + '-' + branch;
+  }
+
+  buildTriggerEventListener(version: TriggerDefinitionVersion, name: string, triggerConfig: TriggerConfig, eventListener?: TriggerEventListener<TriggerDefinition>): TriggerEventListener<TriggerDefinition> {
+    if (!eventListener) {
+      console.log('  Creating new event listener');
+
+      return {
         metadata: {
-          name: name,
+          name,
           annotations: {
-            version: "0.4.0"
+            version: version
           },
           labels: {
             app: name,
           },
         },
         spec: {
-          serviceAccountName: serviceAccount,
-          triggers: [
-            {
-              name: name,
-              bindings: [{
-                name: triggerBinding
-              }],
-              template: {
-                name: triggerTemplate
-              },
-              interceptors: [
-                {
-                  cel: {
-                    filter: filter
-                  }
-                }
-              ]
-            }
-          ]
-        },
+          serviceAccountName: triggerConfig.serviceAccount,
+          triggers: [this.buildTriggerDefinition(version, triggerConfig)]
+        }
       }
+    }
 
-      return await this.triggerEventListener.createOrUpdate(
-        name,
-        {
-          body: eventListener,
+    const triggers: TriggerDefinition[] = eventListener.spec.triggers;
+
+    if (!triggers.map(trigger => trigger.name).includes(triggerConfig.name)) {
+      const triggerVersion = this.determineTriggerVersion(eventListener);
+
+      const updatedTriggers = [...triggers, this.buildTriggerDefinition(triggerVersion, triggerConfig)];
+
+      const spec = Object.assign({}, eventListener.spec, {triggers: updatedTriggers});
+      return Object.assign({}, eventListener, {spec});
+    }
+
+    return eventListener;
+  }
+
+  determineTriggerVersion(eventListener: TriggerEventListener<TriggerDefinition>): TriggerDefinitionVersion {
+    const version = _.get(eventListener, 'metadata.annotations.version');
+
+    if (version) {
+      return version;
+    }
+
+    const triggers = eventListener.spec.triggers;
+
+    const bindings = triggers.map(trigger => trigger.bindings).reduce(
+      (result: Array<TriggerBindings>, current: TriggerBindingsArrays) => {
+        result.push(...current);
+        return result;
+      },
+      []);
+
+    if (bindings.some(binding => isTriggerBinding_v0_6(binding))) {
+      return TriggerDefinitionVersion.V0_6;
+    }
+
+    return TriggerDefinitionVersion.V0_4;
+  }
+
+  buildTriggerDefinition(version: TriggerDefinitionVersion, {name, triggerBinding, triggerTemplate, filter}: {name: string, triggerBinding: string, triggerTemplate: string, filter: string}): TriggerDefinition {
+    if (version === TriggerDefinitionVersion.V0_6) {
+      return {
+        name: name,
+        bindings: [{
+          ref: triggerBinding,
+        }],
+        template: {
+          name: triggerTemplate
         },
-        pipelineNamespace,
-      );
+        interceptors: [{
+          cel: {
+            filter: filter
+          }
+        }]
+      }
+    }
+
+    return {
+      name: name,
+      bindings: [{
+        name: triggerBinding
+      }],
+      template: {
+        name: triggerTemplate
+      },
+      interceptors: [
+        {
+          cel: {
+            filter: filter
+          }
+        }
+      ]
     }
   }
 
