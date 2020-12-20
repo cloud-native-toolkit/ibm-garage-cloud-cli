@@ -32,13 +32,13 @@ export class GetGitParametersImpl implements GetGitParameters {
       .question({
         type: 'password',
         name: 'password',
-        message: `Provide the git personal access token:`,
+        message: `Provide the git password or personal access token:`,
       }, options.gitPat)
       .question({
         type: 'input',
         name: 'branch',
         message: `Provide the git branch that should be used:`,
-        default: 'master',
+        default: 'main',
       }, parsedGitUrl.branch);
 
     const answers: GitQuestion = await questionBuilder.prompt();
