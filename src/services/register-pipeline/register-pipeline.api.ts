@@ -57,7 +57,7 @@ export class PipelineNamespaceNotProvided extends Error implements PipelineError
   }
 }
 
-export class RegisterPipelineOptions {
+export class RegisterPipelineOptions<T = any> {
   templateNamespace: string;
   pipelineNamespace: string;
   skipWebhook?: boolean;
@@ -70,6 +70,7 @@ export class RegisterPipelineOptions {
   serverUrl?: string;
   pipeline?: string;
   replaceGitSecret?: boolean;
+  pipelineParams?: T;
 }
 
 export const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {

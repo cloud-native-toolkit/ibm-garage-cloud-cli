@@ -5,6 +5,7 @@ import {GitParams} from './git-params.model';
 import {execPromise, ExecResult} from '../../util/child-process';
 import {QuestionBuilder} from '../../util/question-builder';
 import {parseGitUrl} from '../../api/git';
+import * as chalk from 'chalk';
 
 interface GitQuestion {
   username: string;
@@ -18,9 +19,9 @@ export class GetGitParametersImpl implements GetGitParameters {
 
     const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string; branch?: string} = await this.getGitConfig(options.remote, options.workingDir, options.gitUrl);
 
-    console.log(`  Project git repo: ${parsedGitUrl.url}`);
+    console.log(`  Project git repo: ${chalk.whiteBright(parsedGitUrl.url)}`);
     if (parsedGitUrl.branch) {
-      console.log(`            branch: ${parsedGitUrl.branch}`);
+      console.log(`            branch: ${chalk.whiteBright(parsedGitUrl.branch)}`);
     }
 
     const questionBuilder: QuestionBuilder<GitQuestion> = Container.get(QuestionBuilder)

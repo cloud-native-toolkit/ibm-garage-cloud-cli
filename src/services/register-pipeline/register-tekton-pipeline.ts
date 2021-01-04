@@ -3,6 +3,8 @@ import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
 import {get} from 'superagent';
 import * as _ from 'lodash';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import {
   NamespaceMissingError,
@@ -13,6 +15,7 @@ import {
 import {Namespace as NamespaceService} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {
+  isTriggerBinding_v0_6,
   KubeMetadata,
   KubeNamespace,
   KubeResource,
@@ -31,15 +34,12 @@ import {
   TektonPipelineRun,
   TemplateKubeMetadata,
   TriggerBinding,
+  TriggerBindings,
   TriggerBindingsArrays,
   TriggerDefinition,
-  TriggerDefinition_v0_4,
-  TriggerDefinition_v0_6,
   TriggerDefinitionVersion,
   TriggerEventListener,
-  TriggerTemplate,
-  TriggerBindings,
-  isTriggerBinding_v0_6
+  TriggerTemplate
 } from '../../api/kubectl';
 import {CreateServiceAccount} from '../create-service-account';
 import {QuestionBuilder} from '../../util/question-builder';
@@ -166,7 +166,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const serviceAccount = 'pipeline';
 
-    const pipelineArgs: PipelineArgs | {} = await this.getPipelineArgs(options.templateNamespace, options.pipeline);
+    const pipelineArgs: PipelineArgs | {} = await this.getPipelineArgs(options.templateNamespace, options);
 
     if (isPipelineArgs(pipelineArgs)) {
       const templatePipelineName = pipelineArgs.pipelineName;
@@ -350,11 +350,15 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     return `${registryUrl}/${registryNamespace}/${params.repo}:latest`;
   }
 
-  async getPipelineArgs(namespace: string, pipelineName?: string): Promise<PipelineArgs> {
-    const pipelines: TektonPipeline[] = await this.pipeline.list({ namespace });
+  async getPipelineArgs(namespace: string, {pipeline, pipelineParams = {}, gitUrl}: RegisterPipelineOptions): Promise<PipelineArgs> {
+    const filteredPipelines: TektonPipeline[] = this.filterPipelines(
+      await this.pipeline.list({namespace}),
+      await this.getProjectType(gitUrl),
+      pipeline
+    );
 
-    const pipelineChoices: Array<ChoiceOptions<{ pipelineName: string }>> = pipelines
-      .map(pipeline => pipeline.metadata.name)
+    const pipelineChoices: Array<ChoiceOptions<{ pipelineName: string }>> = filteredPipelines
+      .map(p => p.metadata.name)
       .map(name => ({ name, value: name }));
 
     if (pipelineChoices.length === 0) {
@@ -363,22 +367,98 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       return {};
     }
 
+    if (pipelineChoices.length === 1 && !pipeline) {
+      pipeline = pipelineChoices[0].value;
+    }
+
     const questionBuilder: QuestionBuilder<PipelineArgs> = Container.get(QuestionBuilder)
       .question({
         type: 'list',
         choices: pipelineChoices.concat({ name: 'Skip PipelineRun creation', value: 'none' }),
         name: 'pipelineName',
         message: 'Select the Pipeline to use in the PipelineRun:',
-      }, pipelineName)
+      }, pipeline)
       .question({
         type: 'confirm',
         name: 'scanImage',
         message: 'Would you like to enable the pipeline to scan the image for vulnerabilities?',
         when: (val: Partial<PipelineArgs>) => val.pipelineName !== 'none',
-      });
+      }, pipelineParams.scanImage);
 
     return questionBuilder.prompt()
       .then(result => result.pipelineName === 'none' ? {} : result);
+  }
+
+  async getProjectType(gitUrl?: string): Promise<{runtime?: string, builder?: string}> {
+    if (gitUrl) {
+      console.log('Registering git repo using url. Unable to detect project type yet...');
+      return {};
+    }
+
+    const files: string[] = await fs.promises.readdir(process.cwd());
+
+    if (files.includes('pom.xml')) {
+      return {runtime: 'openjdk', builder: 'maven'};
+    } else if (files.includes('build.gradle')) {
+      return {runtime: 'openjdk', builder: 'gradle'};
+    } else if (files.includes('package.json')) {
+      return {runtime: 'nodejs'};
+    } else if (files.includes('Makefile')) {
+      const contents = await fs.promises.readFile(path.join(process.cwd(), 'Makefile'));
+
+      if (contents.includes('operator-sdk')) {
+        return {runtime: 'operator'};
+      } else if (files.includes('go.mod')) {
+        return {runtime: 'golang'};
+      }
+    }
+
+    return {};
+  }
+
+  filterPipelines(pipelines: TektonPipeline[], {runtime, builder}: {runtime?: string, builder?: string}, pipelineName?: string): TektonPipeline[] {
+
+    if (pipelineName) {
+      return pipelines;
+    }
+
+    const matchRuntime = (pipeline: TektonPipeline) => {
+      if (!runtime) {
+        return true;
+      }
+
+      const pipelineRuntime = _.get(pipeline, ['metadata', 'annotations', 'app.openshift.io/runtime']);
+      if (!pipelineRuntime) {
+        return true;
+      }
+
+      return pipelineRuntime === runtime;
+    }
+
+    const matchBuilder = (pipeline: TektonPipeline) => {
+      if (!builder) {
+        return true;
+      }
+
+      const pipelineBuilder = _.get(pipeline, ['metadata', 'annotations', 'app.openshift.io/builder']);
+      if (!pipelineBuilder) {
+        return true;
+      }
+
+      return pipelineBuilder === builder;
+    }
+
+    const filteredPipelines: TektonPipeline[] = pipelines
+      .filter(matchRuntime)
+      .filter(matchBuilder);
+
+    if (filteredPipelines.length === 0) {
+      return pipelines;
+    }
+
+    console.log(`Filtered available pipelines based on detected runtime (${runtime}${builder ? '/' + builder : ''}): ${chalk.whiteBright(filteredPipelines.map(p => p.metadata.name))}`)
+
+    return filteredPipelines;
   }
 
   buildPipelineRunBuilder(
