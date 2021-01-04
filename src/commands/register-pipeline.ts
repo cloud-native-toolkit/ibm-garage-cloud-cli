@@ -76,8 +76,15 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     alias: 'c',
     description: 'flag indicating that a crumb is required to complete the registration',
     default: true,
+  })
+  .option('param', {
+    alias: 'p',
+    type: 'array',
+    description: 'Key-value parameters to set in the pipeline config (e.g. scanImage=true)',
+    demandOption: false,
+    default: [],
   });
-exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean}>) => {
+exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean}> & {param?: string[]}) => {
   let spinner;
 
   if (argv.debug) {
@@ -92,6 +99,20 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
     // }
     console.log(status);
   }
+
+  const pipelineParams = argv.param.reduce(
+    (result: object, currentValue: string) => {
+      if (currentValue.indexOf('=') > -1) {
+        const regex = /(.*)=(.*)/;
+        const key = currentValue.replace(regex, '$1');
+        const value = currentValue.replace(regex, '$2');
+
+        result[key] = value;
+      }
+
+      return result;
+    },
+    {});
 
   try {
     await checkKubeconfig();
@@ -123,7 +144,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
       ? Container.get(RegisterTektonPipeline)
       : Container.get(RegisterJenkinsPipelineImpl);
 
-    await command.registerPipeline(argv, statusCallback);
+    await command.registerPipeline(Object.assign({}, argv, {pipelineParams}), statusCallback);
 
     if (spinner) {
       spinner.stop();
