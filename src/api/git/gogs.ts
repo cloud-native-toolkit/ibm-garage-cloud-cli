@@ -1,4 +1,4 @@
-import {post, Response} from 'superagent';
+import {get, post, Response} from 'superagent';
 
 import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
 import {GitBase} from './git.base';
@@ -31,6 +31,32 @@ enum GogsHeader {
   event = 'X-Gogs-Event'
 }
 
+
+interface Tree {
+  path: string;
+  mode: string;
+  type: 'blob' | 'tree';
+  size?: number;
+  sha: string;
+  url: string;
+}
+
+interface TreeResponse {
+  sha: string;
+  url: string;
+  tree: Tree[];
+  truncated?: boolean;
+}
+
+interface FileResponse {
+  content: string;
+  encoding: 'base64';
+  url: string;
+  sha: string;
+  size: number;
+  node_id: string;
+}
+
 export class Gogs extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
@@ -38,6 +64,28 @@ export class Gogs extends GitBase implements GitApi {
 
   getBaseUrl(): string {
     return `${this.config.protocol}://${this.config.host}/api/v1/repos/${this.config.owner}/${this.config.repo}`;
+  }
+
+  async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
+    const response: Response = await get(`/git/trees/${this.config.branch}`)
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/json');
+
+    const treeResponse: TreeResponse = response.body;
+
+    return treeResponse.tree.filter(tree => tree.type === 'blob');
+  }
+
+  async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
+    const response: Response = await get(fileDescriptor.url)
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/json');
+
+    const fileResponse: FileResponse = response.body;
+
+    return new Buffer(fileResponse.content, fileResponse.encoding);
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {

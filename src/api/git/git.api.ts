@@ -61,10 +61,15 @@ export enum GitEvent {
   PUSH = 'push'
 }
 
-export abstract class GitApi {
+export abstract class LocalGitApi {
+  abstract listFiles(): Promise<Array<{path: string, url?: string}>>;
+  abstract getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer>;
+}
+
+export abstract class GitApi extends LocalGitApi {
   abstract getType(): GitHost;
 
-  async abstract createWebhook(request: CreateWebhook): Promise<string>;
+  abstract createWebhook(request: CreateWebhook): Promise<string>;
 
   abstract buildWebhookParams(eventId: GitEvent): WebhookParams;
 }
