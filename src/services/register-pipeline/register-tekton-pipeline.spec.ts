@@ -185,7 +185,7 @@ describe('register-tekton-pipeline', () => {
         const options = { pipelineNamespace, templateNamespace, pipeline: pipelineName };
         await classUnderTest.registerPipeline(options, notifyStatus);
 
-        expect(getPipelineArgs).toHaveBeenCalledWith(templateNamespace, options);
+        expect(getPipelineArgs).toHaveBeenCalledWith(templateNamespace, options, gitParams);
       });
 
       test.skip('should create pipeline run', async () => {

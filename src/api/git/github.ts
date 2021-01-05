@@ -1,10 +1,12 @@
-import {post, Response} from 'superagent';
+import {get, post, Response} from 'superagent';
 
 import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
 import {TypedGitRepoConfig} from './git.model';
 import {GitBase} from './git.base';
 import {isResponseError} from '../../util/superagent-support';
 import {GitHookConfig} from '../../services/git-secret';
+import fs from 'fs';
+import path from 'path';
 
 export interface GitHookData {
   name: 'web';
@@ -27,6 +29,31 @@ enum GitHookUrlVerification {
   notPerformed = '1'
 }
 
+interface Tree {
+  path: string;
+  mode: string;
+  type: 'blob' | 'tree';
+  size?: number;
+  sha: string;
+  url: string;
+}
+
+interface TreeResponse {
+  sha: string;
+  url: string;
+  tree: Tree[];
+  truncated?: boolean;
+}
+
+interface FileResponse {
+  content: string;
+  encoding: 'base64';
+  url: string;
+  sha: string;
+  size: number;
+  node_id: string;
+}
+
 abstract class GithubCommon extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
@@ -34,10 +61,26 @@ abstract class GithubCommon extends GitBase implements GitApi {
 
   abstract getBaseUrl(): string;
 
+  async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
+    const response: Response = await this.get(`/git/trees/${this.config.branch}`);
+
+    const treeResponse: TreeResponse = response.body;
+
+    return treeResponse.tree.filter(tree => tree.type === 'blob');
+  }
+
+  async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
+    const response: Response = await this.get(fileDescriptor.url);
+
+    const fileResponse: FileResponse = response.body;
+
+    return new Buffer(fileResponse.content, fileResponse.encoding);
+  }
+
   async createWebhook(options: CreateWebhook): Promise<string> {
 
     try {
-      const response: Response = await this.execute('/hooks', this.buildWebhookData(options));
+      const response: Response = await this.post('/hooks', this.buildWebhookData(options));
 
       return response.body.id;
     } catch (err) {
@@ -81,7 +124,16 @@ abstract class GithubCommon extends GitBase implements GitApi {
     return GithubEvent[eventId];
   }
 
-  async execute(uri: string, data: any): Promise<Response> {
+  async get(uri: string): Promise<Response> {
+    const url: string = uri.startsWith('http') ? uri : this.getBaseUrl() + uri;
+
+    return get(url)
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/vnd.github.v3+json');
+  }
+
+  async post(uri: string, data: any): Promise<Response> {
     return post(this.getBaseUrl() + uri)
       .auth(this.config.username, this.config.password)
       .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)

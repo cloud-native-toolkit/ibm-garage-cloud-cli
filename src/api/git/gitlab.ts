@@ -1,4 +1,4 @@
-import {post, Response} from 'superagent';
+import {get, post, Response} from 'superagent';
 
 import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
 import {GitBase} from './git.base';
@@ -31,6 +31,27 @@ enum GitlabEvent {
   push = 'Push Hook'
 }
 
+interface Tree {
+  id: string;
+  name: string;
+  type: 'blob' | 'tree';
+  path: string;
+  mode: string;
+}
+
+interface FileResponse {
+  file_name: string;
+  file_path: string;
+  size: number;
+  encoding: 'base64';
+  content: string;
+  content_sha256: string;
+  ref: string;
+  blob_id: string;
+  commit_id: string;
+  last_commit_id: string;
+}
+
 export class Gitlab extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
@@ -38,6 +59,48 @@ export class Gitlab extends GitBase implements GitApi {
 
   getBaseUrl(): string {
     return `${this.config.protocol}://${this.config.host}/api/v4/projects/${this.config.owner}%2F${this.config.repo}`;
+  }
+
+  async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
+    const response: Response = await get(this.buildUrl(this.getBaseUrl() + '/repository/tree', [this.branchParam(), 'per_page=1000']))
+      .set('Private-Token', this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/json');
+
+    const treeResponse: Tree[] = response.body;
+
+    return treeResponse
+      .filter(tree => tree.type === 'blob')
+      .map(tree => ({
+        path: tree.path.replace('files/', ''),
+        url: this.getBaseUrl() + '/repository/' + tree.path,
+      }));
+  }
+
+  async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
+    const response: Response = await get(fileDescriptor.url)
+      .set('Private-Token', this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/json');
+
+    const fileResponse: FileResponse = response.body;
+
+    return new Buffer(fileResponse.content, fileResponse.encoding);
+  }
+
+  private buildUrl(url: string, params: string[] = []): string {
+    const paramString: string = params.filter(p => !!p).join('&');
+
+    const values: string[] = [url];
+    if (paramString) {
+      values.push(paramString);
+    }
+
+    return values.join('?');
+  }
+
+  private branchParam(): string {
+    return this.config.branch ? `ref=${this.config.branch}` : '';
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {
