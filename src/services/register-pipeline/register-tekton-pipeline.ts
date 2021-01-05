@@ -402,30 +402,34 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   async getProjectType(gitParams: GitParams, gitUrl?: string): Promise<{runtime?: string, builder?: string}> {
 
-    const gitApi: LocalGitApi = gitUrl
-      ? await apiFromUrl(gitUrl, {username: gitParams.username, password: gitParams.password}, gitParams.branch)
-      : new LocalGitRepo();
+    try {
+      const gitApi: LocalGitApi = gitUrl
+        ? await apiFromUrl(gitUrl, {username: gitParams.username, password: gitParams.password}, gitParams.branch)
+        : new LocalGitRepo();
 
-    const files: {path: string, url?: string, contents?: string | Promise<string | Buffer>}[] = await gitApi.listFiles();
+      const files: { path: string, url?: string, contents?: string | Promise<string | Buffer> }[] = await gitApi.listFiles();
 
-    const filenames = files.map(file => file.path);
+      const filenames = files.map(file => file.path);
 
-    if (filenames.includes('pom.xml')) {
-      return {runtime: 'openjdk', builder: 'maven'};
-    } else if (filenames.includes('build.gradle')) {
-      return {runtime: 'openjdk', builder: 'gradle'};
-    } else if (filenames.includes('package.json')) {
-      return {runtime: 'nodejs'};
-    } else if (filenames.includes('Makefile')) {
-      const file: {path: string, url?: string} = files.filter(file => file.path === 'Makefile')[0];
+      if (filenames.includes('pom.xml')) {
+        return {runtime: 'openjdk', builder: 'maven'};
+      } else if (filenames.includes('build.gradle')) {
+        return {runtime: 'openjdk', builder: 'gradle'};
+      } else if (filenames.includes('package.json')) {
+        return {runtime: 'nodejs'};
+      } else if (filenames.includes('Makefile')) {
+        const file: { path: string, url?: string } = files.filter(file => file.path === 'Makefile')[0];
 
-      const contents = await gitApi.getFileContents(file);
+        const contents = await gitApi.getFileContents(file);
 
-      if (contents.includes('operator-sdk')) {
-        return {runtime: 'operator'};
-      } else if (filenames.includes('go.mod')) {
-        return {runtime: 'golang'};
+        if (contents.includes('operator-sdk')) {
+          return {runtime: 'operator'};
+        } else if (filenames.includes('go.mod')) {
+          return {runtime: 'golang'};
+        }
       }
+    } catch (error) {
+      // ignore error
     }
 
     return {};
