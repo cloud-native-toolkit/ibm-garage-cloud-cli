@@ -30,8 +30,8 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
   })
   .option('templateNamespace', {
     type: 'string',
-    alias: 'j',
-    describe: 'the namespace where Jenkins is running',
+    alias: 't',
+    describe: 'the namespace where Jenkins is running or the template Tekton pipelines have been installed',
   })
   .option('pipelineNamespace', {
     type: 'string',
