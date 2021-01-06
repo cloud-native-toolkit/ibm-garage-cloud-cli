@@ -42,13 +42,13 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     type: 'boolean',
     describe: 'flag indicating that the webhook should not be created'
   })
-  .option('gitUsername', {
-    alias: ['u', 'username'],
+  .option('username', {
+    alias: 'u',
     description: 'username used to access the git repository'
   })
-  .option('gitPat', {
-    alias: 'p',
-    description: 'the token used to authenticate the user'
+  .option('password', {
+    alias: 'P',
+    description: 'the password or personal access token used to access the git repository'
   })
   .option('values', {
     description: 'optional file with additional values to add to the secret'
@@ -80,7 +80,7 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
   .option('param', {
     alias: 'p',
     type: 'array',
-    description: 'Key-value parameters to set in the pipeline config (e.g. scanImage=true)',
+    description: 'Key-value parameters to set in the pipeline config (e.g. scan-image=true)',
     demandOption: false,
     default: [],
   });
