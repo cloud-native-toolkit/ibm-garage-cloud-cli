@@ -3,8 +3,6 @@ import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
 import {get} from 'superagent';
 import * as _ from 'lodash';
-import * as fs from 'fs';
-import * as path from 'path';
 
 import {
   NamespaceMissingError,
@@ -30,7 +28,7 @@ import {
   OcpRoute,
   RoleRule,
   Route,
-  TektonPipeline,
+  TektonPipeline, TektonPipelineParam,
   TektonPipelineRun,
   TemplateKubeMetadata,
   TriggerBinding,
@@ -85,7 +83,7 @@ export interface RegistryAccess {
 
 interface PipelineArgs {
   pipelineName?: string;
-  scanImage?: boolean;
+  params?: Array<{name: string, value: string}>;
 }
 
 function isPipelineArgs(value: PipelineArgs | {}): value is PipelineArgs {
@@ -160,7 +158,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       throw new NamespaceMissingError('The pipeline namespace does not exist: ' + options.pipelineNamespace, clusterType);
     }
 
-    notifyStatus('Getting git parameters');
+    notifyStatus('Retrieving git parameters');
     const { gitParams, secretName } = await this.createGitSecret.getParametersAndCreateSecret(
       Object.assign(
         {},
@@ -179,7 +177,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     if (isPipelineArgs(pipelineArgs)) {
       const templatePipelineName = pipelineArgs.pipelineName;
-      const scanImage = pipelineArgs.scanImage;
+      const params = pipelineArgs.params;
 
       notifyStatus(`Copying tasks from ${options.templateNamespace}`);
       await this.tektonTask.copyAll({ namespace: options.templateNamespace }, options.pipelineNamespace);
@@ -189,12 +187,20 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         options.templateNamespace,
         options.pipelineNamespace,
         this.generatePipelineName(gitParams),
+        (val: TektonPipeline): TektonPipeline => {
+          params.forEach(p => {
+            val.spec.params
+              .filter(param => param.name === p.name)
+              .forEach(param => param.default = p.value);
+          });
+
+          return val;
+        }
       ).then(pipelineValue => pipelineValue.metadata.name);
       notifyStatus(`Copied Pipeline from ${options.templateNamespace}/${templatePipelineName} to ${options.pipelineNamespace}/${pipelineName}`);
 
       const pipelineRunBuilder = this.buildPipelineRunBuilder({
-        pipelineName: pipelineName,
-        scanImage,
+        pipelineName,
       });
 
       notifyStatus(`Creating TriggerTemplate for pipeline: ${pipelineName}`);
@@ -267,7 +273,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       notifyStatus(`Next steps:`);
       notifyStatus(`  Tekton cli:`);
       notifyStatus(`    View PipelineRun info - ${chalk.whiteBright(`tkn pr describe ${pipelineRun.metadata.name}`)}`);
-      notifyStatus(`    View PipelineRun logs - ${chalk.whiteBright(`tkn pr logs ${pipelineRun.metadata.name}`)}`);
+      notifyStatus(`    View PipelineRun logs - ${chalk.whiteBright(`tkn pr logs -f ${pipelineRun.metadata.name}`)}`);
 
       const pipelineRunUrl: string = await this.buildPipelineRunUrl(pipelineRun.metadata.name, pipelineRun.metadata.namespace).catch(err => '');
       if (pipelineRunUrl) {
@@ -360,6 +366,38 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   }
 
   async getPipelineArgs(namespace: string, {pipeline, pipelineParams = {}, gitUrl}: RegisterPipelineOptions, gitParams: GitParams): Promise<PipelineArgs> {
+
+    const pipelineName: string = await this.getPipelineName(namespace, gitParams, gitUrl, pipeline);
+    if (!pipelineName) {
+      return {};
+    }
+
+    const questionBuilder: QuestionBuilder = Container.get(QuestionBuilder);
+
+    const templateParams: TektonPipelineParam[] = await this.getPipelineParams(namespace, pipelineName);
+    templateParams.forEach((param: TektonPipelineParam) => {
+      questionBuilder.question({
+        type: param.default === 'true' || param.default === 'false' ? 'confirm' : 'input',
+        name: param.name,
+        message: `${chalk.yellowBright(param.name)}: ${param.description}?`,
+        default: param.default,
+      }, pipelineParams[param.name])
+    });
+
+    const paramsObj = await questionBuilder.prompt();
+    const params: Array<{name: string, value: string}> = Object.keys(paramsObj)
+      .reduce((result: Array<{name: string, value: string}>, name: string) => {
+        const param = {name, value: '' + paramsObj[name]};
+
+        result.push(param);
+
+        return result;
+      }, []);
+
+    return {pipelineName, params};
+  }
+
+  private async getPipelineName(namespace: string, gitParams: GitParams, gitUrl?: string, pipeline?: string): Promise<string> {
     console.log(`Retrieving available template pipelines from ${chalk.yellow(namespace)}`);
 
     const filteredPipelines: TektonPipeline[] = this.filterPipelines(
@@ -375,29 +413,32 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     if (pipelineChoices.length === 0) {
       console.log(`No Pipelines found in ${namespace} namespace. Skipping PipelineRun creation`);
       console.log('Install Tekton tasks and pipelines into your namespace by following these instructions: ' + chalk.yellow('https://github.com/IBM/ibm-garage-tekton-tasks'));
-      return {};
+      return '';
     }
 
     if (pipelineChoices.length === 1 && !pipeline) {
       pipeline = pipelineChoices[0].value;
     }
 
-    const questionBuilder: QuestionBuilder<PipelineArgs> = Container.get(QuestionBuilder)
+    const questionBuilder: QuestionBuilder<{pipelineName: string}> = Container.get(QuestionBuilder)
       .question({
         type: 'list',
         choices: pipelineChoices.concat({ name: 'Skip PipelineRun creation', value: 'none' }),
         name: 'pipelineName',
         message: 'Select the Pipeline to use in the PipelineRun:',
-      }, pipeline)
-      .question({
-        type: 'confirm',
-        name: 'scanImage',
-        message: 'Would you like to enable the pipeline to scan the image for vulnerabilities?',
-        when: (val: Partial<PipelineArgs>) => val.pipelineName !== 'none',
-      }, pipelineParams.scanImage);
+      }, pipeline);
 
-    return questionBuilder.prompt()
-      .then(result => result.pipelineName === 'none' ? {} : result);
+    const {pipelineName} = await questionBuilder.prompt();
+
+    return pipelineName === 'none' ? '' : pipelineName;
+  }
+
+  async getPipelineParams(namespace: string, name: string): Promise<TektonPipelineParam[]> {
+    const pipeline = await this.pipeline.get(name, namespace);
+
+    const params = pipeline.spec.params || [];
+
+    return params.filter(param => param.name !== 'git-url' && param.name !== 'git-revision');
   }
 
   async getProjectType(gitParams: GitParams, gitUrl?: string): Promise<{runtime?: string, builder?: string}> {
@@ -487,10 +528,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   buildPipelineRunBuilder(
     {
       pipelineName,
-      scanImage = false,
     }: {
       pipelineName: string,
-      scanImage?: boolean,
     }
   ): PipelineRunBuilder {
 
@@ -507,13 +546,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
           value: gitRevision
         },
       ];
-
-      if (!template) {
-        params.push(              {
-          name: 'scan-image',
-          value: '' + scanImage // convert to string
-        });
-      }
 
       const result: TektonPipelineRun<KubeMetadata | TemplateKubeMetadata> = Object.assign(
         {

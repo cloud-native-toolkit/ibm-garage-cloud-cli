@@ -3,8 +3,16 @@ import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
 import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
 
+export interface TektonPipelineParam {
+  type?: 'string' | 'array';
+  name: string;
+  description?: string;
+  default?: string;
+}
+
 export interface TektonPipeline extends KubeResource {
   spec: {
+    params?: Array<TektonPipelineParam>;
     resources?: Array<{
       name: string;
       type: string;

@@ -250,7 +250,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     return labels.length > 0 ? labels[0] : undefined;
   }
 
-  async copy(name: string, fromNamespace: string, toNamespace: string, toName?: string): Promise<T> {
+  async copy(name: string, fromNamespace: string, toNamespace: string, toName?: string, updater: (val: T) => T = (val: T) => val): Promise<T> {
     const result = await this.get(name, fromNamespace);
 
     const newName = (toName || name).replace(/[.]/g, '-');
@@ -258,7 +258,7 @@ export class AbstractKubernetesResourceManager<T extends KubeResource> implement
     return this.createOrUpdate(
       newName,
       {
-        body: this.updateWithNamespace(result, toNamespace, newName)
+        body: updater(this.updateWithNamespace(result, toNamespace, newName))
       },
       toNamespace,
     );
