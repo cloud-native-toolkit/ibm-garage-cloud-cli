@@ -4,6 +4,7 @@ import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, Webhook
 import {GitBase} from './git.base';
 import {TypedGitRepoConfig} from './git.model';
 import {isResponseError} from '../../util/superagent-support';
+import first from '../../util/first';
 
 enum GogsEvent {
   create = 'create',
@@ -57,6 +58,10 @@ interface FileResponse {
   node_id: string;
 }
 
+interface Branch {
+  name: string;
+}
+
 export class Gogs extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
@@ -67,7 +72,7 @@ export class Gogs extends GitBase implements GitApi {
   }
 
   async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
-    const response: Response = await get(`/git/trees/${this.config.branch}`)
+    const response: Response = await get(this.getBaseUrl() + `/git/trees/${this.config.branch}`)
       .auth(this.config.username, this.config.password)
       .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
       .accept('application/json');
@@ -86,6 +91,19 @@ export class Gogs extends GitBase implements GitApi {
     const fileResponse: FileResponse = response.body;
 
     return new Buffer(fileResponse.content, fileResponse.encoding);
+  }
+
+  async getDefaultBranch(): Promise<string> {
+    const response: Response = await get(this.getBaseUrl())
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/json');
+
+    const branchResponse: Branch[] = response.body;
+
+    return first(branchResponse
+      .filter(branch => branch.name === 'master' || branch.name === 'main')
+      .map(branch => branch.name));
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {

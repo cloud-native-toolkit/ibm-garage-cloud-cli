@@ -54,6 +54,10 @@ interface FileResponse {
   node_id: string;
 }
 
+interface RepoResponse {
+  default_branch: string;
+}
+
 abstract class GithubCommon extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
@@ -75,6 +79,14 @@ abstract class GithubCommon extends GitBase implements GitApi {
     const fileResponse: FileResponse = response.body;
 
     return new Buffer(fileResponse.content, fileResponse.encoding);
+  }
+
+  async getDefaultBranch(): Promise<string> {
+    const response: Response = await this.get();
+
+    const treeResponse: RepoResponse = response.body;
+
+    return treeResponse.default_branch;
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {
@@ -124,7 +136,7 @@ abstract class GithubCommon extends GitBase implements GitApi {
     return GithubEvent[eventId];
   }
 
-  async get(uri: string): Promise<Response> {
+  async get(uri: string = ''): Promise<Response> {
     const url: string = uri.startsWith('http') ? uri : this.getBaseUrl() + uri;
 
     return get(url)

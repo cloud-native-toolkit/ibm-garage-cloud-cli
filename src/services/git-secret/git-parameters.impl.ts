@@ -4,7 +4,7 @@ import {GitParametersOptions} from './git-parameters-options.model';
 import {GitParams} from './git-params.model';
 import {execPromise, ExecResult} from '../../util/child-process';
 import {QuestionBuilder} from '../../util/question-builder';
-import {parseGitUrl} from '../../api/git';
+import {apiFromUrl, parseGitUrl} from '../../api/git';
 import * as chalk from 'chalk';
 
 interface GitQuestion {
@@ -18,6 +18,13 @@ export class GetGitParametersImpl implements GetGitParameters {
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
     const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string; branch?: string} = await this.getGitConfig(options.remote, options.workingDir, options.gitUrl);
+    if (!parsedGitUrl.branch) {
+      const gitApi = await apiFromUrl(parsedGitUrl.url, {username: options.gitUsername, password: options.gitPat});
+
+      try {
+        parsedGitUrl.branch = await gitApi.getDefaultBranch();
+      } catch (err) { }
+    }
 
     console.log(`  Project git repo: ${chalk.whiteBright(parsedGitUrl.url)}`);
     if (parsedGitUrl.branch) {

@@ -63,7 +63,10 @@ export enum GitEvent {
 
 export abstract class LocalGitApi {
   abstract listFiles(): Promise<Array<{path: string, url?: string}>>;
+
   abstract getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer>;
+
+  abstract getDefaultBranch(): Promise<string>;
 }
 
 export abstract class GitApi extends LocalGitApi {

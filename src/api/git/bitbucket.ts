@@ -40,6 +40,15 @@ interface SrcResponse {
   values: TreeEntry[];
 }
 
+interface BranchResponse {
+  id: string;
+  displayId: string;
+  type: string;
+  latestCommit: string;
+  latestChangeset: string;
+  isDefault: boolean;
+}
+
 export class Bitbucket extends GitBase implements GitApi {
   constructor(config: TypedGitRepoConfig) {
     super(config);
@@ -70,19 +79,14 @@ export class Bitbucket extends GitBase implements GitApi {
     return response.text;
   }
 
-  private buildUrl(url: string, params: string[] = []): string {
-    const paramString: string = params.filter(p => !!p).join('&');
+  async getDefaultBranch(): Promise<string> {
+    const response: Response = await get(this.getBaseUrl() + '/branches/default')
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`);
 
-    const values: string[] = [url];
-    if (paramString) {
-      values.push(paramString);
-    }
+    const branchResponse: BranchResponse = response.body;
 
-    return values.join('?');
-  }
-
-  private branchParam(): string {
-    return this.config.branch ? `at=${this.config.branch}` : '';
+    return branchResponse.displayId;
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {
