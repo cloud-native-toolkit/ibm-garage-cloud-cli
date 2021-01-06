@@ -1,5 +1,6 @@
 import {Inject} from 'typescript-ioc';
 import {parse} from 'dot-properties';
+import * as chalk from 'chalk';
 
 import {CreateGitSecret, CreateGitSecretOptions, CreateGitSecretParams} from './create-git-secret.api';
 import {GetGitParameters, GitParametersOptions, GitParams} from './git-parameters';
@@ -42,7 +43,7 @@ export class CreateGitSecretImpl implements CreateGitSecret {
     if (!options.replace && await this.kubeSecret.exists(SECRET_NAME, options.namespaces[0])) {
       const {username, password} = await this.kubeSecret.getData(SECRET_NAME, options.namespaces[0]);
 
-      notifyStatus(`Git credentials have already been stored for user: ${username}`);
+      notifyStatus(`Git credentials have already been stored for user: ${chalk.whiteBright(username)}`);
 
       return Object.assign(
         {},
