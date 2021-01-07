@@ -215,7 +215,7 @@ describe('namespace', () => {
       const namespace = 'test';
       const templateNamespace = 'other';
       const serviceAccount = 'sa';
-      const namespaceOptions: NamespaceOptionsModel = {namespace, templateNamespace, serviceAccount, dev: false};
+      const namespaceOptions: NamespaceOptionsModel = {namespace, templateNamespace, serviceAccount};
 
       beforeEach(() => {
         getClusterType.mockResolvedValue('kubernetes');
@@ -245,40 +245,22 @@ describe('namespace', () => {
         });
       });
 
-      describe('and when dev flag is false', () => {
-        beforeEach(() => {
-          namespaceOptions.dev = false;
-        });
+      test('then should copy config maps in catalyst-tools group', async () => {
+        await classUnderTest.create(namespaceOptions);
 
-        test('then should copy the jenkins credentials', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyJenkinsCredentials).not.toHaveBeenCalled();
-        });
+        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
-      describe('and when dev flag is true', () => {
-        beforeEach(() => {
-          namespaceOptions.dev = true;
-        });
+      test('then should copy secrets in catalyst-tools group', async () => {
+        await classUnderTest.create(namespaceOptions);
 
-        test('then should copy config maps in catalyst-tools group', async () => {
-          await classUnderTest.create(namespaceOptions);
+        expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
+      });
 
-          expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
-        });
+      test('then should not copy the jenkins credentials', async () => {
+        await classUnderTest.create(namespaceOptions);
 
-        test('then should copy secrets in catalyst-tools group', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
-        });
-
-        test('then should not copy the jenkins credentials', async () => {
-          await classUnderTest.create(namespaceOptions);
-
-          expect(copyJenkinsCredentials).not.toHaveBeenCalledWith();
-        });
+        expect(copyJenkinsCredentials).not.toHaveBeenCalledWith();
       });
     });
   });

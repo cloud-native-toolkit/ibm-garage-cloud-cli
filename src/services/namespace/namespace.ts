@@ -91,7 +91,7 @@ export class NamespaceImpl implements Namespace {
     return namespace;
   }
 
-  async create({namespace, templateNamespace, serviceAccount, dev}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -104,12 +104,10 @@ export class NamespaceImpl implements Namespace {
       await nsManager.create(namespace);
     }
 
-    if (dev) {
-      notifyStatus('Copying ConfigMaps');
-      await this.copyConfigMaps(namespace, templateNamespace);
-      notifyStatus('Copying Secrets');
-      await this.copySecrets(namespace, templateNamespace);
-    }
+    notifyStatus('Copying ConfigMaps');
+    await this.copyConfigMaps(namespace, templateNamespace);
+    notifyStatus('Copying Secrets');
+    await this.copySecrets(namespace, templateNamespace);
 
     notifyStatus(`Setting current ${label} to ${namespace}`)
     await this.setCurrentProject(namespace);
