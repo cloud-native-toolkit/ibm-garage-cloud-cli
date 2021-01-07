@@ -27,10 +27,6 @@ export const builder = (yargs: Argv<any>) => {
       default: 'default',
       type: 'string',
     })
-    .option('dev', {
-      describe: 'flag to indicate this is a development namespace and that development artifacts should be created',
-      type: 'boolean',
-    })
     .option('verbose', {
       describe: 'flag to produce more verbose logging',
       type: 'boolean'
