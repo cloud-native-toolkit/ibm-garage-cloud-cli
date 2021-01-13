@@ -4,13 +4,12 @@ import {GitParametersOptions} from './git-parameters-options.model';
 import {GitParams} from './git-params.model';
 import {execPromise, ExecResult} from '../../util/child-process';
 import {QuestionBuilder} from '../../util/question-builder';
-import {apiFromUrl, parseGitUrl} from '../../api/git';
+import {apiFromUrl, GitApi, parseGitUrl} from '../../api/git';
 import * as chalk from 'chalk';
 
 interface GitQuestion {
   username: string;
   password: string;
-  branch: string;
 }
 
 export class GetGitParametersImpl implements GetGitParameters {
@@ -18,18 +17,8 @@ export class GetGitParametersImpl implements GetGitParameters {
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
     const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string; branch?: string} = await this.getGitConfig(options.remote, options.workingDir, options.gitUrl);
-    if (!parsedGitUrl.branch) {
-      const gitApi = await apiFromUrl(parsedGitUrl.url, {username: options.gitUsername, password: options.gitPat});
-
-      try {
-        parsedGitUrl.branch = await gitApi.getDefaultBranch();
-      } catch (err) { }
-    }
 
     console.log(`  Project git repo: ${chalk.whiteBright(parsedGitUrl.url)}`);
-    if (parsedGitUrl.branch) {
-      console.log(`            branch: ${chalk.whiteBright(parsedGitUrl.branch)}`);
-    }
 
     const questionBuilder: QuestionBuilder<GitQuestion> = Container.get(QuestionBuilder)
       .question({
@@ -41,7 +30,19 @@ export class GetGitParametersImpl implements GetGitParameters {
         type: 'password',
         name: 'password',
         message: `Provide the git password or personal access token:`,
-      }, options.gitPat)
+      }, options.gitPat);
+
+    const gitCredentials: GitQuestion = await questionBuilder.prompt();
+
+    if (!parsedGitUrl.branch) {
+      const gitApi = await this.getApiFromUrl(parsedGitUrl.url, gitCredentials);
+
+      try {
+        parsedGitUrl.branch = await gitApi.getDefaultBranch();
+      } catch (err) { }
+    }
+
+    const branchQuestion: QuestionBuilder<{branch: string}> = Container.get(QuestionBuilder)
       .question({
         type: 'input',
         name: 'branch',
@@ -49,18 +50,25 @@ export class GetGitParametersImpl implements GetGitParameters {
         default: 'main',
       }, parsedGitUrl.branch);
 
-    const answers: GitQuestion = await questionBuilder.prompt();
+    const branchAnswer: {branch: string} = await branchQuestion.prompt();
+
+    console.log(`  Branch: ${chalk.whiteBright(parsedGitUrl.branch)}`);
 
     const result = Object.assign(
       {},
       parsedGitUrl,
       {
-        name: options.name || `${parsedGitUrl.owner}.${parsedGitUrl.repo}${answers.branch !== 'master' ? '.' + answers.branch : ''}`,
+        name: options.name || `${parsedGitUrl.owner}.${parsedGitUrl.repo}${branchAnswer.branch === 'master' || branchAnswer.branch === 'main' ? '' : '.' + branchAnswer.branch}`,
       },
-      answers,
+      gitCredentials,
+      branchAnswer,
     );
 
     return result;
+  }
+
+  async getApiFromUrl(url: string, credentials: {username: string, password: string}): Promise<GitApi> {
+    return apiFromUrl(url, credentials);
   }
 
   async getGitConfig(remote: string = 'origin', workingDir: string = process.cwd(), gitUrl?: string): Promise<{url: string; host: string; owner: string; repo: string; protocol: string; branch?: string}> {

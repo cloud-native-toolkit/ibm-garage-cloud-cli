@@ -13,9 +13,16 @@ describe('git-parameters', () => {
 
   describe('given GetGitParameters', () => {
     let classUnderTest: GetGitParametersImpl;
+    let getGitApiFromUrl: Mock;
+    let getCurrentBranch: Mock;
 
     beforeEach(() => {
+      getGitApiFromUrl = jest.fn();
+      getCurrentBranch = jest.fn();
+
       classUnderTest = Container.get(GetGitParametersImpl);
+      classUnderTest.getApiFromUrl = getGitApiFromUrl;
+      classUnderTest.getCurrentBranch = getCurrentBranch;
     });
 
     describe('getGitParameters()', () => {
@@ -56,6 +63,9 @@ describe('git-parameters', () => {
         };
 
         beforeEach(() => {
+          getGitApiFromUrl.mockResolvedValue({getDefaultBranch: () => branch});
+          getCurrentBranch.mockResolvedValue(branch);
+
           mock_getRemoteGitUrl.mockReturnValue(url);
           mock_prompt.mockResolvedValue(answers);
         });
