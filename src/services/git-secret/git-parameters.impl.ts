@@ -16,7 +16,7 @@ export class GetGitParametersImpl implements GetGitParameters {
 
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
 
-    const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string; branch?: string} = await this.getGitConfig(options.remote, options.workingDir, options.gitUrl);
+    const parsedGitUrl: {url: string; host: string; owner: string; repo: string; protocol: string; branch?: string; username?: string; password?: string} = await this.getGitConfig(options.remote, options.workingDir, options.gitUrl);
 
     console.log(`  Project git repo: ${chalk.whiteBright(parsedGitUrl.url)}`);
 
@@ -25,12 +25,12 @@ export class GetGitParametersImpl implements GetGitParameters {
         type: 'input',
         name: 'username',
         message: 'Provide the git username:',
-      }, options.gitUsername)
+      }, options.gitUsername || parsedGitUrl.username)
       .question({
         type: 'password',
         name: 'password',
         message: `Provide the git password or personal access token:`,
-      }, options.gitPat);
+      }, options.gitPat || parsedGitUrl.password);
 
     const gitCredentials: GitQuestion = await questionBuilder.prompt();
 

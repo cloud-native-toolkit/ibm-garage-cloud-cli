@@ -13,6 +13,8 @@ export interface GitRepoConfig {
   owner: string;
   repo: string;
   branch?: string;
+  username?: string;
+  password?: string;
 }
 
 export interface AuthGitRepoConfig extends GitRepoConfig {
