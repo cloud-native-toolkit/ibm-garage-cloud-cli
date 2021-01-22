@@ -184,8 +184,10 @@ export class Gogs extends GitBase implements GitApi {
 
   async createWebhook(options: CreateWebhook): Promise<string> {
     try {
+      const token: string = await this.getToken();
+
       const response: Response = await post(this.getBaseUrl() + '/hooks')
-        .auth(this.config.username, this.config.password)
+        .set('Authorization', `token ${token}`)
         .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
         .accept('application/json')
         .send(this.buildWebhookData(options));
