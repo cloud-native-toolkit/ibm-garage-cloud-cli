@@ -1,5 +1,7 @@
 import {get, post, Response} from 'superagent';
 import * as _ from 'lodash';
+import * as fs from 'fs';
+import * as StreamZip from 'node-stream-zip';
 
 import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
 import {GitBase} from './git.base';
@@ -90,52 +92,73 @@ export class Gogs extends GitBase implements GitApi {
 
     const tokens: Token[] = response.body;
 
+    if (!tokens || tokens.length === 0) {
+      return this.createToken();
+    }
+
     return first(tokens.map(token => token.sha1));
+  }
+
+  async createToken(): Promise<string> {
+    const response: Response = await post(`${this.config.protocol}://${this.config.host}/api/v1/users/${this.config.username}/tokens`)
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/json')
+      .send({name: 'gogs'});
+
+    return response.body.sha1;
   }
 
   async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
     try {
       const token: string = await this.getToken();
 
-      const sha: string = await this.getSha(this.config.branch, token);
-
-      const response: Response = await get(this.getBaseUrl() + `/git/trees/${sha}`)
+      const url: string = `${this.config.protocol}://${this.config.host}/api/v1/repos/${this.config.owner}/${this.config.repo}/archive/${this.config.branch}.zip`;
+      const response: Response = await get(url)
         .set('Authorization', `token ${token}`)
         .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
-        .accept('application/json');
+        .accept('application/octet-stream')
+        .buffer(true);
 
-      const treeResponse: TreeResponse = response.body;
+      const tmpFile = `${this.config.branch}-tmp.zip`;
+      await fs.promises.writeFile(tmpFile, response.body);
 
-      return treeResponse.tree.filter(tree => tree.type === 'blob');
+      const zip = new StreamZip({
+        file: tmpFile,
+        storeEntries: true,
+      });
+
+      return new Promise((resolve) => {
+        zip.on('ready', () => {
+          const files = Object.values(zip.entries())
+            .filter(entry => !entry.isDirectory)
+            .map(entry => ({path: entry.name.replace(new RegExp('^' + this.config.repo + '/'), '')}));
+
+          // Do not forget to close the file once you're done
+          zip.close(() => {
+            fs.promises.unlink(tmpFile);
+          });
+
+          resolve(files);
+        });
+      });
     } catch (err) {
       console.log('Error listing files', err);
       throw err;
     }
   }
 
-  async getSha(ref: string, token?: string): Promise<string> {
-    if (!token) {
-      token = await this.getToken();
-    }
-
-    const response: Response = await get(this.getBaseUrl() + `/commits/${ref}`)
-      .set('Authorization', `token ${token}`)
-      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
-      .accept('application/vnd.gogs.sha');
-
-    return response.text;
-  }
-
   async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
     try {
-      const response: Response = await get(fileDescriptor.url)
-        .auth(this.config.username, this.config.password)
+      const token: string = await this.getToken();
+
+      const url: string = `${this.config.protocol}://${this.config.host}/api/v1/repos/${this.config.owner}/${this.config.repo}/raw/${this.config.branch}/${fileDescriptor.path}`;
+      const response: Response = await get(url)
+        .set('Authorization', `token ${token}`)
         .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
-        .accept('application/json');
+        .accept('text/plain');
 
-      const fileResponse: FileResponse = response.body;
-
-      return new Buffer(fileResponse.content, fileResponse.encoding);
+      return response.text;
     } catch (err) {
       console.log('Error getting file contents', err);
       throw err;
@@ -144,8 +167,10 @@ export class Gogs extends GitBase implements GitApi {
 
   async getDefaultBranch(): Promise<string> {
     try {
+      const token: string = await this.getToken();
+
       const response: Response = await get(this.getBaseUrl())
-        .auth(this.config.username, this.config.password)
+        .set('Authorization', `token ${token}`)
         .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
         .accept('application/json');
 
