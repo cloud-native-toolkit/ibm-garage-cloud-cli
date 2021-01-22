@@ -1,10 +1,12 @@
 import {get, post, Response} from 'superagent';
+import * as _ from 'lodash';
 
 import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
 import {GitBase} from './git.base';
 import {TypedGitRepoConfig} from './git.model';
 import {isResponseError} from '../../util/superagent-support';
 import first from '../../util/first';
+
 
 enum GogsEvent {
   create = 'create',
@@ -58,8 +60,17 @@ interface FileResponse {
   node_id: string;
 }
 
+interface RepoResponse {
+  default_branch: string;
+}
+
 interface Branch {
   name: string;
+}
+
+interface Token {
+  name: string;
+  sha1: string;
 }
 
 export class Gogs extends GitBase implements GitApi {
@@ -71,39 +82,79 @@ export class Gogs extends GitBase implements GitApi {
     return `${this.config.protocol}://${this.config.host}/api/v1/repos/${this.config.owner}/${this.config.repo}`;
   }
 
-  async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
-    const response: Response = await get(this.getBaseUrl() + `/git/trees/${this.config.branch}`)
+  async getToken(): Promise<string> {
+    const response: Response = await get(`${this.config.protocol}://${this.config.host}/api/v1/users/${this.config.username}/tokens`)
       .auth(this.config.username, this.config.password)
       .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
       .accept('application/json');
 
-    const treeResponse: TreeResponse = response.body;
+    const tokens: Token[] = response.body;
 
-    return treeResponse.tree.filter(tree => tree.type === 'blob');
+    return first(tokens.map(token => token.sha1));
+  }
+
+  async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
+    try {
+      const token: string = await this.getToken();
+
+      const sha: string = await this.getSha(this.config.branch, token);
+
+      const response: Response = await get(this.getBaseUrl() + `/git/trees/${sha}`)
+        .set('Authorization', `token ${token}`)
+        .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+        .accept('application/json');
+
+      const treeResponse: TreeResponse = response.body;
+
+      return treeResponse.tree.filter(tree => tree.type === 'blob');
+    } catch (err) {
+      console.log('Error listing files', err);
+      throw err;
+    }
+  }
+
+  async getSha(ref: string, token?: string): Promise<string> {
+    if (!token) {
+      token = await this.getToken();
+    }
+
+    const response: Response = await get(this.getBaseUrl() + `/commits/${ref}`)
+      .set('Authorization', `token ${token}`)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/vnd.gogs.sha');
+
+    return response.text;
   }
 
   async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
-    const response: Response = await get(fileDescriptor.url)
-      .auth(this.config.username, this.config.password)
-      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
-      .accept('application/json');
+    try {
+      const response: Response = await get(fileDescriptor.url)
+        .auth(this.config.username, this.config.password)
+        .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+        .accept('application/json');
 
-    const fileResponse: FileResponse = response.body;
+      const fileResponse: FileResponse = response.body;
 
-    return new Buffer(fileResponse.content, fileResponse.encoding);
+      return new Buffer(fileResponse.content, fileResponse.encoding);
+    } catch (err) {
+      console.log('Error getting file contents', err);
+      throw err;
+    }
   }
 
   async getDefaultBranch(): Promise<string> {
-    const response: Response = await get(this.getBaseUrl())
-      .auth(this.config.username, this.config.password)
-      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
-      .accept('application/json');
+    try {
+      const response: Response = await get(this.getBaseUrl())
+        .auth(this.config.username, this.config.password)
+        .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+        .accept('application/json');
 
-    const branchResponse: Branch[] = response.body;
+      const repoResponse: RepoResponse = response.body;
 
-    return first(branchResponse
-      .filter(branch => branch.name === 'master' || branch.name === 'main')
-      .map(branch => branch.name));
+      return _.get(repoResponse, 'default_branch');
+    } catch (err) {
+      return undefined;
+    }
   }
 
   async createWebhook(options: CreateWebhook): Promise<string> {
