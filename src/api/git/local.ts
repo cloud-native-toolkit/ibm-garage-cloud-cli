@@ -1,5 +1,5 @@
 import {promises as fsPromises} from 'fs';
-import path from 'path';
+import {join} from 'path';
 
 import {LocalGitApi} from './git.api';
 import {ChildProcess} from '../../util/child-process';
@@ -19,8 +19,7 @@ export class LocalGitRepo implements LocalGitApi {
 
   async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
-      console.log('Executing file read: ' + fileDescriptor.path);
-      resolve(fsPromises.readFile(path.join(this.repoPath, fileDescriptor.path)));
+      resolve(fsPromises.readFile(join(this.repoPath, fileDescriptor.path)));
     });
   }
 
