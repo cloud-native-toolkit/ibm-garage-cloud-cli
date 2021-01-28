@@ -11,6 +11,7 @@ export class ModuleRefVariable implements IModuleVariable, BaseVariable {
   name: string;
   description?: string;
   type?: string;
+  scope?: 'global' | 'module' = 'module';
 
   moduleRef: {source: string};
   moduleOutputName: string;
@@ -61,6 +62,7 @@ export class PlaceholderVariable implements IPlaceholderVariable, BaseVariable {
   name: string;
   description?: string;
   type?: string;
+  scope?: 'global' | 'module';
 
   variable: ModuleVariable;
 

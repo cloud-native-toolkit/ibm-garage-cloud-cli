@@ -34,7 +34,11 @@ export class ConsoleLogger implements LoggerApi {
 
   info(message: string, context?: object) {
     if (this.logLevel >= LogLevel.ERROR) {
-      console.log(message, context);
+      if (context) {
+        console.log(message, context);
+      } else {
+        console.log(message);
+      }
     }
   }
 
