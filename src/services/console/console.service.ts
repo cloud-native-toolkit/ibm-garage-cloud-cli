@@ -18,7 +18,9 @@ export class GetConsoleUrlService implements GetConsoleUrlApi {
     const {clusterType} = await this.clusterType.getClusterType();
 
     if (clusterType == 'openshift') {
-      return this.route.getUrls('openshift-console', 'console').then(urls => urls[0]);
+      return this.childProcess
+        .exec('oc whoami --show-console')
+        .then(({stdout}: {stdout: string, stderr: string}) => stdout.trim());
     } else {
       const {clusterName, region} = await this.kubeConfigMap.getData<{CLUSTER_NAME, REGION}>('ibmcloud-config', namespace)
         .then(val => ({
