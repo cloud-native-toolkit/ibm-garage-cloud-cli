@@ -1,8 +1,9 @@
+import {empty, of, Optional} from './optional';
 
-export default function first<T>(val: T[]): T | undefined {
+export default function first<T>(val: T[]): Optional<T> {
   if (!val || val.length === 0) {
-    return;
+    return empty();
   }
 
-  return val[0];
+  return of(val[0]);
 }

@@ -30,6 +30,8 @@ import {LoggerApi} from '../../../logger';
 import {of as arrayOf} from '../../../util/array-util';
 import {QuestionBuilderImpl} from '../../../util/question-builder/question-builder.impl';
 import {InputModel} from '../iteration-zero-config.model';
+import first from '../../../util/first';
+import {Optional} from '../../../util/optional';
 
 export class StageImpl implements Stage {
   name: string;
@@ -76,51 +78,32 @@ export class ModuleSelectorImpl implements ModuleSelector {
     return this._logger.child('ModuleSelectorImpl');
   }
 
-  async selectStagesAndProvideVariables(fullCatalog: Catalog, options: {ci?: boolean, clusterType?: string}, input?: InputModel): Promise<{ stages: { [name: string]: Stage }, variables: TerraformVariable[] }> {
-    const selectedModules: SingleModuleVersion[] = await this.selectModules(fullCatalog, options, input);
+  async selectStagesAndProvideVariables(fullCatalog: Catalog, filter: { provider: string, platform: string }, input?: InputModel): Promise<{ stages: { [name: string]: Stage }, variables: TerraformVariable[] }> {
+    const selectedModules: SingleModuleVersion[] = await this.selectModules(fullCatalog, filter, input);
 
-    const {stages, baseVariables} = await this.buildStages(selectedModules, options, input);
+    const {stages, baseVariables} = await this.buildStages(selectedModules, input);
 
-    console.log('Stages', {stages, baseVariables});
-
-    const variables: TerraformVariable[] = await this.provideValuesForVariables(baseVariables);
+    const variables: TerraformVariable[] = await this.baseVariableToTerraformVariable(baseVariables);
 
     return {stages, variables};
   }
 
-  async selectModules(fullCatalog: Catalog, options: {ci?: boolean, clusterType?: string}, input?: InputModel): Promise<SingleModuleVersion[]> {
+  async selectModules(fullCatalog: Catalog, filter: { provider: string, platform: string }, input?: InputModel): Promise<SingleModuleVersion[]> {
 
-    const catalog: Catalog = await this.filterCatalogByClusterType(fullCatalog, options, input);
+    const catalog: Catalog = await this.filterCatalogByClusterType(fullCatalog, filter);
 
-    const modules: Module[] = await this.makeModuleSelections(catalog, options, input);
+    const modules: Module[] = await this.makeModuleSelections(catalog, input);
 
     return new SelectedModules(catalog).resolveModules(modules);
   }
 
-  async filterCatalogByClusterType(catalog: Catalog, options: {ci?: boolean, clusterType?: string}, input: Partial<InputModel> = {}): Promise<Catalog> {
-    const builder: QuestionBuilder<{clusterType: string}> = await Container.get(QuestionBuilder)
-      .question({
-        name: 'clusterType',
-        type: 'list',
-        message: 'What is the target platform?',
-        choices: [
-          {value: 'ocp4', name: 'OpenShift 4.X'},
-          {value: 'ocp3', name: 'OpenShift 3.11'},
-          {value: 'kubernetes', name: 'Kubernetes'},
-        ]
-      }, options.clusterType || input.platform);
-
-    if (options.ci && builder.hasQuestions()) {
-      throw new Error('Missing clusterType value');
-    }
-
-    const {clusterType} = await builder.prompt();
-
-    return catalog.filter({platform: clusterType});
+  async filterCatalogByClusterType(catalog: Catalog, filter: { provider: string, platform: string }): Promise<Catalog> {
+    return catalog.filter(filter);
   }
 
-  async makeModuleSelections(catalog: Catalog, options: {ci?: boolean}, input?: InputModel): Promise<Module[]> {
-    type QuestionResult = {[category: string]: Module | Module[]};
+  async makeModuleSelections(catalog: Catalog, input?: InputModel): Promise<Module[]> {
+    type QuestionResult = { [category: string]: Module | Module[] };
+
     function isModuleArray(value: Module | Module[]): value is Module[] {
       return !!value && Array.isArray(value as any);
     }
@@ -139,7 +122,7 @@ export class ModuleSelectorImpl implements ModuleSelector {
             type: 'list',
             message: `Which ${category.category} module should be used?`,
             choices,
-          });
+          }, '', true);
         } else if (category.selection === 'single') {
           const choices = category.modules.map(m => ({name: `${m.name}: ${m.description} `, value: m}));
           choices.push({name: 'None', value: null});
@@ -149,7 +132,7 @@ export class ModuleSelectorImpl implements ModuleSelector {
             type: 'list',
             message: `Which ${category.category} module should be used?`,
             choices,
-          });
+          }, '', true);
         } else if (category.selection === 'multiple') {
           const choices = category.modules.map(m => ({name: `${m.name}: ${m.description} `, value: m}));
 
@@ -159,7 +142,7 @@ export class ModuleSelectorImpl implements ModuleSelector {
             message: `Which ${category.category} module(s) should be used?`,
             choices,
             source: async (answers: QuestionResult, input: any): Promise<any[]> => choices,
-          });
+          }, '', true);
         }
 
         return questionBuilder;
@@ -169,15 +152,15 @@ export class ModuleSelectorImpl implements ModuleSelector {
       .map((value: Module | Module[]) => isModuleArray(value) ? value : [value])
       .reduce((result: Module[], current: Module[]) => {
         if (current) {
-          result.push(...(current as Module[]));
+          result.push(...(current as Module[]).filter(m => !!m));
         }
 
         return result;
       }, [])
   }
 
-  async buildStages(selectedModules: SingleModuleVersion[], options: {ci?: boolean}, input?: InputModel): Promise<{stages: {[source: string]: Stage}, baseVariables: IBaseVariable[]}> {
-    const stages: {[source: string]: Stage} = selectedModules.reduce((stages: {[source: string]: Stage}, module: SingleModuleVersion) => {
+  async buildStages(selectedModules: SingleModuleVersion[], input?: InputModel): Promise<{ stages: { [source: string]: Stage }, baseVariables: IBaseVariable[] }> {
+    const stages: { [source: string]: Stage } = selectedModules.reduce((stages: { [source: string]: Stage }, module: SingleModuleVersion) => {
       moduleToStage(stages, selectedModules, module);
       return stages;
     }, {});
@@ -192,22 +175,12 @@ export class ModuleSelectorImpl implements ModuleSelector {
     return {stages, baseVariables};
   }
 
-  async provideValuesForVariables(baseVariables: IBaseVariable[]): Promise<TerraformVariable[]> {
-    const questions: Question[] = baseVariables.map(v => ({
-      type: 'input',
+  async baseVariableToTerraformVariable(baseVariables: IBaseVariable[]): Promise<TerraformVariable[]> {
+    return baseVariables.map(v => new TerraformVariableImpl({
       name: v.name,
-      message: () => v.description ? `'${v.name}' (${v.description})` : `'${v.name}'`
-    }));
-
-    if (questions.length > 0) {
-      console.log('Provide the default values (if any) for the global variables:');
-    }
-
-    const result = await prompt(questions);
-
-    return baseVariables
-      .map(v => Object.assign(v, {value: result[v.name]}))
-      .map(v => new TerraformVariableImpl(v));
+      description: v.description,
+      value: v.defaultValue
+    }))
   }
 }
 
@@ -242,6 +215,14 @@ function getSourceForModuleRef(moduleRef: ModuleOutputRef, moduleVersion: Module
     .orElseThrow(new ModuleNotFound(moduleDeps.id));
 }
 
+function defaultValue(variable: ModuleVariable) {
+  if (variable.default !== null && variable.default !== undefined) {
+    return variable.default;
+  }
+
+  return variable.defaultValue;
+}
+
 function moduleVariablesToStageVariables(module: SingleModuleVersion, stages: {[source: string]: Stage}, modules: SingleModuleVersion[]): Array<BaseVariable> {
   const moduleVersion: ModuleVersion = module.version;
   const variables: ModuleVariable[] = moduleVersion.variables;
@@ -264,7 +245,10 @@ function moduleVariablesToStageVariables(module: SingleModuleVersion, stages: {[
       const placeholderVariable: PlaceholderVariable = new PlaceholderVariable({
         name: v.name,
         description: v.description,
-        type: v.type,
+        type: v.type || 'string',
+        scope: v.scope || 'module',
+        defaultValue: defaultValue(v),
+        alias: v.alias,
         variable: v,
       });
 
@@ -277,7 +261,7 @@ function moduleVariablesToStageVariables(module: SingleModuleVersion, stages: {[
 
 function moduleToStage(stages: {[source: string]: Stage}, modules: SingleModuleVersion[], selectedModule: SingleModuleVersion): Stage {
   const stage: Stage = new StageImpl({
-    name: selectedModule.name,
+    name: selectedModule.alias || selectedModule.name,
     source: selectedModule.id,
     module: selectedModule,
     variables: [],
@@ -297,55 +281,43 @@ async function processStageVariables(stage: Stage, globalVariables: IBaseVariabl
     return stage;
   }
 
-  const questions: Question[] = openVariables.reduce((results: Question[], variable: PlaceholderVariable) => {
-    const moduleVariable: ModuleVariable = variable.variable;
-    const moduleVariableType = moduleVariable.type ? moduleVariable.type : 'string';
-    const inputQuestion: Question & {suggestions: string[]} = {
-      type: 'suggest',
-      name: variable.name,
-      message: `'${variable.variable.name}':`,
-      default: variable.name,
-      when: (answers) => {
-        return !answers[variable.name] || answers[variable.name].name === '[new]';
-      },
-      validate: (input) => {
-        if (globalVariables.some((v => v.name === input))) {
-          return 'A variable with that name already exists';
-        }
+  const stageVariables: IBaseVariable[] = stage.variables.map((variable: BaseVariable) => {
+    if (!isPlaceholderVariable(variable)) {
+      return variable;
+    }
 
-        return true;
-      },
-      filter: (input: string) => {
-        const formattedInput: string = input.replace(' ', '_');
-        return {
-          name: formattedInput,
-          description: moduleVariable.description,
-          type: moduleVariableType,
-          toString: () => formattedInput,
-        };
-      },
-      suggestions: [variable.name].concat(globalVariables.map(v => v.name)),
-    };
+    if (variable.scope === 'ignore' && variable.defaultValue) {
+      // nothing to do since the variable should be ignored and a default value has been provided
+    } else {
+      const name = variable.scope === 'global'
+        ? buildGlobalVariableName(variable)
+        : buildModuleVariableName(variable, stage.name);
 
-    return results.concat([inputQuestion]);
-  }, []);
+      const globalVariable: IBaseVariable = first(globalVariables.filter(v => v.name === name))
+        .orElseGet(() => {
+          const newVariable: IBaseVariable = Object.assign({type: 'string'}, variable, {name});
 
-  if (questions.length === 0) {
-    return stage;
-  }
+          globalVariables.push(newVariable);
 
-  const questionBuilder: QuestionBuilder<{[name: string]: IBaseVariable}> = new QuestionBuilderImpl()
-    .questions(questions);
+          return newVariable;
+        });
 
-  if (questionBuilder.hasQuestions()) {
-    console.log(`Provide the global variable name for each variable of the ${chalk.yellow(stage.name)} module:`);
-  }
+      return new GlobalRefVariable({
+        name: variable.name,
+        type: variable.type,
+        variableName: globalVariable.name,
+        description: variable.description
+      });
+    }
+  });
 
-  const answers: {[name: string]: IBaseVariable} = await questionBuilder.prompt();
+  return Object.assign({}, stage, {variables: stageVariables});
+}
 
-  globalVariables.push(...Object.keys(answers).map(name => answers[name]));
+function buildGlobalVariableName(variable: IBaseVariable) {
+  return variable.alias || variable.name;
+}
 
-  const variables: GlobalRefVariable[] = Object.keys(answers).map(name => new GlobalRefVariable({name, variableName: answers[name].name}));
-
-  return Object.assign({}, stage, {variables: stage.variables.filter(v => !isPlaceholderVariable(v)).concat(variables)});
+function buildModuleVariableName(variable: IBaseVariable, stageName: string) {
+  return stageName + '_' + buildGlobalVariableName(variable);
 }

@@ -62,7 +62,9 @@ export class PlaceholderVariable implements IPlaceholderVariable, BaseVariable {
   name: string;
   description?: string;
   type?: string;
-  scope?: 'global' | 'module';
+  scope?: 'global' | 'module' | 'ignore';
+  alias?: string;
+  defaultValue?: string;
 
   variable: ModuleVariable;
 
@@ -102,48 +104,42 @@ export class TerraformVariableImpl implements TerraformVariable {
   }
 
   get type() {
-    return this._type;
+    return this._type || 'string';
   }
   set type(type: string) {
-    this._type = type || 'string';
+    this._type = type;
   }
 
   get value() {
-    return this._value;
+    return this._value || '';
   }
   set value(value: string) {
-    this._value = value || '';
+    this._value = value;
   }
 
   get description() {
-    return this._description;
+    return this._description || `the value of ${this.name}`;
   }
   set description(description: string) {
-    this._description = description || `the value of ${name}`;
+    this._description = description;
   }
 
   asString(): string {
-    return `
-variable "${this.name}" {
+    return `variable "${this.name}" {
   type = ${this.type}
-  description = "${this.description}"
-  ${this.defaultValueProp()}
+  description = "${this.description}"${this.defaultValueProp()}
 }
 `;
   }
 
   defaultValueProp(): string {
-    if (!this.value) {
+    if (this._value === undefined || this._value === null) {
       return '';
     }
 
-    let value;
-    if (this.type === 'bool' || this.type === 'number') {
-      value = this.value;
-    } else {
-      value = `"${this.value}"`;
-    }
+    const value = (this.type === 'bool' || this.type === 'number') ? this.value : `"${this.value}"`;
 
-    return `default = ${value}`
+    return `
+  default = ${value}`;
   }
 }

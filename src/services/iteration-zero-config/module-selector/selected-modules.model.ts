@@ -28,6 +28,8 @@ export class SelectedModules {
     if (module) {
       this.modules[module.id] = module;
       this.addModuleRef({source: module.id});
+    } else {
+      console.error('Adding empty module!!');
     }
 
     return this;
@@ -40,7 +42,11 @@ export class SelectedModules {
 
     const ref: string = isModule(module) ? module.id : module.source;
 
-    return !!this.modules[ref];
+    return Object.values(this.modules).some((m: Module) => {
+      const ids = [m.id, ...(m.aliasIds || [])];
+
+      return ids.includes(ref);
+    });
   }
 
   addModuleRef(moduleRef: ModuleRef): SelectedModules {
@@ -61,7 +67,13 @@ export class SelectedModules {
     }
 
     const modules: Module[] = this.catalog.modules
-      .filter(m => m.id === moduleRef.source);
+      .filter(m => {
+        const ids: string[] = [m.id, ...(m.aliasIds || [])];
+
+        const match = ids.includes(moduleRef.source);
+
+        return match;
+      });
 
     if (modules.length === 0) {
       throw new ModuleNotFound(moduleRef.source);
@@ -95,11 +107,11 @@ export class SelectedModules {
     this.logger.debug('Modules: ', {module: module.name, dependencies});
 
     if (dependencies) {
-      dependencies.forEach(dep => this.resolveModuleDependency(dep));
+      dependencies.forEach(dep => this.resolveModuleDependency(dep, module.id));
     }
   }
 
-  resolveModuleDependency(dep: ModuleDependency) {
+  resolveModuleDependency(dep: ModuleDependency, moduleId: string) {
     if (!dep || !dep.refs || dep.refs.length == 0) {
       return;
     }
@@ -128,7 +140,7 @@ export class SelectedModules {
 
       this.addModuleRef(moduleRef);
     } else if (moduleRefs.length === 0) {
-      throw new Error(`Unable to find dependent module: ${dep.refs.map(r => r.source)}`);
+      throw new Error(`Unable to find dependent module(s) (${moduleId}): ${dep.refs.map(r => r.source)}`);
     } else {
       throw new Error('dependent module selection is not yet supported');
     }

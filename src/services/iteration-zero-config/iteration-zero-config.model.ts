@@ -24,6 +24,7 @@ export interface InputVariable {
 }
 
 export interface InputModel {
+  provider: 'ibm' | 'k8s';
   platform: 'ocp4' | 'ocp3' | 'kubernetes';
   stages: InputStage[];
   variables: InputVariable[];

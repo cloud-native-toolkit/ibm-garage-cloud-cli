@@ -14,9 +14,12 @@ export interface ModuleMatcher {
 export interface ModuleTemplate {
   id: string;
   name: string;
+  alias?: string;
+  aliasIds?: string[];
   category: string;
   description?: string;
   platforms: string[];
+  provider?: 'ibm' | 'k8s';
   tags?: string[];
 }
 
@@ -50,9 +53,12 @@ export interface ModuleVersion {
 
 export interface ModuleVariable {
   name: string;
-  type?: string;
+  type: string;
+  alias?: string;
+  scope?: 'module' | 'global' | 'ignore';
   description?: string;
   optional?: boolean;
+  default?: string;
   defaultValue?: string;
   moduleRef?: ModuleOutputRef;
 }

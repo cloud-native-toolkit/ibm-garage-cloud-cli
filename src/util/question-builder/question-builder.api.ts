@@ -15,7 +15,7 @@ export interface SuggestionInputQuestion<T> extends Omit<InputQuestion<T>, 'type
 export type QuestionTypes<T> = Question<T> | ListQuestion<T> | SuggestionInputQuestion<T> | CheckboxPlusQuestion<T>;
 
 export abstract class QuestionBuilder<T = any> {
-  abstract question(question: QuestionTypes<T>, value?: string): QuestionBuilder<T>;
+  abstract question(question: QuestionTypes<T>, value?: string, alwaysPrompt?: boolean): QuestionBuilder<T>;
   abstract questions(questions: Array<QuestionTypes<T>>): QuestionBuilder<T>;
   abstract hasQuestions(): boolean;
   abstract prompt(): Promise<T>;

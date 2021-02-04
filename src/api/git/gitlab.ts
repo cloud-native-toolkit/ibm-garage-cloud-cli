@@ -102,7 +102,7 @@ export class Gitlab extends GitBase implements GitApi {
 
     const branchResponse: Branch[] = response.body;
 
-    return first(branchResponse.filter(branch => branch.default).map(branch => branch.name));
+    return first(branchResponse.filter(branch => branch.default).map(branch => branch.name)).get();
   }
 
   private buildUrl(url: string, params: string[] = []): string {

@@ -51,6 +51,14 @@ export class Optional<T = any> {
     return this.value;
   }
 
+  orElseGet(f: () => T): T {
+    if (!this.isPresent()) {
+      return f();
+    }
+
+    return this.value;
+  }
+
   map<U>(f: (value: T) => U): Optional<U> {
     if (this.isPresent()) {
       return Optional.of(f(this.value));

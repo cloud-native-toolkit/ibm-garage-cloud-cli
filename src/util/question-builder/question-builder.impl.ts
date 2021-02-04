@@ -12,8 +12,12 @@ export class QuestionBuilderImpl<T = any> implements QuestionBuilder<T> {
   readonly _questions: Array<Question<T>> = [];
   readonly answers: T = {} as any;
 
-  question(question: QuestionTypes<T>, value?: string): QuestionBuilder<T> {
-    if (!this.valueProvided(question, value)) {
+  question(question: QuestionTypes<T>, value?: string, alwaysPrompt?: boolean): QuestionBuilder<T> {
+    if (this.singleChoice(question) && !alwaysPrompt) {
+      const choiceValue = this.getChoiceValues(question)[0];
+
+      this.answers[question.name as string] = choiceValue;
+    } else if (!this.valueProvided(question, value)) {
       this._questions.push(question);
     } else {
       this.answers[question.name as string] = value;
@@ -44,6 +48,15 @@ export class QuestionBuilderImpl<T = any> implements QuestionBuilder<T> {
     } else {
       return value !== undefined && value !== null;
     }
+  }
+
+  singleChoice(
+    question: Question<T> | ListQuestion<T>,
+  ): boolean {
+
+    const choiceValues: string[] = this.getChoiceValues(question);
+
+    return choiceValues.length === 1;
   }
 
   getChoiceValues(question: Question<T> | ListQuestion<T>): string[] {

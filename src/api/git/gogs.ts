@@ -96,7 +96,7 @@ export class Gogs extends GitBase implements GitApi {
       return this.createToken();
     }
 
-    return first(tokens.map(token => token.sha1));
+    return first(tokens.map(token => token.sha1)).get();
   }
 
   async createToken(): Promise<string> {

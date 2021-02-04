@@ -8,5 +8,5 @@ export interface TerraformVariable extends IBaseVariable {
 }
 
 export abstract class ModuleSelector {
-  abstract selectStagesAndProvideVariables(fullCatalog: CatalogModel, options: {ci?: boolean, clusterType?: string}, input?: InputModel): Promise<{ stages: { [name: string]: Stage }, variables: TerraformVariable[] }>;
+  abstract selectStagesAndProvideVariables(fullCatalog: CatalogModel, filter: {platform: string, provider: string}, input?: InputModel): Promise<{ stages: { [name: string]: Stage }, variables: TerraformVariable[] }>;
 }
