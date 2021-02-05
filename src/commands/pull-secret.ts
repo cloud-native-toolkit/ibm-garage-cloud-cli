@@ -17,7 +17,7 @@ export const builder = (yargs: Argv<any>) => {
     .option('templateNamespace', {
       alias: 't',
       describe: 'the template namespace that will be the source of the config',
-      default: 'tools',
+      default: 'default',
       type: 'string',
     })
     .option('serviceAccount', {
