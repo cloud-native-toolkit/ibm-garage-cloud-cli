@@ -15,13 +15,13 @@ Command-line tool to simplify activities related to IBM Cloud.
     ```
     npm rm -g @garage-catalyst/ibm-garage-cloud-cli
     ```
-   
+
 2. Run the following to list the available commands:
 
     ```
     igc --help
     ```
-   
+
 ### Beta release
 
 Release candidate commands are made available for early use and testing via the beta release
@@ -60,7 +60,7 @@ igc dashboard
 ### credentials
 
 Prints the urls and credentials for the Cloud Native Toolkit tools deployed into the cluster. The
-command works by reading particular `ConfigMaps` and `Secrets` in a template namespace in the cluster 
+command works by reading particular `ConfigMaps` and `Secrets` in a template namespace in the cluster
 that identify the tools. The template namespace is provided by using the `-n` flag. If not provided,
 the template namespace defaults to `tools`. The tools reported include Jenkins, SonarQube, ArgoCD, etc.
 
@@ -77,7 +77,7 @@ igc credentials -n my-namespace
 ### endpoints
 
 Lists the ingress and/or route urls for the provided namespace. The namespace is provided
-with the `-n` flag. If no namespace is provided, `dev` is used as the default. The results are 
+with the `-n` flag. If no namespace is provided, `dev` is used as the default. The results are
 provided in an interactive menu. If one of the endpoints is selected it will display the url and
 launch it in the default browser. Selecting `Exit` will display the full list and exit.
 
@@ -94,7 +94,7 @@ igc endpoint -n tools
 ### namespace
 
 Creates a namespace (if it doesn't exist) and prepares it for use by copying in
-pull secrets from the default namespace and config maps and secrets from the 
+pull secrets from the default namespace and config maps and secrets from the
 template namespace (defaults to `tools` if not provided). The template namespace
 can be provided with the `-t` flag. When run against OpenShift, this command will
 actually create a `project` which will result in the creation of a namespace as well.
@@ -117,7 +117,7 @@ The command expect that the cluster login has already been performed.
 igc namespace my-namespace
 ```
 
-- Creates the namespace `my-namespace` and updates the `default` service account in 
+- Creates the namespace `my-namespace` and updates the `default` service account in
 that namespace
 
 ```bash
@@ -133,16 +133,16 @@ igc namespace last-namespace -t my-tools --tekton
 
 - Creates the namespace `last-namespace` and updates the `default` service account
 as well as configuring the Tekton Tasks and Pipelines using `my-tools` as the template
-namespace 
+namespace
 
 ### pipeline
 
-Registers a project as a Jenkins or Tekton pipeline by creating a Secret to hold 
+Registers a project as a Jenkins or Tekton pipeline by creating a Secret to hold
 the Git authentication information, calling the Jenkins API or applying the appropriate
 configuration yaml, creating a web-hook to trigger the pipeline when changes are pushed,
-and triggering the initial build. 
+and triggering the initial build.
 
-**Note:** This command is intended to be run within the repository directory of a project for 
+**Note:** This command is intended to be run within the repository directory of a project for
 which a pipeline should be generated.
 
 By default the pipeline deploys into the `dev` namespace. The namespace can be changed by passing
@@ -153,9 +153,9 @@ The pipeline command supports either `jenkins` or `tekton` pipelines using the f
 
 - --jenkins or
 - --tekton
- 
+
 A default pipeline type has not been set. If neither of the flags is provided then a prompt will
-be shown to select one. 
+be shown to select one.
 
 The command will prompt for the username and personal access token that should stored in
 the secret to access the Git repository. Those values can be provided a the command-line using the
@@ -179,8 +179,8 @@ for the git credentials
 ### tool-config
 
 Configures a tool into the template namespace. The template namespace is provided with the `-n`
-argument. If not provided, the template namespace will be `tools`. The tool-config takes the 
-name of the tool as the first (and only) positional parameter. 
+argument. If not provided, the template namespace will be `tools`. The tool-config takes the
+name of the tool as the first (and only) positional parameter.
 
 Configuration for the tool
 can be provided with the `--url`, `--username`, and `--password` optional flags. If the `url`
@@ -193,7 +193,7 @@ then a Secret will be created,
 igc tool-config my-tool --url https://url.com/my-tool --username admin --password password
 ```
 
-- configures a tool named `my-tool` with url `https://url.com/my-tool`, username of `admin`, and 
+- configures a tool named `my-tool` with url `https://url.com/my-tool`, username of `admin`, and
 password of `password`
 
 ### enable
@@ -228,8 +228,14 @@ The default pipeline repo is `https://ibm-garage-cloud.github.io/garage-pipeline
 npm test
 ```
 
-### Run the cli locally
+### Run the cli locally, this will run the `prestart` which builds the typscript
 
 ```bash
 npm start
+```
+
+### Run the cli locally without building first
+
+```bash
+npm run igc
 ```

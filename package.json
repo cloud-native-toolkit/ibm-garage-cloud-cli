@@ -36,8 +36,8 @@
     "unlink": "npm unlink $npm_package_name",
     "prepare": "npm run build",
     "prestart": "npm run build",
-    "start": "./dist/script.js",
-    "igc": "./dist/script.js",
+    "start": "./igc",
+    "igc": "./igc",
     "release": "release-it --verbose"
   },
   "devDependencies": {
