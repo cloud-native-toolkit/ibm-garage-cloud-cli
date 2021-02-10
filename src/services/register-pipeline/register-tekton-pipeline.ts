@@ -55,6 +55,7 @@ import {
 } from '../../api/git'
 import {GetConsoleUrlApi} from '../console';
 import {LocalGitRepo} from '../../api/git/local';
+import {Logger} from '../../util/logger';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -141,6 +142,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   createWebhook: CreateWebhook;
   @Inject
   consoleUrl: GetConsoleUrlApi;
+  @Inject
+  logger: Logger;
 
   async registerPipeline(cliOptions: Partial<RegisterPipelineOptions>, notifyStatus: (text: string) => void = noopNotifyStatus) {
 
@@ -398,7 +401,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
   }
 
   private async getPipelineName(namespace: string, gitParams: GitParams, gitUrl?: string, pipeline?: string): Promise<string> {
-    console.log(`Retrieving available template pipelines from ${chalk.yellow(namespace)}`);
+    this.logger.log(`Retrieving available template pipelines from ${chalk.yellow(namespace)}`);
 
     const filteredPipelines: TektonPipeline[] = this.filterPipelines(
       await this.pipeline.list({namespace}),
@@ -411,8 +414,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       .map(name => ({ name, value: name }));
 
     if (pipelineChoices.length === 0) {
-      console.log(`No Pipelines found in ${namespace} namespace. Skipping PipelineRun creation`);
-      console.log('Install Tekton tasks and pipelines into your namespace by following these instructions: ' + chalk.yellow('https://github.com/IBM/ibm-garage-tekton-tasks'));
+      this.logger.log(`No Pipelines found in ${namespace} namespace. Skipping PipelineRun creation`);
+      this.logger.log('Install Tekton tasks and pipelines into your namespace by following these instructions: ' + chalk.yellow('https://github.com/IBM/ibm-garage-tekton-tasks'));
       return '';
     }
 
@@ -516,10 +519,10 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const runtimeString = [runtime, builder].filter(v => !!v).join('/');
 
-    console.log(`Pipeline templates filtered based on detected runtime: ${chalk.whiteBright(runtimeString)}`);
+    this.logger.log(`Pipeline templates filtered based on detected runtime: ${chalk.whiteBright(runtimeString)}`);
 
     if (filteredPipelines.length === 1) {
-      console.log(`Selected pipeline: ${chalk.whiteBright(filteredPipelines.map(p => p.metadata.name).join(', '))}`)
+      this.logger.log(`Selected pipeline: ${chalk.whiteBright(filteredPipelines.map(p => p.metadata.name).join(', '))}`)
     }
 
     return filteredPipelines;
@@ -690,6 +693,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     const eventListener: TriggerEventListener<TriggerDefinition> = await this.triggerEventListener.get(name, pipelineNamespace).catch(err => undefined);
 
     const bindingName: string = this.buildTriggerBindingName(webhookParams.repositoryName, webhookParams.branchName);
+
+    let result;
     try {
       const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
         TriggerDefinitionVersion.V0_6,
@@ -704,7 +709,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         eventListener,
       );
 
-      return await this.triggerEventListener.createOrUpdate(
+      result = await this.triggerEventListener.createOrUpdate(
         name,
         {body},
         pipelineNamespace,
@@ -723,12 +728,18 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         eventListener,
       );
 
-      return await this.triggerEventListener.createOrUpdate(
+      result = await this.triggerEventListener.createOrUpdate(
         name,
         {body},
         pipelineNamespace,
       );
     }
+
+    const deploymentName = `el-${name}`;
+    this.logger.log(`  Waiting for event listener rollout: ${pipelineNamespace}/${deploymentName}`);
+    await this.kubeDeployment.rollout(deploymentName, pipelineNamespace);
+
+    return result;
   }
 
   buildTriggerBindingName(repo: string, branch: string): string {
@@ -737,7 +748,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   buildTriggerEventListener(version: TriggerDefinitionVersion, name: string, triggerConfig: TriggerConfig, eventListener?: TriggerEventListener<TriggerDefinition>): TriggerEventListener<TriggerDefinition> {
     if (!eventListener) {
-      console.log('  Creating new event listener');
+      this.logger.log('  Creating new event listener');
 
       return {
         metadata: {

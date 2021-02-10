@@ -27,6 +27,7 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist/",
     "test": "jest --coverage",
     "tdd": "jest --watch",
     "build": "tsc -d",

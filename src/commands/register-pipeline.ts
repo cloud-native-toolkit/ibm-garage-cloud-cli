@@ -1,4 +1,4 @@
-import {Container} from 'typescript-ioc';
+import {Container, Scope} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
 import * as chalk from 'chalk';
 
@@ -16,6 +16,7 @@ import {checkKubeconfig} from '../util/kubernetes';
 import {ErrorSeverity, isCommandError} from '../util/errors';
 import {QuestionBuilder} from '../util/question-builder';
 import {isClusterConfigNotFound} from '../util/cluster-type';
+import {logFactory, Logger} from '../util/logger';
 
 export const command = 'pipeline [gitUrl]';
 export const desc = 'Register a pipeline for the current code repository';
@@ -85,19 +86,17 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     default: [],
   });
 exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean}> & {param?: string[]}) => {
-  let spinner;
+  Container.bind(Logger).factory(logFactory({spinner: false, verbose: argv.debug})).scope(Scope.Singleton);
 
-  if (argv.debug) {
-    console.log('Input values: ', argv);
-  }
+  const spinner: Logger = Container.get(Logger);
+  process.on('exit', () => {
+    spinner.stop();
+  })
+
+  spinner.debug('Input values: ', argv);
 
   function statusCallback(status: string) {
-    // if (!spinner) {
-    //   spinner = ora(status).start();
-    // } else {
-    //   spinner.text = status;
-    // }
-    console.log(status);
+    spinner.log(status);
   }
 
   const pipelineParams = argv.param.reduce(
@@ -146,51 +145,43 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
 
     await command.registerPipeline(Object.assign({}, argv, {pipelineParams}), statusCallback);
 
-    if (spinner) {
-      spinner.stop();
-    }
-
     process.exit(0);
   } catch (err) {
-    if (spinner) {
-      spinner.stop();
-    }
 
     if (isClusterConfigNotFound(err)) {
-      console.log(chalk.red(`Cluster configuration not found in the namespace - ${err.namespace}/${err.configMapName}`));
-      console.log('It looks like the namespace needs to be set up for development by running ' + chalk.yellow(`${argv.$0} sync ${err.namespace} --dev`));
+      spinner.log(chalk.red(`Cluster configuration not found in the namespace - ${err.namespace}/${err.configMapName}`));
+      spinner.log('It looks like the namespace needs to be set up for development by running ' + chalk.yellow(`${argv.$0} sync ${err.namespace} --dev`));
       process.exit(1);
     } else if (isCommandError(err)) {
       if (err.type.severity === ErrorSeverity.WARNING) {
-        console.log(`${chalk.yellow('Warning:')} ${err.message}`);
+        spinner.log(`${chalk.yellow('Warning:')} ${err.message}`);
         process.exit(0)
       } else {
-        console.log(`${err.type.severity}: ${err.message}`);
+        spinner.log(`${err.type.severity}: ${err.message}`);
         process.exit(1);
       }
     } else if (isPipelineError(err)) {
       if (err.pipelineErrorType === PipelineErrorType.JENKINS_MISSING) {
-        console.log(chalk.red('Jenkins has not been installed in this namespace'));
-        console.log();
+        spinner.log(chalk.red('Jenkins has not been installed in this namespace'));
+        spinner.log('');
       } else if (err.pipelineErrorType === PipelineErrorType.NAMESPACE_MISSING) {
-        console.log(chalk.red('The target namespace does not exist'));
+        spinner.log(chalk.red('The target namespace does not exist'));
 
-        console.log(`Create the namespace by running: ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + ' --dev')}`);
-        console.log();
+        spinner.log(`Create the namespace by running: ${chalk.yellow('igc namespace ' + argv.pipelineNamespace + ' --dev')}`);
+        spinner.log('');
       } else if (err.pipelineErrorType === PipelineErrorType.NO_PIPELINE_NAMESPACE) {
-        console.log(chalk.red('The target namespace is not provided'));
+        spinner.log(chalk.red('The target namespace is not provided'));
 
-        console.log(`Provide the namespace by passing it with ${chalk.yellow('-n')} flag`);
+        spinner.log(`Provide the namespace by passing it with ${chalk.yellow('-n')} flag`);
         if (err.clusterType === 'openshift') {
-          console.log(`  or by setting the namespace in the current context - e.g. ${chalk.yellow('oc project {project}')}`);
+          spinner.log(`  or by setting the namespace in the current context - e.g. ${chalk.yellow('oc project {project}')}`);
         }
-        console.log();
+        spinner.log('');
       }
     } else {
-      console.log('Error registering pipeline:', err.message);
-      if (argv.debug) {
-        console.log('Error registering pipeline:', err);
-      }
+      spinner.log('Error registering pipeline:', err.message);
+      spinner.debug('Error registering pipeline:', err);
+
       process.exit(1);
     }
   }
