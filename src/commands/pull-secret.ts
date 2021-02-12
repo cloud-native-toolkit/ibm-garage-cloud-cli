@@ -1,10 +1,10 @@
 import {Arguments, Argv} from 'yargs';
-import {Container} from 'typescript-ioc';
+import {Container, Scope} from 'typescript-ioc';
 import * as ora from 'ora';
 import * as chalk from 'chalk';
 
 import {Namespace, NamespaceOptionsModel} from '../services/namespace';
-import {Logger, VerboseLogger} from '../util/logger';
+import {logFactory, Logger} from '../util/logger';
 
 export const command = 'pull-secret [namespace]';
 export const desc = 'Copy pull secrets into the provided project from the template namespace';
@@ -47,9 +47,11 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
     process.exit(1);
   }
 
-  console.log(`Setting up pull secrets in ${chalk.yellow(argv.namespace)}`);
+  Container.bind(Logger).factory(logFactory({verbose: argv.verbose})).scope(Scope.Singleton);
 
-  const spinner: Logger = argv.verbose ? new VerboseLogger() : ora('Setting up pull secrets: ' + argv.namespace).start();
+  const spinner: Logger = Container.get(Logger);
+
+  spinner.log(`Setting up pull secrets in ${chalk.yellow(argv.namespace)}`);
 
   function statusCallback(status: string) {
     spinner.text = status;
@@ -58,7 +60,7 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
   try {
     return await namespaceBuilder.pullSecret(argv, statusCallback);
   } catch (err) {
-    console.log('Error setting up secrets', err);
+    spinner.error('Error setting up secrets', err);
     process.exit(1);
   } finally {
     spinner.stop();

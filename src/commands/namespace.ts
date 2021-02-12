@@ -1,10 +1,9 @@
 import {Arguments, Argv} from 'yargs';
-import {Container} from 'typescript-ioc';
-import * as ora from 'ora';
+import {Container, Scope} from 'typescript-ioc';
 import * as chalk from 'chalk';
 
 import {Namespace, NamespaceOptionsModel} from '../services/namespace';
-import {Logger, VerboseLogger} from '../util/logger';
+import {logFactory, Logger} from '../util/logger';
 
 export const command = 'sync [namespace]';
 export const aliases = ['project', 'namespace'];
@@ -33,27 +32,33 @@ export const builder = (yargs: Argv<any>) => {
     })
 };
 exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean}>) => {
+
+  Container.bind(Logger).factory(logFactory({verbose: argv.verbose})).scope(Scope.Singleton);
+
+  const logger: Logger = Container.get(Logger);
+
   const namespaceBuilder: Namespace = Container.get(Namespace);
 
   if (!argv.namespace) {
-    console.log(chalk.red(`Please specify the namespace as the first argument. Run '${argv.$0} namespace --help' for more information`));
+    logger.log(chalk.red(`Please specify the namespace as the first argument. Run '${argv.$0} namespace --help' for more information`));
     process.exit(1);
   }
 
-  console.log(`Setting up namespace ${chalk.yellow(argv.namespace)}`);
+  logger.log(`Setting up namespace ${chalk.yellow(argv.namespace)}`);
 
-  const spinner: Logger = argv.verbose ? new VerboseLogger() : ora('Setting up namespace: ' + argv.namespace).start();
+
+  logger.text = 'Setting up namespace: ' + argv.namespace;
 
   function statusCallback(status: string) {
-    spinner.text = status;
+    logger.text = status;
   }
 
   try {
     return await namespaceBuilder.create(argv, statusCallback);
   } catch (err) {
-    console.log('Error preparing namespace', err);
+    logger.error('Error preparing namespace', err);
     process.exit(1);
   } finally {
-    spinner.stop();
+    logger.stop();
   }
 };

@@ -1,9 +1,9 @@
-import {Container} from 'typescript-ioc';
+import {Container, Scope} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
 
 import {GetVlan, GetVlanOptions, isNoVlansAvailable, VlanResult} from '../services/vlan';
 import {FsPromises} from '../util/file-util';
-import {Logger, VerboseLogger} from '../util/logger';
+import {logFactory, Logger} from '../util/logger';
 
 export const command = 'vlan';
 export const desc = 'Print out the vlan values';
@@ -28,8 +28,10 @@ export const builder = (yargs: Argv<any>) => yargs
     type: 'boolean'
   });
 exports.handler = async (argv: Arguments<GetVlanOptions & {debug: boolean}>) => {
+  Container.bind(Logger).factory(logFactory({spinner: false})).scope(Scope.Singleton);
+
   try {
-    const spinner: Logger = new VerboseLogger();
+    const spinner: Logger = Container.get(Logger);
 
     function statusCallback(status: string) {
       spinner.text = status;
