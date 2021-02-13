@@ -85,7 +85,7 @@
     "rimraf": "^3.0.2",
     "superagent": "^6.1.0",
     "tar": "^6.0.5",
-    "tslib": "^2.0.3",
+    "tslib": "^2.1.0",
     "typescript-ioc": "^3.2.2",
     "yargs": "^16.1.1"
   },
