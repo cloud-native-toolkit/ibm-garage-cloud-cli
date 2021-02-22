@@ -181,8 +181,7 @@ export class IterationZeroConfigService implements IterationZeroConfigApi {
     const variableString: string = variables.map(v => v.asString()).join('\n');
     await fs.writeFile(join(outputDir, 'variables.tf'), variableString);
 
-    const stageBuffer: Buffer = Object.keys(stages)
-      .map(key => stages[key])
+    const stageBuffer: Buffer = Object.values(stages)
       .reduce((buffer: Buffer, stage: Stage) => {
         if (!stage.asString) {
            stage = new StageImpl(stage);
