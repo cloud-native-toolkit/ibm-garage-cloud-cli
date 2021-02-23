@@ -1,0 +1,9 @@
+apiVersion: cloud.ibm.com/v1alpha1
+kind: BillOfMaterial
+metadata:
+  name: component
+spec:
+  modules:
+    - github.com/ibm-garage-cloud/terraform-k8s-ocp-cluster
+    - github.com/ibm-garage-cloud/terraform-ibm-cp-app-connect
+  variables: []
