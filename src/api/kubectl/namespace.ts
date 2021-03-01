@@ -6,9 +6,9 @@ export interface Namespace extends KubeResource {
 }
 
 export abstract class AbstractKubeNamespace<T extends KubeResource> {
-  abstract async create(name: string): Promise<T>;
-  abstract async list(name: string): Promise<T[]>;
-  abstract async exists(name: string): Promise<boolean>;
+  abstract create(name: string): Promise<T>;
+  abstract list(name: string): Promise<T[]>;
+  abstract exists(name: string): Promise<boolean>;
 }
 
 const factory: ObjectFactory = (context: BuildContext) => {

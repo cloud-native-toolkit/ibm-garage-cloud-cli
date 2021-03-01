@@ -61,21 +61,21 @@ export interface QueryString {
 }
 
 export abstract class KubernetesResourceManager<T extends KubeResource> {
-  async abstract list(options?: ListOptions<T>): Promise<Array<T>>;
+  abstract list(options?: ListOptions<T>): Promise<Array<T>>;
 
-  async abstract createOrUpdate(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
+  abstract createOrUpdate(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
 
-  async abstract create(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
+  abstract create(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
 
-  async abstract update(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
+  abstract update(name: string, body: KubeBody<T>, namespace?: string): Promise<T>;
 
-  async abstract exists(name: string, namespace?: string): Promise<boolean>;
+  abstract exists(name: string, namespace?: string): Promise<boolean>;
 
-  async abstract 'get'(name: string, namespace?: string): Promise<T>;
+  abstract 'get'(name: string, namespace?: string): Promise<T>;
 
-  async abstract copy(name: string, fromNamespace: string, toNamespace: string): Promise<T>;
+  abstract copy(name: string, fromNamespace: string, toNamespace: string): Promise<T>;
 
-  async abstract copyAll(options: ListOptions<T>, toNamespace: string): Promise<Array<T>>;
+  abstract copyAll(options: ListOptions<T>, toNamespace: string): Promise<Array<T>>;
 }
 
 export interface Props {

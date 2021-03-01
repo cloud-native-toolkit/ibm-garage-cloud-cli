@@ -10,5 +10,5 @@ export class DataCenterVlans {
 }
 
 export abstract class Vlans {
-  async abstract getVlans(zone: string): Promise<IBMCloudVlan[]>;
+  abstract getVlans(zone: string): Promise<IBMCloudVlan[]>;
 }
