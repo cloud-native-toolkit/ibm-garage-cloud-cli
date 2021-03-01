@@ -616,8 +616,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
             ],
             resourcetemplates: [
               pipelineRunBuilder({
-                gitRevision: '$(params.gitrevision)',
-                gitUrl: '$(params.gitrepositoryurl)',
+                gitRevision: '$(tt.params.gitrevision)',
+                gitUrl: '$(tt.params.gitrepositoryurl)',
                 template: true
               })
             ]
