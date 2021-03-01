@@ -3,10 +3,15 @@ import {Arguments, Argv} from 'yargs';
 import {handler as gitSecretHandler} from './git-secret';
 import {CreateGitSecretOptions} from '../services/git-secret';
 
-export const command = 'gitops';
+export const command = 'gitops [gitUrl]';
 export const desc = 'Registers the git repository in the kubernetes cluster as the gitops repository for the given namespace';
 export const builder = (yargs: Argv<any>) => {
   return yargs
+    .positional('gitUrl', {
+      description: 'Provides the git url for the repository that should be registered for GitOps',
+      type: 'string',
+      demandOption: false,
+    })
     .option('namespace', {
       alias: 'n',
       type: 'string',

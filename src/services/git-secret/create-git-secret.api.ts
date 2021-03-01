@@ -77,6 +77,7 @@ export interface GitAuthResponse {
 }
 
 export class CreateGitSecretOptions extends GitParametersOptions {
+  gitUrl?: string;
   namespaces: string[] | string;
   values?: string;
   replace?: boolean;
