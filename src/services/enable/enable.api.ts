@@ -32,5 +32,5 @@ export class PipelineVersionNotFound extends Error {
 }
 
 export abstract class EnablePipeline {
-  async abstract enable(options: EnablePipelineModel): Promise<EnablePipelineResult>;
+  abstract enable(options: EnablePipelineModel): Promise<EnablePipelineResult>;
 }

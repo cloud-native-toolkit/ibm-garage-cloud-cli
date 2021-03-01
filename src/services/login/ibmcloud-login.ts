@@ -19,7 +19,7 @@ export async function ibmcloudLogin(options: IbmCloudLogin): Promise<{kubeConfig
 }
 
 async function writeKubeConfigFile(result: {kubeConfig: string}) {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     writeFile(
       path.join(process.cwd(), '.kubeconfig'),
       `export KUBECONFIG=${result.kubeConfig}`,

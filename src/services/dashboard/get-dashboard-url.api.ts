@@ -1,4 +1,4 @@
 
 export abstract class GetDashboardUrl {
-  async abstract getUrl(namespace: string): Promise<string>;
+  abstract getUrl(namespace: string): Promise<string>;
 }

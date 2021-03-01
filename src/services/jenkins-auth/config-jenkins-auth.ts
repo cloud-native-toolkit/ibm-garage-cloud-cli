@@ -3,7 +3,7 @@ import {Container, Inject} from 'typescript-ioc';
 import {JenkinsAuth} from './config-jenkins-auth.api';
 import {JenkinsAuthOptions} from './config-jenkins-auth-options.model';
 import {GenerateToken, GenerateTokenOptions} from '../generate-token';
-import {KubeIngress, KubeSecret, KubeBackend} from '../../api/kubectl';
+import {KubeIngress, KubeSecret, KubeBackend, Secret} from '../../api/kubectl';
 import {DefaultBackend, InClusterBackend} from '../../api/kubectl/client.backend';
 
 interface JenkinsSecret {
@@ -34,7 +34,7 @@ export class JenkinsAuthImpl implements JenkinsAuth {
     return this.generateToken && this.generateToken.isAvailable && this.generateToken.isAvailable();
   }
 
-  async configJenkinsAuth(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = noopNotifyStatus) {
+  async configJenkinsAuth<T = any>(options: JenkinsAuthOptions, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<Secret<T>> {
     if (options.debug) {
       console.log('options: ', options);
     }

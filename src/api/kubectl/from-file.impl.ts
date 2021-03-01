@@ -6,7 +6,7 @@ export class FromFileImpl implements FromFile {
   @Inject
   private childProcess: ChildProcess;
 
-  async apply(fileName: string, namespace: string = 'default') {
+  async apply(fileName: string, namespace: string = 'default'): Promise<string> {
 
     return this.childProcess.spawn(
       'kubectl',
@@ -16,7 +16,7 @@ export class FromFileImpl implements FromFile {
       });
   }
 
-  async create(fileName: string, namespace: string = 'default') {
+  async create(fileName: string, namespace: string = 'default'): Promise<string> {
     return this.childProcess.spawn(
       'kubectl',
       ['create', '-n', namespace, '-f', fileName],

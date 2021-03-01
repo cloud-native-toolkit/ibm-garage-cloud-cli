@@ -8,7 +8,7 @@ export class LoginRequest {
 }
 
 export async function login(options: LoginRequest): Promise<any> {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const loginProcess = spawn(
       'ibmcloud',
       buildCommandArguments(options),
