@@ -2,7 +2,8 @@ name: NPM publish
 
 on:
   release:
-    types: [published]
+    types:
+      - published
 
 jobs:
   notify:
