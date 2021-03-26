@@ -218,7 +218,7 @@ The `enable` command adds a number of files to the local filesystem, including b
 
 After `enable` is called, the generated files should be committed and pushed to the git repository.
 
-The default pipeline repo is `https://ibm-garage-cloud.github.io/garage-pipelines/`, but a different one can be used by providing the `--repo` argument.  The source for the provided pipeline repo can be found at `https://github.com/ibm-garage-cloud/garage-pipelines` to use as a template.
+The default pipeline repo is `https://cloud-native-toolkit.github.io/garage-pipelines/`, but a different one can be used by providing the `--repo` argument.  The source for the provided pipeline repo can be found at `https://github.com/ibm-garage-cloud/garage-pipelines` to use as a template.
 
 ## Development
 

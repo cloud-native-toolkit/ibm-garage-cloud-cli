@@ -11,7 +11,7 @@ export const builder = (argv: Argv<any>) => argv
   .option('repo', {
     type: 'string',
     describe: 'The repository from which the pipelines will be retrieved',
-    default: 'https://ibm-garage-cloud.github.io/garage-pipelines/',
+    default: 'https://cloud-native-toolkit.github.io/garage-pipelines/',
   })
   .option('pipeline', {
     alias: 'p',
