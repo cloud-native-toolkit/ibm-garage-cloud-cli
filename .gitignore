@@ -8,3 +8,4 @@ coverage/
 test-report.xml
 .npmrc
 .vscode/
+output/
