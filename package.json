@@ -31,7 +31,7 @@
     "test": "jest --coverage",
     "tdd": "jest --watch",
     "build": "tsc -d",
-    "postbuild": "chmod +x dist/script*.js",
+    "postbuild": "cp -R etc dist/ && chmod +x dist/script*.js",
     "prelink": "npm run build",
     "link": "npm link $npm_package_name",
     "unlink": "npm unlink $npm_package_name",
