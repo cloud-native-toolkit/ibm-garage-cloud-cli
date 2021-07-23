@@ -73,7 +73,7 @@
     "chalk": "^4.1.0",
     "dot-properties": "^1.0.1",
     "fs-extra": "^9.1.0",
-    "inquirer": "^8.0.0",
+    "inquirer": "^8.1.1",
     "json2yaml": "^1.1.0",
     "jsonpath": "^1.1.0",
     "kubernetes-client": "^9.0.0",
