@@ -51,7 +51,7 @@
     "@types/jest": "^26.0.20",
     "@types/jsonpath": "^0.2.0",
     "@types/lodash": "^4.14.172",
-    "@types/node": "^14.14.31",
+    "@types/node": "^16.4.13",
     "@types/open": "^6.2.1",
     "@types/ora": "^3.2.0",
     "@types/puppeteer": "^5.4.4",
