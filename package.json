@@ -79,7 +79,7 @@
     "kubernetes-client": "^9.0.0",
     "lodash": "^4.17.21",
     "node-stream-zip": "^1.14.0",
-    "open": "^7.4.2",
+    "open": "^8.2.1",
     "openshift-rest-client": "^5.1.0",
     "ora": "^5.4.1",
     "rimraf": "^3.0.2",
