@@ -74,7 +74,7 @@ abstract class GithubCommon extends GitBase implements GitApi {
   }
 
   async getFileContents(fileDescriptor: {path: string, url?: string}): Promise<string | Buffer> {
-    const response: Response = await this.get(fileDescriptor.url);
+    const response: Response = await this.get(fileDescriptor.url || '/contents/' + fileDescriptor.path);
 
     const fileResponse: FileResponse = response.body;
 
