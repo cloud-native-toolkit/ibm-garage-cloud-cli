@@ -1,6 +1,6 @@
 {
   "name": "@ibmgaragecloud/cloud-native-toolkit-cli",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "CLI that provides functions to simplify interactions with containerized platforms and tools",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
@@ -24,7 +24,10 @@
   "pkg": {
     "scripts": "dist/script.js",
     "assets": "dist/**/*",
-    "targets": [ "node12-linux-x64", "node12-macos-x64" ]
+    "targets": [
+      "node12-linux-x64",
+      "node12-macos-x64"
+    ]
   },
   "husky": {
     "hooks": {
