@@ -56,6 +56,7 @@ export interface GitOpsModuleInputBase {
   gitopsConfig: GitOpsConfig;
 }
 export interface GitOpsModuleInputDefaults {
+  isNamespace: boolean;
   applicationPath: string;
   branch: string;
   layer: GitOpsLayer;

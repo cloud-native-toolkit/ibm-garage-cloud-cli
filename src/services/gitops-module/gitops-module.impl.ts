@@ -58,6 +58,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
         tmpDir: options.tmpDir || '/tmp/gitops-module/',
         valueFiles: options.valueFiles ? options.valueFiles.split(',') : [],
         contentDir: options.contentDir || process.cwd(),
+        isNamespace: options.namespace || false,
       });
 
     return result;
@@ -98,7 +99,9 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
 
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}`;
-    const payloadPath = `${config.path}/namespace/${input.namespace}/${input.applicationPath}`
+    const payloadPath = input.isNamespace
+      ? `${config.path}/namespace/${input.name}/namespace`
+      : `${config.path}/namespace/${input.namespace}/${input.applicationPath}`;
 
     // create repo dir
     await fs.mkdirp(repoDir);
@@ -167,7 +170,9 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       await fs.mkdirp(`${repoDir}/${overlayPath}/base`);
 
       const nameSuffix = payloadRepo.branch !== 'main' && payloadRepo.branch !== 'master' ? `-${payloadRepo.branch}` : '';
-      const applicationName = `${input.namespace}-${input.name}${nameSuffix}`;
+      const applicationName = input.isNamespace
+        ? `namespace-${input.name}${nameSuffix}`
+        : `${input.namespace}-${input.name}${nameSuffix}`;
       const applicationFile = `base/${applicationName}.yaml`;
 
       const argoApplication: ArgoApplication = new ArgoApplication({
