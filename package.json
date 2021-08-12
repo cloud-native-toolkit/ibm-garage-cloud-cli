@@ -21,6 +21,11 @@
     "kubectl-sync": "dist/script-namespace.js",
     "kubectl-tool-config": "dist/script-tool-config.js"
   },
+  "pkg": {
+    "scripts": "dist/script.js",
+    "assets": "dist/**/*",
+    "targets": [ "node12-linux-x64", "node12-macos-x64" ]
+  },
   "husky": {
     "hooks": {
       "pre-commit": "npm test"

@@ -31,6 +31,9 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
 
+    outputs:
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
@@ -72,3 +75,42 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+  publish-assets:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2-beta
+        with:
+          node-version: '12'
+
+      - name: Install pkg
+        run: npm install -g pkg
+
+      - name: Build Asset
+        run: pkg -o igc --options no-warnings .
+
+      - name: Upload Linux cli
+        id: upload-linux-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./igc-linux
+          asset_name: igc-linux
+          asset_content_type: application/octet-stream
+
+      - name: Upload MacOS cli
+        id: upload-macos-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./igc-macos
+          asset_name: igc-macos
+          asset_content_type: application/octet-stream
