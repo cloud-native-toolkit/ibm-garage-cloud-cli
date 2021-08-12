@@ -1,6 +1,6 @@
 {
   "name": "@ibmgaragecloud/cloud-native-toolkit-cli",
-  "version": "1.19.1",
+  "version": "1.19.2",
   "description": "CLI that provides functions to simplify interactions with containerized platforms and tools",
   "main": "dist/index.js",
   "author": "Sean Sundberg <seansund@us.ibm.com>",
