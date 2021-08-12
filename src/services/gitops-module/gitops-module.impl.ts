@@ -115,7 +115,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       const git: SimpleGit = simpleGit({baseDir: input.tmpDir});
 
       // clone into repo dir
-      await git.clone('https://' + config.repo, repoDir);
+      await git.clone(`https://${token}@${config.repo}`, repoDir);
 
       await git.cwd({path: repoDir, root: true});
 
@@ -161,7 +161,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       const git: SimpleGit = simpleGit({baseDir: input.tmpDir});
 
       // clone into repo dir
-      await git.clone('https://' + config.repo, repoDir);
+      await git.clone(`https://${token}@${config.repo}`, repoDir);
 
       await git.cwd({path: repoDir, root: true});
 
@@ -234,6 +234,10 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
   lookupGitToken(credentials: GitOpsCredentials, repo: string): string {
     const credential: GitOpsCredential = this.lookupGitCredential(credentials, repo);
+
+    if (credential.username) {
+      return `${credential.username}:${credential.token}`;
+    }
 
     return credential.token;
   }
