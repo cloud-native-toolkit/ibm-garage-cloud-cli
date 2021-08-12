@@ -7,8 +7,8 @@ import {GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
 import {Logger, verboseLoggerFactory} from '../util/logger';
 import {ClaimedMutex, Mutex} from '../util/mutex';
 
-export const command = 'gitops-module [name] [contentDir]';
-export const desc = 'Populates the gitops repo with the provided module contents and configures the ArgoCD application';
+export const command = 'gitops-namespace [name] [contentDir]';
+export const desc = 'Populates the gitops repo with the configuration for a namespace';
 export const builder = (yargs: Argv<any>) => {
   return yargs
     .positional('name', {
@@ -26,13 +26,8 @@ export const builder = (yargs: Argv<any>) => {
       alias: 'n',
       type: 'string',
       describe: 'Namespace where the secret should be created',
-      demandOption: true,
-    })
-    .option('layer', {
-      alias: 'l',
-      describe: 'The gitops layer where the configuration will be deployed (infrastructure, services, applications)',
-      choices: ['infrastructure', 'services', 'applications'],
       demandOption: false,
+      default: 'default'
     })
     .option('gitopsConfigFile', {
       describe: 'Name of yaml or json file that contains the gitops config values',
@@ -92,13 +87,21 @@ exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean}>
 
   const mutex = new Mutex(argv.tmpDir, 'gitops-module');
 
+  const args: GitOpsModuleOptions = Object.assign(
+    {},
+    argv,
+    {
+      isNamespace: true,
+      layer: 'infrastructure',
+    });
+
   let claim: ClaimedMutex;
   try {
-    claim = await mutex.claim({name: argv.name, namespace: argv.namespace, contentDir: argv.contentDir});
+    claim = await mutex.claim({name: args.name, namespace: args.namespace, contentDir: args.contentDir});
 
     const service: GitOpsModuleApi = Container.get(GitOpsModuleApi);
 
-    await service.populate(argv);
+    await service.populate(args);
   } catch (err) {
     console.error('Error running populate', err);
   } finally {
