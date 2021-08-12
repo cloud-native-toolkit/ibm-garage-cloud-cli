@@ -1,7 +1,5 @@
 import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
-import * as fs from 'fs-extra';
-import {setTimeout} from 'timers/promises';
 
 import {GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
 import {Logger, verboseLoggerFactory} from '../util/logger';
