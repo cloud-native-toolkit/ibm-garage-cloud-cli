@@ -65,12 +65,14 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
   }
 
   async loadGitOpsConfig({bootstrapRepoUrl, gitopsConfigFile, token, branch, gitopsCredentials}: {bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, token?: string, gitopsCredentials: GitOpsCredentials}): Promise<GitOpsConfig> {
-    if (!gitopsConfigFile && !bootstrapRepoUrl) {
-      throw new Error('Missing gitops config file name and bootstrap repo location');
+    if (!gitopsConfigFile && !bootstrapRepoUrl && !process.env.GITOPS_CONFIG) {
+      throw new Error('Missing gitops config file name, bootstrap repo location, or GITOPS_CONFIG env variable');
     }
 
     if (gitopsConfigFile) {
       return await parseFile(gitopsConfigFile) as GitOpsConfig;
+    } else if (process.env.GITOPS_CONFIG) {
+      return YAML.load(process.env.GITOPS_CONFIG);
     } else {
       const credential: GitOpsCredential = this.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
 
@@ -79,12 +81,14 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
   }
 
   async loadGitOpsCredentials({gitopsCredentialsFile, username = 'username', token}: {gitopsCredentialsFile?: string, username?: string, token?: string}): Promise<GitOpsCredentials> {
-    if (!gitopsCredentialsFile && !token) {
+    if (!gitopsCredentialsFile && !token && !process.env.GIT_CREDENTIALS) {
       throw new Error('Missing gitops credentials file and token');
     }
 
     if (gitopsCredentialsFile) {
       return await parseFile(gitopsCredentialsFile) as GitOpsCredentials;
+    } else if (process.env.GIT_CREDENTIALS) {
+      return YAML.load(process.env.GIT_CREDENTIALS);
     } else {
       return [{
         repo: '*',
