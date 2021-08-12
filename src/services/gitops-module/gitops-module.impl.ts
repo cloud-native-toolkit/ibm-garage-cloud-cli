@@ -58,7 +58,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
         tmpDir: options.tmpDir || '/tmp/gitops-module/',
         valueFiles: options.valueFiles ? options.valueFiles.split(',') : [],
         contentDir: options.contentDir || process.cwd(),
-        isNamespace: options.namespace || false,
+        isNamespace: options.isNamespace || false,
       });
 
     return result;
