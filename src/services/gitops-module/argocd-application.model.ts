@@ -29,7 +29,7 @@ export class ArgoApplication implements IArgoApplication {
     const source = Object.assign(
       {
         path: this.sourcePath,
-          repoUrl: this.sourceRepoUrl,
+          repoURL: this.sourceRepoUrl,
           targetRevision: this.sourceBranch,
       },
       this.valueFiles && this.valueFiles.length > 0
