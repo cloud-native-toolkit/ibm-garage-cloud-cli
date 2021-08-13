@@ -17,6 +17,7 @@ import {Kustomization} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {apiFromUrl, GitApi} from '../../api/git';
+import {ChildProcess} from '../../util/child-process';
 
 export class GitopsModuleImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
@@ -141,12 +142,9 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       await git.addConfig('user.email', this.userConfig.email, true, 'local');
       await git.addConfig('user.name', this.userConfig.name, true, 'local');
 
-      // create the payload path
-      this.logger.debug(`Creating payload path: ${repoDir}/${payloadPath}`);
-      await fs.mkdirp(`${repoDir}/${payloadPath}`)
-
       this.logger.debug(`Copying from ${input.contentDir} to ${repoDir}/${payloadPath}`);
-      await fs.copy(input.contentDir, `${repoDir}/${payloadPath}`);
+      const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
+      this.logger.debug('Result from copy', copyResult);
 
       this.logger.debug(`Adding and committing changes to repo`);
       await git.add('.');
@@ -329,4 +327,10 @@ async function parseGitFile(gitUrl: string, filename: string, credentials: {user
   const gitApi: GitApi = await apiFromUrl(gitUrl, credentials);
 
   return parser(await gitApi.getFileContents({path: filename}));
+}
+
+async function copy(sourceDir: string, destDir: string): Promise<{stdout: string | Buffer, stderr: string | Buffer}> {
+  await fs.mkdirp(destDir);
+
+  return new ChildProcess().exec(`cp -R "${sourceDir}"/* "${destDir}"`);
 }
