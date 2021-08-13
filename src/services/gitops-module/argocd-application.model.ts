@@ -33,7 +33,7 @@ export class ArgoApplication implements IArgoApplication {
           targetRevision: this.sourceBranch,
       },
       this.valueFiles && this.valueFiles.length > 0
-        ? {valueFiles: this.valueFiles}
+        ? {helm: {valueFiles: this.valueFiles}}
         : {}
     );
 
