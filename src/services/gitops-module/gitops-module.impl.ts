@@ -162,7 +162,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       const result = {path: payloadPath, url: `https://${config.repo}`, branch: branchResult.current};
 
-      this.logger.log('Application payload result', {result});
+      this.logger.debug('Application payload result', {result});
 
       return result;
     } catch (error) {
