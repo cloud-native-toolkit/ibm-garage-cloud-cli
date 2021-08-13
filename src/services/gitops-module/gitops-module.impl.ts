@@ -53,13 +53,22 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
         gitopsCredentials,
         applicationPath: options.applicationPath || options.name,
         branch: options.branch || '',
-        layer: options.layer || GitOpsLayer.application,
+        layer: options.layer || GitOpsLayer.applications,
         serverName: options.serverName || 'default',
-        tmpDir: options.tmpDir || '/tmp/gitops-module/',
+        tmpDir: options.tmpDir || '/tmp/gitops-module',
         valueFiles: options.valueFiles ? options.valueFiles.split(',') : [],
         contentDir: options.contentDir || process.cwd(),
         isNamespace: options.isNamespace || false,
       });
+
+    switch (result.layer) {
+      case GitOpsLayer.infrastructure:
+      case GitOpsLayer.services:
+      case GitOpsLayer.applications:
+        break;
+      default:
+        throw new Error('Invalid value for layer: ' + result.layer);
+    }
 
     return result;
   }
@@ -114,12 +123,15 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       const git: SimpleGit = simpleGit({baseDir: input.tmpDir});
 
+      this.logger.debug(`Cloning ${config.repo} into ${repoDir}`);
+
       // clone into repo dir
       await git.clone(`https://${token}@${config.repo}`, repoDir);
 
       await git.cwd({path: repoDir, root: true});
 
       if (input.branch) {
+        this.logger.debug(`Switching to branch ${input.branch}`);
         await git.checkoutBranch(input.branch, `origin/${input.branch}`);
       }
 
@@ -142,7 +154,11 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       const branchResult = await git.branch();
 
-      return {path: payloadPath, url: `https://${config.repo}`, branch: branchResult.current};
+      const result = {path: payloadPath, url: `https://${config.repo}`, branch: branchResult.current};
+
+      this.logger.log('Application payload result', {result});
+
+      return result;
     } finally {
       // clean up repo dir
       await fs.remove(repoDir);
@@ -159,6 +175,8 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
     try {
       const git: SimpleGit = simpleGit({baseDir: input.tmpDir});
+
+      this.logger.debug(`Cloning ${config.repo} into ${repoDir}`);
 
       // clone into repo dir
       await git.clone(`https://${token}@${config.repo}`, repoDir);
@@ -209,7 +227,11 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       await git.cwd({path: input.tmpDir, root: true});
 
-      return {path: overlayPath, url: `https://${config.repo}`, branch: branchResult.current};
+      const result = {path: overlayPath, url: `https://${config.repo}`, branch: branchResult.current};
+
+      this.logger.debug('ArgoCD config result', {result})
+
+      return result;
     } finally {
       // clean up repo dir
       await fs.remove(repoDir).catch(err => null);

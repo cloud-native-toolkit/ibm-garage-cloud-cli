@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
 
-import {GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
+import {GitOpsLayer, GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
 import {Logger, verboseLoggerFactory} from '../util/logger';
 import {ClaimedMutex, Mutex} from '../util/mutex';
 
@@ -29,7 +29,7 @@ export const builder = (yargs: Argv<any>) => {
     .option('layer', {
       alias: 'l',
       describe: 'The gitops layer where the configuration will be deployed (infrastructure, services, applications)',
-      choices: ['infrastructure', 'services', 'applications'],
+      choices: [GitOpsLayer.infrastructure, GitOpsLayer.services, GitOpsLayer.applications],
       demandOption: false,
     })
     .option('gitopsConfigFile', {
@@ -76,7 +76,7 @@ export const builder = (yargs: Argv<any>) => {
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
       type: 'string',
-      default: '/tmp/gitops-module/',
+      default: '/tmp/gitops-module',
       require: false,
     })
     .option('debug', {
