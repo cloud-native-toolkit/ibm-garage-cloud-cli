@@ -34,8 +34,8 @@ export type GitOpsCredentials = Array<GitOpsCredential>;
 
 export enum GitOpsLayer {
   infrastructure = 'infrastructure',
-  service = 'service',
-  application = 'application'
+  services = 'services',
+  applications = 'applications'
 }
 export type GitOpsModuleOptions = GitOpsModuleInputBase & Partial<GitOpsModuleInputDefaults> & {
   bootstrapRepoUrl?: string;
