@@ -137,15 +137,18 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
         await git.checkoutBranch(input.branch, `origin/${input.branch}`);
       }
 
+      this.logger.debug('Configuring git username and password');
       await git.addConfig('user.email', this.userConfig.email, true, 'local');
       await git.addConfig('user.name', this.userConfig.name, true, 'local');
 
       // create the payload path
+      this.logger.debug(`Creating payload path: ${repoDir}/${payloadPath}`);
       await fs.mkdirp(`${repoDir}/${payloadPath}`)
 
-      // copy contentDir into repo dir
-      await fs.copy(`${input.contentDir}`, `${repoDir}/${payloadPath}`);
+      this.logger.debug(`Copying from ${input.contentDir} to ${repoDir}/${payloadPath}`);
+      await fs.copy(input.contentDir, `${repoDir}/${payloadPath}`);
 
+      this.logger.debug(`Adding and committing changes to repo`);
       await git.add('.');
       await git.commit(`Adds payload yaml for ${input.name}`);
 
@@ -191,12 +194,14 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       await git.cwd({path: repoDir, root: true});
 
+      this.logger.debug('Configuring git username and password');
       await git.addConfig('user.email', this.userConfig.email, true, 'local');
       await git.addConfig('user.name', this.userConfig.name, true, 'local');
 
       // create overlay config path
       const overlayPath = `${config.path}/cluster/${input.serverName}`;
 
+      this.logger.debug(`Creating overlay path: ${overlayPath}/base`);
       await fs.mkdirp(`${repoDir}/${overlayPath}/base`);
 
       const nameSuffix = payloadRepo.branch !== 'main' && payloadRepo.branch !== 'master' ? `-${payloadRepo.branch}` : '';
@@ -224,6 +229,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       await fs.writeFile(kustomizeFile, kustomize.asYamlString())
 
       // commit and push changes
+      this.logger.debug(`Adding and committing changes to repo`);
       await git.add('.');
       await git.commit(`Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`);
 
