@@ -1,5 +1,6 @@
 import * as fs from 'fs-extra';
 import {timer} from './timer';
+import {File} from './file-util';
 
 export interface ClaimedMutex {
   release(): Promise<void>;
@@ -42,33 +43,3 @@ export class Mutex {
   }
 }
 
-
-class File {
-  constructor(public filename: string) {}
-
-  async exists(): Promise<boolean> {
-    return fileExists(this.filename);
-  }
-
-  async write(contents: string): Promise<void> {
-    await fs.writeFile(this.filename, contents);
-  }
-
-  async contains(contents: string): Promise<boolean> {
-    return fileContains(this.filename, contents);
-  }
-
-  async delete(): Promise<void> {
-    await fs.remove(this.filename);
-  }
-}
-
-const fileExists = async (path: string): Promise<boolean> => {
-  return await fs.access(path, fs.constants.R_OK).then(() => true).catch(err => false);
-}
-
-const fileContains = async (path: string, contents: string): Promise<boolean> => {
-  const result = await fs.readFile(path);
-
-  return result.toString() === contents;
-}

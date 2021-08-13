@@ -128,6 +128,8 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       // clone into repo dir
       await git.clone(`https://${token}@${config.repo}`, repoDir);
 
+      this.logger.debug(`Changing working directory to ${repoDir}`);
+
       await git.cwd({path: repoDir, root: true});
 
       if (input.branch) {
@@ -144,10 +146,13 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       // copy contentDir into repo dir
       await fs.copy(`${input.contentDir}`, `${repoDir}/${payloadPath}`);
 
-      // commit and push changes
       await git.add('.');
       await git.commit(`Adds payload yaml for ${input.name}`);
+
+      this.logger.debug(`Pulling from the repo to pick up any changes`);
       await git.pull({'--rebase': 'true'});
+
+      this.logger.debug(`Pushing changes`);
       await git.push();
 
       this.logger.log(`  Application payload added to ${config.repo} in path ${payloadPath}`)
@@ -159,6 +164,9 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       this.logger.log('Application payload result', {result});
 
       return result;
+    } catch (error) {
+      this.logger.error('Error updating application config', {error});
+      throw error;
     } finally {
       // clean up repo dir
       await fs.remove(repoDir);
@@ -218,7 +226,11 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       // commit and push changes
       await git.add('.');
       await git.commit(`Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`);
+
+      this.logger.debug(`Pulling from the repo to pick up any changes`);
       await git.pull({'--rebase': 'true'});
+
+      this.logger.debug(`Pushing changes`);
       await git.push();
 
       this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
@@ -232,6 +244,9 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       this.logger.debug('ArgoCD config result', {result})
 
       return result;
+    } catch (error) {
+      this.logger.error('Error updating ArgoCD config', {error});
+      throw error;
     } finally {
       // clean up repo dir
       await fs.remove(repoDir).catch(err => null);
