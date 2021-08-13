@@ -203,9 +203,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       await fs.mkdirp(`${repoDir}/${overlayPath}/base`);
 
       const nameSuffix = payloadRepo.branch !== 'main' && payloadRepo.branch !== 'master' ? `-${payloadRepo.branch}` : '';
-      const applicationName = input.isNamespace
-        ? `namespace-${input.name}${nameSuffix}`
-        : `${input.namespace}-${input.name}${nameSuffix}`;
+      const applicationName = buildApplicationName(input.name, input.namespace, nameSuffix, input.isNamespace);
       const applicationFile = `base/${applicationName}.yaml`;
 
       const argoApplication: ArgoApplication = new ArgoApplication({
@@ -333,4 +331,23 @@ async function copy(sourceDir: string, destDir: string): Promise<{stdout: string
   await fs.mkdirp(destDir);
 
   return new ChildProcess().exec(`cp -R "${sourceDir}"/* "${destDir}"`);
+}
+
+const KUBERNETES_NAME_LIMIT = 63;
+function buildApplicationName(name: string, namespace: string, nameSuffix: string, isNamespace: boolean): string {
+  const applicationName = isNamespace
+    ? `namespace-${name}`
+    : `${namespace}-${name}`;
+
+  const lengthLimit = KUBERNETES_NAME_LIMIT - nameSuffix.length;
+
+  const truncatedName = applicationName.length > lengthLimit
+    ? applicationName.substring(0, KUBERNETES_NAME_LIMIT - nameSuffix.length)
+    : applicationName;
+
+  const cleansedName = truncatedName.endsWith('-')
+    ? truncatedName.substring(0, truncatedName.length - 1)
+    : truncatedName;
+
+  return cleansedName + nameSuffix;
 }
