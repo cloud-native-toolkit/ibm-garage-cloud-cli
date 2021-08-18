@@ -1,19 +1,20 @@
 import * as fs from 'fs-extra';
 import {timer} from './timer';
 import {File} from './file-util';
+import {Logger} from './logger';
 
 export interface ClaimedMutex {
   release(): Promise<void>;
 }
 
 export class Mutex {
-  constructor(public readonly path: string, public readonly scope: string) {}
+  constructor(public readonly path: string, public readonly scope: string, private logger: Logger) {}
 
   async claim(tokens: object): Promise<ClaimedMutex> {
     await fs.mkdirp(this.path);
 
     const file = new File(`${this.path}/${this.scope}.mutex`);
-    const value = this.buildIdentifier(tokens);
+    const identifier: string = this.buildIdentifier(tokens);
 
     while (true) {
       while (true) {
@@ -21,17 +22,27 @@ export class Mutex {
           break;
         }
 
+        this.logger.debug(`  Mutex exists: ${file.filename}. Waiting...`)
         await timer(10);
       }
 
-      await file.write(value);
+      this.logger.debug(`  Claiming mutex with identifier: ${identifier}`)
+      await file.write(identifier);
 
-      if (await file.contains(value)) {
+      const currentIdentifier = await file.getContents();
+      if (currentIdentifier.toString() === identifier) {
+        this.logger.debug(`  Mutex claimed: ${identifier}`)
         break;
       }
     }
 
-    return {release: async () => file.delete()};
+    return {
+      release: async () => {
+        this.logger.debug(`  Releasing mutex: ${file.filename}`)
+
+        return file.delete();
+      }
+    };
   }
 
   private buildIdentifier(token: object): string {

@@ -83,7 +83,9 @@ export const builder = (yargs: Argv<any>) => {
 exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean}>) => {
   Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
 
-  const mutex = new Mutex(argv.tmpDir, 'gitops-module');
+  const logger: Logger = Container.get(Logger);
+
+  const mutex = new Mutex(argv.tmpDir, 'gitops-module', logger);
 
   const args: GitOpsModuleOptions = Object.assign(
     {},

@@ -34,6 +34,10 @@ export class File {
     return fileContains(this.filename, contents);
   }
 
+  async getContents(): Promise<string | Buffer> {
+    return await fs.readFile(this.filename);
+  }
+
   async delete(): Promise<void> {
     await fs.remove(this.filename);
   }
