@@ -63,6 +63,7 @@ export interface GitOpsModuleInputDefaults {
   serverName: string;
   tmpDir: string;
   contentDir: string;
+  type: string;
 }
 
 export interface GitOpsModuleResult {}
