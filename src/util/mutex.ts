@@ -16,6 +16,8 @@ export class Mutex {
     const file = new File(`${this.path}/${this.scope}.mutex`);
     const identifier: string = this.buildIdentifier(tokens);
 
+    const logContext = {mutex: file.filename, identifier};
+
     while (true) {
       while (true) {
         if (!await file.exists()) {
@@ -26,19 +28,21 @@ export class Mutex {
         await timer(10);
       }
 
-      this.logger.debug(`  Claiming mutex with identifier: ${identifier}`)
+      this.logger.debug(`  Claiming mutex...`, logContext);
       await file.write(identifier);
 
       const currentIdentifier = await file.getContents();
       if (currentIdentifier.toString() === identifier) {
-        this.logger.debug(`  Mutex claimed: ${identifier}`)
+        this.logger.debug(`  Mutex claimed`, logContext)
         break;
+      } else {
+        this.logger.debug(`  Unable to claim mutex`, logContext);
       }
     }
 
     return {
       release: async () => {
-        this.logger.debug(`  Releasing mutex: ${file.filename}`)
+        this.logger.debug(`  Releasing mutex...`, logContext);
 
         return file.delete();
       }
