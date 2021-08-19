@@ -44,7 +44,7 @@ export class File {
 }
 
 export const fileContains = async (path: string, contents: string): Promise<boolean> => {
-  const result = await fs.readFile(path);
+  const result = await fs.readFile(path).catch(err => '');
 
   return result.toString() === contents;
 }
