@@ -26,29 +26,25 @@ export class File {
     return fileExists(this.filename);
   }
 
-  async write(contents: string): Promise<void> {
-    await fs.writeFile(this.filename, contents);
+  async write(contents: string): Promise<boolean> {
+    return fs.writeFile(this.filename, contents).then(v => true).catch(err => false);
   }
 
   async contains(contents: string): Promise<boolean> {
     return fileContains(this.filename, contents);
   }
 
-  async getContents(): Promise<string | Buffer> {
-    return await fs.readFile(this.filename);
-  }
-
   async delete(): Promise<void> {
-    await fs.remove(this.filename);
+    return fs.remove(this.filename);
   }
 }
 
 export const fileContains = async (path: string, contents: string): Promise<boolean> => {
-  const result = await fs.readFile(path).catch(err => '');
+  const result: string = await fs.readFile(path).then(v => v.toString()).catch(err => '##error reading file##');
 
-  return result.toString() === contents;
+  return result === contents;
 }
 
 export const fileExists = async (path: string): Promise<boolean> => {
-  return await fs.access(path, fs.constants.R_OK).then(() => true).catch(err => false);
+  return await fs.access(path, fs.constants.R_OK).then(v => true).catch(err => false);
 }
