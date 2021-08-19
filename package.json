@@ -95,7 +95,7 @@
     "simple-git": "^2.42.0",
     "superagent": "^6.1.0",
     "tar": "^6.1.0",
-    "tslib": "^2.1.0",
+    "tslib": "^2.3.0",
     "typescript-ioc": "^3.2.2",
     "yargs": "^16.2.0"
   },
