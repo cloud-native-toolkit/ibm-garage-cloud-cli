@@ -19,20 +19,23 @@ export class Mutex {
     const logContext = {mutex: file.filename, identifier};
 
     while (true) {
+      let first = true;
       while (true) {
-        if (!await file.exists()) {
+        if (!await file.exists() || await file.contains(identifier)) {
           break;
         }
 
-        this.logger.debug(`  Mutex exists: ${file.filename}. Waiting...`)
+        if (first) {
+          this.logger.debug(`  Mutex exists: ${file.filename}. Waiting...`)
+        }
+        first = false;
         await timer(10);
       }
 
       this.logger.debug(`  Claiming mutex...`, logContext);
       await file.write(identifier);
 
-      const currentIdentifier = await file.getContents();
-      if (currentIdentifier.toString() === identifier) {
+      if (await file.contains(identifier)) {
         this.logger.debug(`  Mutex claimed`, logContext)
         break;
       } else {
