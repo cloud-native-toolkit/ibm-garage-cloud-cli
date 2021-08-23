@@ -60,6 +60,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
         valueFiles: options.valueFiles ? options.valueFiles.split(',') : [],
         contentDir: options.contentDir || process.cwd(),
         isNamespace: options.isNamespace || false,
+        type: options.type || 'base',
       });
 
     switch (result.layer) {
@@ -199,12 +200,12 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       // create overlay config path
       const overlayPath = `${config.path}/cluster/${input.serverName}`;
 
-      this.logger.debug(`Creating overlay path: ${overlayPath}/base`);
-      await fs.mkdirp(`${repoDir}/${overlayPath}/base`);
+      this.logger.debug(`Creating overlay path: ${overlayPath}/${input.type}`);
+      await fs.mkdirp(`${repoDir}/${overlayPath}/${input.type}`);
 
       const nameSuffix = payloadRepo.branch !== 'main' && payloadRepo.branch !== 'master' ? `-${payloadRepo.branch}` : '';
       const applicationName = buildApplicationName(input.name, input.namespace, nameSuffix, input.isNamespace);
-      const applicationFile = `base/${applicationName}.yaml`;
+      const applicationFile = `${input.type}/${applicationName}.yaml`;
 
       const argoApplication: ArgoApplication = new ArgoApplication({
         name: applicationName,

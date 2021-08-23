@@ -65,6 +65,12 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'The branch where the payload has been deployed',
       demandOption: false,
     })
+    .option('type', {
+      describe: 'The type of component added to the GitOps repo.',
+      choices: ['base', 'operators', 'instances'],
+      demandOption: false,
+      default: 'base',
+    })
     .option('serverName', {
       describe: 'The name of the cluster. If not provided will use `default`',
       demandOption: false,
