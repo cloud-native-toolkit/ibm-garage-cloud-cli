@@ -1,4 +1,5 @@
 import * as fs from 'fs-extra';
+import * as YAML from 'js-yaml';
 
 export class FsPromises {
 
@@ -24,6 +25,22 @@ export class File {
 
   async exists(): Promise<boolean> {
     return fileExists(this.filename);
+  }
+
+  async read(): Promise<string | Buffer> {
+    return fs.readFile(this.filename);
+  }
+
+  async readYaml<T = any>(): Promise<T> {
+    const content = await this.read();
+
+    return YAML.load(content.toString());
+  }
+
+  async readJson<T = any>(): Promise<T> {
+    const content = await this.read();
+
+    return JSON.parse(content.toString());
   }
 
   async write(contents: string): Promise<boolean> {

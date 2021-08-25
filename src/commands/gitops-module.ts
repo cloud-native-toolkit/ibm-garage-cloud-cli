@@ -4,6 +4,7 @@ import {Container} from 'typescript-ioc';
 import {GitOpsLayer, GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
 import {Logger, verboseLoggerFactory} from '../util/logger';
 import {ClaimedMutex, Mutex} from '../util/mutex';
+import {commonHandler} from './support/gitops-module-common';
 
 export const command = 'gitops-module [name] [contentDir]';
 export const desc = 'Populates the gitops repo with the provided module contents and configures the ArgoCD application';
@@ -79,6 +80,12 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Comma-separated list of value files that should be applied to the Argo CD application if using a helm chart',
       demandOption: false,
     })
+    .option('lock', {
+      describe: 'Git repo locking style',
+      demandOption: false,
+      choices: ['optimistic', 'pessimistic', 'o', 'p'],
+      default: 'optimistic',
+    })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
       type: 'string',
@@ -91,23 +98,6 @@ export const builder = (yargs: Argv<any>) => {
       require: false,
     });
 };
-exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean}>) => {
-  Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
-
-  const logger: Logger = Container.get(Logger);
-
-  const mutex = new Mutex(argv.tmpDir, 'gitops-module', logger);
-
-  let claim: ClaimedMutex;
-  try {
-    claim = await mutex.claim({name: argv.name, namespace: argv.namespace, contentDir: argv.contentDir});
-
-    const service: GitOpsModuleApi = Container.get(GitOpsModuleApi);
-
-    await service.populate(argv);
-  } catch (err) {
-    console.error('Error running populate', err);
-  } finally {
-    await claim.release();
-  }
+exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}>) => {
+  await commonHandler(argv);
 };

@@ -7,7 +7,19 @@ export interface ClaimedMutex {
   release(): Promise<void>;
 }
 
-export class Mutex {
+export abstract class IMutex {
+  abstract claim(tokens: object): Promise<ClaimedMutex>;
+}
+
+export class NoopMutex implements IMutex {
+  async claim(tokens: object): Promise<ClaimedMutex> {
+    const noopClaimedMutex: ClaimedMutex = {release: async () => {}};
+
+    return noopClaimedMutex;
+  }
+}
+
+export class Mutex implements IMutex {
   constructor(public readonly path: string, public readonly scope: string, private logger: Logger) {}
 
   async claim(tokens: object): Promise<ClaimedMutex> {
