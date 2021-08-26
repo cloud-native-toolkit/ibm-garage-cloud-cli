@@ -3,7 +3,8 @@ import {Container} from 'typescript-ioc';
 
 import {GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
 import {Logger, verboseLoggerFactory} from '../util/logger';
-import {ClaimedMutex, Mutex} from '../util/mutex';
+import {ClaimedMutex, IMutex, Mutex, NoopMutex} from '../util/mutex';
+import {commonHandler} from './support/gitops-module-common';
 
 export const command = 'gitops-namespace [name] [contentDir]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';
@@ -68,6 +69,12 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Comma-separated list of value files that should be applied to the Argo CD application if using a helm chart',
       demandOption: false,
     })
+    .option('lock', {
+      describe: 'Git repo locking style',
+      demandOption: false,
+      choices: ['optimistic', 'pessimistic', 'o', 'p'],
+      default: 'optimistic',
+    })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
       type: 'string',
@@ -80,14 +87,8 @@ export const builder = (yargs: Argv<any>) => {
       require: false,
     });
 };
-exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean}>) => {
-  Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
-
-  const logger: Logger = Container.get(Logger);
-
-  const mutex = new Mutex(argv.tmpDir, 'gitops-module', logger);
-
-  const args: GitOpsModuleOptions = Object.assign(
+exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}>) => {
+  const args: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}> = Object.assign(
     {},
     argv,
     {
@@ -95,16 +96,5 @@ exports.handler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean}>
       layer: 'infrastructure',
     });
 
-  let claim: ClaimedMutex;
-  try {
-    claim = await mutex.claim({name: args.name, namespace: args.namespace, contentDir: args.contentDir});
-
-    const service: GitOpsModuleApi = Container.get(GitOpsModuleApi);
-
-    await service.populate(args);
-  } catch (err) {
-    console.error('Error running populate', err);
-  } finally {
-    await claim.release();
-  }
+  await commonHandler(args);
 };

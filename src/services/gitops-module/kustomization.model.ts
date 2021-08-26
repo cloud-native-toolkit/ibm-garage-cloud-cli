@@ -17,11 +17,15 @@ export class Kustomization implements IKustomization {
   }
 
   addResource(resource: string): Kustomization {
-    if (!this.resources.includes(resource)) {
+    if (!this.containsResource(resource)) {
       this.resources.push(resource);
     }
 
     return this;
+  }
+
+  containsResource(resource: string): boolean {
+    return this.resources.includes(resource);
   }
 
   asJson() {

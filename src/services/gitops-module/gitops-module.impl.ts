@@ -13,11 +13,12 @@ import {
   GitOpsModuleResult, LayerConfig, PayloadConfig
 } from './gitops-module.api';
 import {ArgoApplication} from './argocd-application.model';
-import {Kustomization} from './kustomization.model';
+import {IKustomization, Kustomization} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {apiFromUrl, GitApi} from '../../api/git';
 import {ChildProcess} from '../../util/child-process';
+import {File} from '../../util/file-util';
 
 export class GitopsModuleImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
@@ -113,7 +114,8 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
   async setupPayload(input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string}> {
     const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
 
-    const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}`;
+    const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
+    const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
     const payloadPath = input.isNamespace
       ? `${config.path}/namespace/${input.name}/namespace`
       : `${config.path}/namespace/${input.namespace}/${input.applicationPath}`;
@@ -147,15 +149,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
       this.logger.debug('Result from copy', copyResult);
 
-      this.logger.debug(`Adding and committing changes to repo`);
-      await git.add('.');
-      await git.commit(`Adds payload yaml for ${input.name}`);
-
-      this.logger.debug(`Pulling from the repo to pick up any changes`);
-      await git.pull({'--rebase': 'true'});
-
-      this.logger.debug(`Pushing changes`);
-      await git.push();
+      await this.addCommitPush(git, `Adds payload yaml for ${input.name}`, 'ours', async () => false);
 
       this.logger.log(`  Application payload added to ${config.repo} in path ${payloadPath}`)
 
@@ -178,7 +172,8 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
   async setupArgo(input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string}> {
     const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
 
-    const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}`;
+    const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
+    const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
 
     // create repo dir
     await fs.mkdirp(repoDir);
@@ -218,23 +213,29 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       });
       await fs.writeFile(`${repoDir}/${overlayPath}/${applicationFile}`, argoApplication.asYamlString());
 
-      const kustomizeFile = `${repoDir}/${overlayPath}/kustomization.yaml`;
+      const kustomizeFile: File = new File(`${repoDir}/${overlayPath}/kustomization.yaml`);
 
-      const kustomize = await this.loadKustomize(kustomizeFile);
-      kustomize.addResource(applicationFile);
+      const addKustomizeResource = async (): Promise<boolean> => {
+        const kustomize: Kustomization = await this.loadKustomize(kustomizeFile);
 
-      await fs.writeFile(kustomizeFile, kustomize.asYamlString())
+        if (kustomize.containsResource(applicationFile)) {
+          return false;
+        }
+
+        kustomize.addResource(applicationFile);
+
+        return kustomizeFile.write(kustomize.asYamlString()).then(() => true);
+      };
+
+      await addKustomizeResource();
 
       // commit and push changes
-      this.logger.debug(`Adding and committing changes to repo`);
-      await git.add('.');
-      await git.commit(`Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`);
-
-      this.logger.debug(`Pulling from the repo to pick up any changes`);
-      await git.pull({'--rebase': 'true'});
-
-      this.logger.debug(`Pushing changes`);
-      await git.push();
+      await this.addCommitPush(
+        git,
+        `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`,
+        'theirs',
+        addKustomizeResource
+      );
 
       this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
 
@@ -253,6 +254,32 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     } finally {
       // clean up repo dir
       await fs.remove(repoDir).catch(err => null);
+    }
+  }
+
+  async addCommitPush(git: SimpleGit, message: string, strategy: 'theirs' | 'ours', reapplyChanges: () => Promise<boolean>, retryCount: number = 20): Promise<void> {
+    let success = false;
+    let count = 0;
+    do {
+      count += 1;
+
+      this.logger.debug(`  ** Adding and committing changes to repo`);
+      await git.add('.');
+      await git.commit(message);
+
+      this.logger.debug(`  ** Pulling from the repo to pick up any changes`);
+      await git.pull({'--rebase': 'true', '-s': 'recursive', '-X': strategy});
+
+      if (await reapplyChanges()) {
+        continue;
+      }
+
+      this.logger.debug(`  ** Pushing changes`);
+      success = await git.push().then(() => true).catch(() => false);
+    } while (!success && count < retryCount);
+
+    if (count >= retryCount) {
+      throw new Error('Exceeded retry count to push changes');
     }
   }
 
@@ -282,15 +309,13 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     return credential.token;
   }
 
-  async loadKustomize(kustomizeFile: string): Promise<Kustomization> {
+  async loadKustomize(kustomizeFile: File): Promise<Kustomization> {
 
-    if (!await fs.access(kustomizeFile, fs.constants.R_OK).then(() => true).catch(err => false)) {
+    if (!await kustomizeFile.exists()) {
       return new Kustomization();
     }
 
-    const kustomizeYaml = await fs.readFile(kustomizeFile);
-
-    const kustomize = YAML.load(kustomizeYaml.toString());
+    const kustomize: IKustomization = await kustomizeFile.readYaml();
 
     return new Kustomization(kustomize);
   }
