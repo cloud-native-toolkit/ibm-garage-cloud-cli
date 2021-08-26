@@ -73,7 +73,7 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Git repo locking style',
       demandOption: false,
       choices: ['optimistic', 'pessimistic', 'o', 'p'],
-      default: 'optimistic',
+      default: 'pessimistic',
     })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
