@@ -1,6 +1,6 @@
 import {BuildContext, Container, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface RoleRule {
   apiGroups: string[];
@@ -29,7 +29,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeRole extends AbstractKubernetesResourceManager<Role> {
+export class KubeRole extends AbstractKubernetesNamespacedResource<Role> {
   constructor(props: Props) {
     super(props);
   }

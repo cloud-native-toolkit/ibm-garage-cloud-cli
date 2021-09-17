@@ -25,6 +25,7 @@ import {
 } from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
 import {ChildProcess} from '../../util/child-process';
+import {KubeSecurityContextConstraints, SecurityContextContraints} from '../../api/kubectl/security-context-contraints';
 
 const noopNotifyStatus: (status: string) => void = () => {
 };
@@ -56,6 +57,8 @@ export class NamespaceImpl implements Namespace {
   private childProcess: ChildProcess;
   @Inject
   private createServiceAccount: CreateServiceAccount;
+  @Inject
+  private sccs: KubeSecurityContextConstraints;
 
   async getCurrentProject(defaultValue?: string): Promise<string> {
     const currentContextResult = await this.childProcess.exec('kubectl config view -o jsonpath=\'{.current-context}\'');
@@ -91,7 +94,7 @@ export class NamespaceImpl implements Namespace {
     return namespace;
   }
 
-  async create({namespace, templateNamespace, serviceAccount}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -108,6 +111,16 @@ export class NamespaceImpl implements Namespace {
     await this.copyConfigMaps(namespace, templateNamespace);
     notifyStatus('Copying Secrets');
     await this.copySecrets(namespace, templateNamespace);
+
+    if (tekton) {
+      try {
+        notifyStatus('Adding privileged SCC to pipeline service account');
+        await this.setupTektonPipelineSA(namespace);
+      } catch (error) {
+        notifyStatus('  Error adding SCC');
+        throw error;
+      }
+    }
 
     notifyStatus(`Setting current ${label} to ${namespace}`)
     await this.setCurrentProject(namespace);
@@ -367,6 +380,20 @@ export class NamespaceImpl implements Namespace {
 
   async setCurrentProject(namespace: string) {
     await this.childProcess.exec(`kubectl config set-context --current --namespace=${namespace}`);
+  }
+
+  async setupTektonPipelineSA(namespace: string) {
+
+    const privilegedSCC: SecurityContextContraints = await this.sccs.get('privileged');
+
+    const users: string[] = privilegedSCC.users;
+
+    const pipelineSA = `system:serviceaccount:${namespace}:pipeline`;
+    if (!users.includes(pipelineSA)) {
+      privilegedSCC.users.push(pipelineSA);
+
+      await this.sccs.update(privilegedSCC.metadata.name, {body: privilegedSCC})
+    }
   }
 }
 

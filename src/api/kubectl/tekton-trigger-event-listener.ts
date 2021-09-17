@@ -1,7 +1,7 @@
 import {BuildContext, Container, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface TriggerBindingRef_v0_4 {
     name: string;
@@ -81,7 +81,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeTektonTriggerEventListener extends AbstractKubernetesResourceManager<TriggerEventListener<TriggerDefinition_v0_4 | TriggerDefinition_v0_6>> {
+export class KubeTektonTriggerEventListener extends AbstractKubernetesNamespacedResource<TriggerEventListener<TriggerDefinition_v0_4 | TriggerDefinition_v0_6>> {
     constructor(props: Props) {
         super(props);
     }

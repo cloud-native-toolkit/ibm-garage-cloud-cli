@@ -1,4 +1,4 @@
-import {AbstractKubernetesResourceManager, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
 
@@ -15,7 +15,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeConfigMap extends AbstractKubernetesResourceManager<ConfigMap> {
+export class KubeConfigMap extends AbstractKubernetesNamespacedResource<ConfigMap> {
   constructor(props: Props) {
     super(props);
   }

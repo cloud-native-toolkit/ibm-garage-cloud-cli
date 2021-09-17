@@ -1,7 +1,7 @@
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface TektonPipelineResource extends KubeResource {
   spec: {
@@ -25,7 +25,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeTektonPipelineResource extends AbstractKubernetesResourceManager<TektonPipelineResource> {
+export class KubeTektonPipelineResource extends AbstractKubernetesNamespacedResource<TektonPipelineResource> {
   constructor(props: Props) {
     super(props);
   }

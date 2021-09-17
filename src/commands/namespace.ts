@@ -26,6 +26,12 @@ export const builder = (yargs: Argv<any>) => {
       default: 'default',
       type: 'string',
     })
+    .option('tekton', {
+      alias: 'p',
+      describe: 'flag indicating the tekton pipeline service account should be given privileged scc',
+      default: false,
+      type: 'boolean'
+    })
     .option('verbose', {
       describe: 'flag to produce more verbose logging',
       type: 'boolean'

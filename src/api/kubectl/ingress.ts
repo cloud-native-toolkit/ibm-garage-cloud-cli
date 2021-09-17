@@ -2,7 +2,7 @@ import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import * as _ from 'lodash';
 
 import {AsyncKubeClient, KubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface Ingress extends KubeResource {
   spec: {
@@ -36,7 +36,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeIngress extends AbstractKubernetesResourceManager<Ingress> {
+export class KubeIngress extends AbstractKubernetesNamespacedResource<Ingress> {
   constructor(props: Props) {
     super(props);
   }
