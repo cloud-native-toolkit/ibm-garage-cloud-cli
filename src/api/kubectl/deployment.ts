@@ -1,6 +1,6 @@
 import {BuildContext, Factory, Inject, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 import {timer} from '../../util/timer';
 import {Logger} from '../../util/logger';
 
@@ -25,7 +25,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeDeployment extends AbstractKubernetesResourceManager<Deployment> {
+export class KubeDeployment extends AbstractKubernetesNamespacedResource<Deployment> {
   @Inject logger: Logger;
 
   constructor(props: Props) {

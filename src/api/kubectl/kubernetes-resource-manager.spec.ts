@@ -1,5 +1,5 @@
 import {
-  AbstractKubernetesResourceManager,
+  AbstractKubernetesNamespacedResource,
   KubeBody,
   KubeResource,
   KubeResourceList,
@@ -30,7 +30,7 @@ export const testV1Provider: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(testV1Provider)
-class TestV1KubernetesResource extends AbstractKubernetesResourceManager<TestResource> {
+class TestV1KubernetesResource extends AbstractKubernetesNamespacedResource<TestResource> {
 }
 
 
@@ -45,7 +45,7 @@ export const testV1Beta1Provider: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(testV1Beta1Provider)
-class TestV1Beta1KubernetesResource extends AbstractKubernetesResourceManager<TestResource> {
+class TestV1Beta1KubernetesResource extends AbstractKubernetesNamespacedResource<TestResource> {
   constructor(props: Props) {
     super(props);
   }
@@ -56,7 +56,7 @@ describe('kubernetes-resource-manager', () => {
       expect(true).toEqual(true);
   });
 
-  let classUnderTest: AbstractKubernetesResourceManager<TestResource>;
+  let classUnderTest: AbstractKubernetesNamespacedResource<TestResource>;
   let mockClient: KubeClient;
   beforeEach(() => {
     mockClient = buildMockKubeClient();

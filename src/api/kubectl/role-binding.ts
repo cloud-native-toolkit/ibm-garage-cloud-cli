@@ -1,6 +1,6 @@
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface RoleRef {
   apiGroup: string;
@@ -30,7 +30,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeRoleBinding extends AbstractKubernetesResourceManager<RoleBinding> {
+export class KubeRoleBinding extends AbstractKubernetesNamespacedResource<RoleBinding> {
   constructor(props: Props) {
     super(props);
   }

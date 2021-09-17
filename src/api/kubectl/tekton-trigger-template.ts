@@ -2,7 +2,7 @@ import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient} from './client';
 import {
-  AbstractKubernetesResourceManager,
+  AbstractKubernetesNamespacedResource,
   KubeResource,
   Props,
   TemplateKubeMetadata
@@ -31,7 +31,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeTektonTriggerTemplate extends AbstractKubernetesResourceManager<TriggerTemplate> {
+export class KubeTektonTriggerTemplate extends AbstractKubernetesNamespacedResource<TriggerTemplate> {
   constructor(props: Props) {
     super(props);
   }

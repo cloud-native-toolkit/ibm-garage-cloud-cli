@@ -1,6 +1,6 @@
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, ListOptions, Props} from './kubernetes-resource-manager';
 import {decode as base64decode} from '../../util/base64';
 
 export interface Secret<T = any> extends KubeResource {
@@ -18,7 +18,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeSecret extends AbstractKubernetesResourceManager<Secret> {
+export class KubeSecret extends AbstractKubernetesNamespacedResource<Secret> {
   constructor(props: Props) {
     super(props);
   }

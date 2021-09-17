@@ -1,4 +1,4 @@
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 import {AsyncKubeClient} from './client';
 
@@ -15,7 +15,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubePod extends AbstractKubernetesResourceManager<Pod> {
+export class KubePod extends AbstractKubernetesNamespacedResource<Pod> {
   constructor(props: Props) {
     super(props);
   }

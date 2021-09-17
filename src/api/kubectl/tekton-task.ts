@@ -1,7 +1,7 @@
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient} from './client';
-import {AbstractKubernetesResourceManager, KubeResource, Props} from './kubernetes-resource-manager';
+import {AbstractKubernetesNamespacedResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface TektonTask extends KubeResource {
   spec: {
@@ -33,7 +33,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
 };
 
 @Factory(factory)
-export class KubeTektonTask extends AbstractKubernetesResourceManager<TektonTask> {
+export class KubeTektonTask extends AbstractKubernetesNamespacedResource<TektonTask> {
   constructor(props: Props) {
     super(props);
   }
