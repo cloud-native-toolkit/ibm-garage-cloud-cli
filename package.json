@@ -92,7 +92,7 @@
     "openshift-rest-client": "^6.0.0",
     "ora": "^5.4.1",
     "rimraf": "^3.0.2",
-    "simple-git": "^2.42.0",
+    "simple-git": "^2.45.1",
     "superagent": "^6.1.0",
     "tar": "^6.1.7",
     "tslib": "^2.3.0",
