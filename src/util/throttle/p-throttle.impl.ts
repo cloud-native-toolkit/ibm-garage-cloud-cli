@@ -11,12 +11,6 @@ export class PThrottleImpl implements Throttler {
   }
 
   throttle<Argument extends readonly unknown[], ReturnValue>(function_: (...args: Argument) => ReturnValue): ThrottledFunction<Argument, ReturnValue> {
-    const result = this.throttler(function_);
-
-    result.then(v => {
-      console.log('Executing throttled function', new Date().getTime());
-    })
-
-    return result;
+    return this.throttler(function_);
   }
 }
