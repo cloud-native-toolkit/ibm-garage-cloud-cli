@@ -15,9 +15,9 @@ const throttleFactory: ObjectFactory = (context: BuildContext) => {
   return new PThrottleImpl(config);
 }
 
-const configFactory: ObjectFactory = (context: BuildContext) => {
-  return {limit: -1, interval: -1};
+export const cloudshellThrottleConfig: ObjectFactory = (context: BuildContext) => {
+  return {limit: 2, interval: 1000};
 }
 
-Container.bind(ThrottleConfig).factory(configFactory);
+Container.bind(ThrottleConfig).factory(() => ({limit: -1, interval: -1}));
 Container.bind(Throttler).factory(throttleFactory);

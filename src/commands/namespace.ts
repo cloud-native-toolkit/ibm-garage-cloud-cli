@@ -4,7 +4,7 @@ import * as chalk from 'chalk';
 
 import {Namespace, NamespaceOptionsModel} from '../services/namespace';
 import {logFactory, Logger} from '../util/logger';
-import {ThrottleConfig} from '../util/throttle';
+import {cloudshellThrottleConfig, ThrottleConfig} from '../util/throttle';
 
 export const command = 'sync [namespace]';
 export const aliases = ['project', 'namespace'];
@@ -48,7 +48,7 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
 
   Container.bind(Logger).factory(logFactory({verbose: argv.verbose})).scope(Scope.Singleton);
   if (argv.throttle) {
-    Container.bind(ThrottleConfig).factory(() => ({limit: 2, interval: 1000}));
+    Container.bind(ThrottleConfig).factory(cloudshellThrottleConfig);
   }
 
   const logger: Logger = Container.get(Logger);
