@@ -3,7 +3,7 @@ import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
 import {get} from 'superagent';
 import * as _ from 'lodash';
-import {from, interval, Subject, takeUntil} from 'rxjs';
+import {Subject} from 'rxjs';
 
 import {
   NamespaceMissingError,
@@ -29,7 +29,8 @@ import {
   OcpRoute,
   RoleRule,
   Route,
-  TektonPipeline, TektonPipelineParam,
+  TektonPipeline,
+  TektonPipelineParam,
   TektonPipelineRun,
   TemplateKubeMetadata,
   TriggerBinding,
@@ -57,6 +58,7 @@ import {
 import {GetConsoleUrlApi} from '../console';
 import {LocalGitRepo} from '../../api/git/local';
 import {Logger} from '../../util/logger';
+import progressBar from '../../util/progress-bar';
 
 const noopNotifyStatus = (test: string) => undefined;
 
@@ -194,8 +196,10 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       const templatePipelineName = pipelineArgs.pipelineName;
       const params = pipelineArgs.params;
 
-      this.logger.logn(`Copying tasks from ${options.templateNamespace}`);
-      await this.tektonTask.copyAll({ namespace: options.templateNamespace }, options.pipelineNamespace, progressSubject(this.logger));
+      await progressBar(this.logger)(
+        this.tektonTask.copyAll({ namespace: options.templateNamespace }, options.pipelineNamespace),
+        `Copying tasks from ${chalk.yellow(options.templateNamespace)}`
+      );
 
       const pipelineName: string = await this.pipeline.copy(
         templatePipelineName,
@@ -748,17 +752,10 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     }
 
     const deploymentName = `el-${name}`;
-    this.logger.logn(`  Waiting for event listener rollout: ${pipelineNamespace}/${deploymentName}`);
-    const rolloutPromise: Promise<any> = this.kubeDeployment.rollout(deploymentName, pipelineNamespace);
-
-    const source = interval(1000);
-    const rolloutProgress = source.pipe(takeUntil(from(rolloutPromise)));
-    rolloutProgress.subscribe({
-      next: () => this.logger.logn('.'),
-      complete: () => this.logger.log('')
-    });
-
-    await rolloutPromise;
+    await progressBar(this.logger)(
+      this.kubeDeployment.rollout(deploymentName, pipelineNamespace),
+      `  Waiting for event listener rollout: ${pipelineNamespace}/${deploymentName}`
+    );
 
     return result;
   }
