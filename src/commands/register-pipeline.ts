@@ -17,6 +17,7 @@ import {ErrorSeverity, isCommandError} from '../util/errors';
 import {QuestionBuilder} from '../util/question-builder';
 import {isClusterConfigNotFound} from '../util/cluster-type';
 import {logFactory, Logger} from '../util/logger';
+import {ThrottleConfig, Throttler} from '../util/throttle';
 
 export const command = 'pipeline [gitUrl]';
 export const desc = 'Register a pipeline for the current code repository';
@@ -84,9 +85,18 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     description: 'Key-value parameters to set in the pipeline config (e.g. scan-image=true)',
     demandOption: false,
     default: [],
+  })
+  .option('throttle', {
+    type: 'boolean',
+    description: 'Flag indicating that requests to the kubernetes api should be throttled',
+    demandOption: false,
+    default: process.env.CLOUDSHELL === 'true',
   });
-exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean}> & {param?: string[]}) => {
+exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean, throttle: boolean}> & {param?: string[]}) => {
   Container.bind(Logger).factory(logFactory({spinner: false, verbose: argv.debug})).scope(Scope.Singleton);
+  if (argv.throttle) {
+    Container.bind(ThrottleConfig).factory(() => ({limit: 2, interval: 500}));
+  }
 
   const spinner: Logger = Container.get(Logger);
   process.on('exit', () => {

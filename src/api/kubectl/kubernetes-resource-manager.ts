@@ -1,5 +1,8 @@
 import * as _ from 'lodash';
 import {AsyncKubeClient, KubeClient} from './client';
+import {ThrottleInput, Throttler} from '../../util/throttle';
+import {Container} from 'typescript-ioc';
+import {ThrottledFunction} from 'p-throttle';
 
 export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
 
@@ -109,7 +112,8 @@ interface CustomResourceDefinition extends KubeResource {
 async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): Promise<boolean> {
   try {
     const client: KubeClient = await wrappedClient.get();
-    const crd: KubeBody<CustomResourceDefinition> = await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name).get();
+    const scope = client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name);
+    const crd: KubeBody<CustomResourceDefinition> = await throttle<KubeBody<CustomResourceDefinition>[], KubeBody<CustomResourceDefinition>>(scope.get.bind(scope))();
 
     if (!crd || !crd.body) {
       console.log(`crd not found: ${name}`);
@@ -313,6 +317,15 @@ export class AbstractKubernetesClusterResource<T extends KubeResource> implement
   }
 }
 
+let _throttler: Throttler;
+const throttle = <Argument extends readonly unknown[], ReturnValue>(function_: ThrottleInput<Argument, ReturnValue>): ThrottledFunction<Argument, ReturnValue> => {
+ if (!_throttler) {
+   _throttler = Container.get(Throttler);
+ }
+
+ return _throttler.throttle(function_);
+}
+
 export class AbstractKubernetesNamespacedResource<T extends KubeResource> implements KubernetesNamespacedResource<T> {
   public client: AsyncKubeClient;
   public group?: string;
@@ -348,7 +361,7 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     const kubeResource: any = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     if (kubeResource) {
-      const result: KubeBody<KubeResourceList<T>> = await kubeResource.get(getOptions);
+      const result: KubeBody<KubeResourceList<T>> = await throttle<Query<T>[], KubeBody<KubeResourceList<T>>>(kubeResource.get.bind(kubeResource))(getOptions);
 
       const items: T[] = _.get(result, 'body.items', [])
           .filter(options.filter || (() => true))
@@ -374,13 +387,14 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
       if (await this.exists(processedName, namespace)) {
         const current: T = await this.get(processedName, namespace);
 
-        const processedBody = this.processInputs(processedName, input.body, current);
+        const processedBody: KubeBody<T> = this.processInputs(processedName, input.body, current);
 
-        return kubeResource(processedName).put(processedBody).then(result => result.body);
+        const scope = kubeResource(processedName);
+        return throttle<KubeBody<T>[], KubeBody<T>>(scope.put.bind(scope))(processedBody).then(result => result.body);
       } else {
         const processedBody = this.processInputs(processedName, input.body);
 
-        return kubeResource.post(processedBody).then(result => result.body);
+        return throttle<KubeBody<T>[], KubeBody<T>>(kubeResource.post.bind(kubeResource))(processedBody).then(result => result.body);
       }
     } else {
       return {} as any;
@@ -392,9 +406,9 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     const processedName = this.processName(name);
-    const processedBody = this.processInputs(processedName, input.body);
+    const processedBody: KubeBody<T> = this.processInputs(processedName, input.body);
 
-    const result: KubeBody<T> = await kubeResource.post(processedBody);
+    const result: KubeBody<T> = await throttle<KubeBody<T>[], KubeBody<T>>(kubeResource.post.bind(kubeResource))(processedBody);
 
     return result.body;
   }
@@ -406,9 +420,10 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     const current: T = await this.get(name, namespace);
 
     const processedName = this.processName(name);
-    const processedBody = this.processInputs(processedName, input.body, current);
+    const processedBody: KubeBody<T> = this.processInputs(processedName, input.body, current);
 
-    const result: KubeBody<T> = await kubeResource(processedName).put(processedBody);
+    const scope = kubeResource(processedName);
+    const result: KubeBody<T> = await throttle<KubeBody<T>[], KubeBody<T>>(scope.put.bind(scope))(processedBody);
 
     return result.body;
   }
@@ -417,7 +432,8 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
     try {
-      const result = await kubeResource(name).get();
+      const scope = kubeResource(name);
+      const result: KubeBody<T> = await throttle<KubeBody<T>[], KubeBody<T>>(scope.get.bind(scope))();
 
       if (result) {
         return true;
@@ -431,7 +447,8 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
   async get(name: string, namespace: string = 'default'): Promise<T> {
     const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
 
-    const result = await kubeResource(name).get();
+    const scope = kubeResource(name);
+    const result = await throttle<KubeBody<T>[], KubeBody<T>>(scope.get.bind(scope))();
 
     return _.get(result, 'body');
   }
