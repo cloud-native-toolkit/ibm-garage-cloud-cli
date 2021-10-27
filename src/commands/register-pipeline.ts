@@ -95,7 +95,7 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
 exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean, throttle: boolean}> & {param?: string[]}) => {
   Container.bind(Logger).factory(logFactory({spinner: false, verbose: argv.debug})).scope(Scope.Singleton);
   if (argv.throttle) {
-    Container.bind(ThrottleConfig).factory(() => ({limit: 2, interval: 500}));
+    Container.bind(ThrottleConfig).factory(() => ({limit: 2, interval: 1000}));
   }
 
   const spinner: Logger = Container.get(Logger);
