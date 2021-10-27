@@ -125,6 +125,9 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
 
   try {
     await checkKubeconfig();
+    if (argv.throttle) {
+      logger.log('Throttling requests to the cluster api');
+    }
 
     if (!argv.jenkins && !argv.tekton) {
       const questionBuilder: QuestionBuilder<{pipelineType: 'jenkins' | 'tekton'}> = Container.get(QuestionBuilder);

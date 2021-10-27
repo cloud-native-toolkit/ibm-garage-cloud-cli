@@ -61,7 +61,9 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
   }
 
   logger.log(`Setting up namespace ${chalk.yellow(argv.namespace)}`);
-
+  if (argv.throttle) {
+    logger.log('  Throttling requests to the cluster api');
+  }
 
   logger.text = 'Setting up namespace: ' + argv.namespace;
 
