@@ -209,6 +209,9 @@ describe('namespace', () => {
       copyJenkinsCredentials = mockField(classUnderTest, 'copyJenkinsCredentials');
       copyPipelines = mockField(classUnderTest, 'copyPipelines');
       setCurrentProject = mockField(classUnderTest, 'setCurrentProject');
+
+      copyConfigMaps.mockImplementation(() => Promise.resolve({}));
+      copySecrets.mockImplementation(() => Promise.resolve({}));
     });
 
     describe('when clusterType is kubernetes', () => {
@@ -248,17 +251,13 @@ describe('namespace', () => {
       test('then should copy config maps in catalyst-tools group', async () => {
         await classUnderTest.create(namespaceOptions);
 
-        expect(copyConfigMaps).toHaveBeenCalled();
-        expect(copyConfigMaps.mock.calls[0][0]).toEqual(namespace);
-        expect(copyConfigMaps.mock.calls[0][1]).toEqual(templateNamespace);
+        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
       test('then should copy secrets in catalyst-tools group', async () => {
         await classUnderTest.create(namespaceOptions);
 
-        expect(copySecrets).toHaveBeenCalled();
-        expect(copySecrets.mock.calls[0][0]).toEqual(namespace);
-        expect(copySecrets.mock.calls[0][1]).toEqual(templateNamespace);
+        expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
       });
 
       test('then should not copy the jenkins credentials', async () => {

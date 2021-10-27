@@ -6,6 +6,7 @@ import {CreateServiceAccount} from '../create-service-account';
 import {
   AbstractKubeNamespace,
   KubeConfigMap,
+  KubeMetadata,
   KubeNamespace,
   KubePod,
   KubeRole,
@@ -14,34 +15,21 @@ import {
   KubeServiceAccount,
   KubeTektonPipeline,
   KubeTektonTask,
-  OcpProject,
+  ListOptions,
   OcpProjectCli,
   Pod,
+  QueryString,
   Secret,
-  ServiceAccount,
-  KubeMetadata,
-  ListOptions,
-  QueryString, KubeClient, KubeBody, Project, ConfigMap
+  ServiceAccount
 } from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
 import {ChildProcess} from '../../util/child-process';
 import {KubeSecurityContextConstraints, SecurityContextContraints} from '../../api/kubectl/security-context-contraints';
-import {Subject} from 'rxjs';
 import {Logger} from '../../util/logger';
+import progressBar from '../../util/progress-bar';
 
 const noopNotifyStatus: (status: string) => void = () => {
 };
-
-const progressSubject = <T = any>(logger: Logger) => {
-  const subject: Subject<T> = new Subject();
-
-  subject.subscribe({
-    next: () => logger.logn('.'),
-    complete: () => logger.log('')
-  })
-
-  return subject;
-}
 
 export class NamespaceImpl implements Namespace {
   @Inject
@@ -122,10 +110,10 @@ export class NamespaceImpl implements Namespace {
       await nsManager.create(namespace);
     }
 
-    this.logger.logn('Copying ConfigMaps');
-    await this.copyConfigMaps(namespace, templateNamespace, progressSubject(this.logger));
-    this.logger.logn('Copying Secrets');
-    await this.copySecrets(namespace, templateNamespace, progressSubject(this.logger));
+    const progress = progressBar(this.logger);
+
+    await progress(this.copyConfigMaps(namespace, templateNamespace), 'Copying ConfigMaps');
+    await progress(this.copySecrets(namespace, templateNamespace), 'Copying Secrets');
 
     if (tekton) {
       try {
@@ -199,24 +187,24 @@ export class NamespaceImpl implements Namespace {
     return {namespace: fromNamespace, filter};
   }
 
-  async copyConfigMaps(toNamespace: string, fromNamespace: string, subject?: Subject<any>): Promise<any> {
+  async copyConfigMaps(toNamespace: string, fromNamespace: string): Promise<any> {
     if (toNamespace === fromNamespace) {
       return;
     }
 
     const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
 
-    return this.configMaps.copyAll({namespace: fromNamespace, qs}, toNamespace, subject);
+    return this.configMaps.copyAll({namespace: fromNamespace, qs}, toNamespace);
   }
 
-  async copySecrets(toNamespace: string, fromNamespace: string, subject?: Subject<any>): Promise<any> {
+  async copySecrets(toNamespace: string, fromNamespace: string): Promise<any> {
     if (toNamespace === fromNamespace) {
       return;
     }
 
     const qs: QueryString = {labelSelector: 'group=catalyst-tools'};
 
-    return this.secrets.copyAll({namespace: fromNamespace, qs}, toNamespace, subject);
+    return this.secrets.copyAll({namespace: fromNamespace, qs}, toNamespace);
   }
 
   async copyPipelines(toNamespace: string, fromNamespace: string): Promise<any> {
