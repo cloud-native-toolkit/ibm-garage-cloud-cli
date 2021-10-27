@@ -4,6 +4,7 @@ import * as chalk from 'chalk';
 
 import {Namespace, NamespaceOptionsModel} from '../services/namespace';
 import {logFactory, Logger} from '../util/logger';
+import {cloudshellThrottleConfig, ThrottleConfig} from '../util/throttle';
 
 export const command = 'sync [namespace]';
 export const aliases = ['project', 'namespace'];
@@ -36,10 +37,19 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'flag to produce more verbose logging',
       type: 'boolean'
     })
+    .option('throttle', {
+      type: 'boolean',
+      description: 'Flag indicating that requests to the kubernetes api should be throttled',
+      demandOption: false,
+      default: process.env.CLOUDSHELL === 'true',
+    });
 };
-exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean}>) => {
+exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean, throttle: boolean}>) => {
 
   Container.bind(Logger).factory(logFactory({verbose: argv.verbose})).scope(Scope.Singleton);
+  if (argv.throttle) {
+    Container.bind(ThrottleConfig).factory(cloudshellThrottleConfig);
+  }
 
   const logger: Logger = Container.get(Logger);
 
@@ -51,7 +61,9 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
   }
 
   logger.log(`Setting up namespace ${chalk.yellow(argv.namespace)}`);
-
+  if (argv.throttle) {
+    logger.log('  Throttling requests to the cluster api');
+  }
 
   logger.text = 'Setting up namespace: ' + argv.namespace;
 

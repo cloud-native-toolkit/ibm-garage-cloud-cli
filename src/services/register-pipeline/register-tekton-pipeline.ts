@@ -3,6 +3,7 @@ import {ChoiceOptions} from 'inquirer';
 import * as chalk from 'chalk';
 import {get} from 'superagent';
 import * as _ from 'lodash';
+import {from, interval, Subject, takeUntil} from 'rxjs';
 
 import {
   NamespaceMissingError,
@@ -107,6 +108,17 @@ interface TriggerConfig {
   serviceAccount: string;
 }
 
+const progressSubject = <T = any>(logger: Logger) => {
+  const subject: Subject<T> = new Subject();
+
+  subject.subscribe({
+    next: () => logger.logn('.'),
+    complete: () => logger.log('')
+  })
+
+  return subject;
+}
+
 export class RegisterTektonPipeline implements RegisterPipeline {
   @Inject
   createGitSecret: CreateGitSecret;
@@ -182,8 +194,8 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       const templatePipelineName = pipelineArgs.pipelineName;
       const params = pipelineArgs.params;
 
-      notifyStatus(`Copying tasks from ${options.templateNamespace}`);
-      await this.tektonTask.copyAll({ namespace: options.templateNamespace }, options.pipelineNamespace);
+      this.logger.logn(`Copying tasks from ${options.templateNamespace}`);
+      await this.tektonTask.copyAll({ namespace: options.templateNamespace }, options.pipelineNamespace, progressSubject(this.logger));
 
       const pipelineName: string = await this.pipeline.copy(
         templatePipelineName,
@@ -736,8 +748,17 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     }
 
     const deploymentName = `el-${name}`;
-    this.logger.log(`  Waiting for event listener rollout: ${pipelineNamespace}/${deploymentName}`);
-    await this.kubeDeployment.rollout(deploymentName, pipelineNamespace);
+    this.logger.logn(`  Waiting for event listener rollout: ${pipelineNamespace}/${deploymentName}`);
+    const rolloutPromise: Promise<any> = this.kubeDeployment.rollout(deploymentName, pipelineNamespace);
+
+    const source = interval(1000);
+    const rolloutProgress = source.pipe(takeUntil(from(rolloutPromise)));
+    rolloutProgress.subscribe({
+      next: () => this.logger.logn('.'),
+      complete: () => this.logger.log('')
+    });
+
+    await rolloutPromise;
 
     return result;
   }
