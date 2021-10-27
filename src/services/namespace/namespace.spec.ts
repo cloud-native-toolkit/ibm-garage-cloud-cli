@@ -248,13 +248,17 @@ describe('namespace', () => {
       test('then should copy config maps in catalyst-tools group', async () => {
         await classUnderTest.create(namespaceOptions);
 
-        expect(copyConfigMaps).toHaveBeenCalledWith(namespace, templateNamespace);
+        expect(copyConfigMaps).toHaveBeenCalled();
+        expect(copyConfigMaps.mock.calls[0][0]).toEqual(namespace);
+        expect(copyConfigMaps.mock.calls[0][1]).toEqual(templateNamespace);
       });
 
       test('then should copy secrets in catalyst-tools group', async () => {
         await classUnderTest.create(namespaceOptions);
 
-        expect(copySecrets).toHaveBeenCalledWith(namespace, templateNamespace);
+        expect(copySecrets).toHaveBeenCalled();
+        expect(copySecrets.mock.calls[0][0]).toEqual(namespace);
+        expect(copySecrets.mock.calls[0][1]).toEqual(templateNamespace);
       });
 
       test('then should not copy the jenkins credentials', async () => {

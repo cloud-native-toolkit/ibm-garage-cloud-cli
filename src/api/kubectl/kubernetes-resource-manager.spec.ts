@@ -212,6 +212,8 @@ describe('kubernetes-resource-manager', () => {
 
         mock_create = jest.fn();
         unset_create = setField(classUnderTest, 'createOrUpdate', mock_create);
+
+        mock_create.mockImplementation(() => Promise.resolve({}));
       });
 
       afterEach(() => {
