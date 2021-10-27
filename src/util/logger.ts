@@ -5,6 +5,7 @@ export abstract class Logger {
   readonly info: string;
   text: string;
   abstract log(message: string, context?: any): void;
+  abstract logn(message: string, context?: any): void;
   abstract debug(message: string, context?: any): void;
   abstract error(message: string, context?: any): void;
   abstract stop(): void;
@@ -43,6 +44,12 @@ class OraLogger implements Logger {
     }
   }
 
+  logn(message: string, context?: any): void {
+    if (!this.ora.isSpinning) {
+      process.stdout.write(message);
+    }
+  }
+
   debug(message: string, context?: any): void {
   }
 
@@ -77,6 +84,11 @@ class VerboseLogger implements Logger {
     } else {
       console.log(message);
     }
+  }
+
+
+  logn(message: string, context?: any): void {
+    process.stdout.write(message);
   }
 
   debug(message: string, context?: any): void {
