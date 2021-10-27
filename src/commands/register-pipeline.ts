@@ -126,7 +126,7 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
   try {
     await checkKubeconfig();
     if (argv.throttle) {
-      logger.log('Throttling requests to the cluster api');
+      spinner.log('Throttling requests to the cluster api');
     }
 
     if (!argv.jenkins && !argv.tekton) {

@@ -46,6 +46,7 @@ export const builder = (yargs: Argv<any>) => {
 };
 exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boolean, throttle: boolean}>) => {
 
+  console.log('env', process.env);
   Container.bind(Logger).factory(logFactory({verbose: argv.verbose})).scope(Scope.Singleton);
   if (argv.throttle) {
     Container.bind(ThrottleConfig).factory(cloudshellThrottleConfig);
