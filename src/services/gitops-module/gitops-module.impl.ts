@@ -1,6 +1,6 @@
 import * as fs from 'fs-extra';
 import simpleGit, {SimpleGit} from 'simple-git';
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 import {Container} from 'typescript-ioc';
 
 import {

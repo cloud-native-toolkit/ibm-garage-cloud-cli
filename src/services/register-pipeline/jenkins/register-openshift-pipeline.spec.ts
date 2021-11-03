@@ -1,6 +1,6 @@
 import {Container} from 'typescript-ioc';
 import Mock = jest.Mock;
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 
 jest.mock('inquirer');
 

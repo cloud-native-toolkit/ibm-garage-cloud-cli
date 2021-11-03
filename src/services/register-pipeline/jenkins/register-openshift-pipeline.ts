@@ -1,6 +1,6 @@
 import {Inject} from 'typescript-ioc';
 import {prompt, QuestionCollection} from 'inquirer';
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 import path = require('path');
 
 import {JenkinsMissingError, RegisterPipelineOptions} from '../register-pipeline.api';

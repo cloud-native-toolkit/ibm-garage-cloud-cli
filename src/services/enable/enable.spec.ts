@@ -1,6 +1,6 @@
 import {Container} from 'typescript-ioc';
 import * as superagent from 'superagent';
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 
 import {EnablePipelineImpl} from './enable';
 import {factoryFromValue, mockField} from '../../testHelper';

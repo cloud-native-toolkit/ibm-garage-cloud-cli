@@ -1,4 +1,4 @@
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 
 export interface IArgoApplication {
   name: string;

@@ -1,7 +1,7 @@
 import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
 import {query} from 'jsonpath';
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 
 import {YqWriteOptions} from './yq-write.options';
 import {FsPromises} from '../../util/file-util';

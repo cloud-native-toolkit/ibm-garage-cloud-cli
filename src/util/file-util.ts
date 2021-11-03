@@ -1,5 +1,5 @@
 import * as fs from 'fs-extra';
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 
 export class FsPromises {
 

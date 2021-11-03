@@ -1,6 +1,6 @@
 import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
-import * as YAML from 'js-yaml';
+import * as YAML from 'json2yaml';
 
 import {YqWrite, YqWriteOptions} from '../../services/yq';
 
