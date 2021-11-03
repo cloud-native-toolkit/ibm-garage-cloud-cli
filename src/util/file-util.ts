@@ -34,7 +34,7 @@ export class File {
   async readYaml<T = any>(): Promise<T> {
     const content = await this.read();
 
-    return YAML.load(content.toString());
+    return YAML.load(content.toString()) as T;
   }
 
   async readJson<T = any>(): Promise<T> {

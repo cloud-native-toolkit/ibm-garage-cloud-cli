@@ -14,7 +14,7 @@ import {
 import {Namespace as NamespaceService} from '../namespace';
 import {CreateGitSecret, GitParams} from '../git-secret';
 import {
-  isTriggerBinding_v0_6,
+  isTriggerBinding_v0_6, isTriggerTemplate_v1_14,
   KubeMetadata,
   KubeNamespace,
   KubeResource,
@@ -710,46 +710,23 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
     const bindingName: string = this.buildTriggerBindingName(webhookParams.repositoryName, webhookParams.branchName);
 
-    let result;
-    try {
-      const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
-        TriggerDefinitionVersion.V0_6,
-        name,
-        {
-          name: bindingName,
-          triggerBinding,
-          triggerTemplate,
-          filter,
-          serviceAccount
-        },
-        eventListener,
-      );
+    const handlers: EventListenerHandler[] = [
+      new EventListenerHandlerV1_14(),
+      new EventListenerHandlerV0_6(),
+      new EventListenerHandlerV0_4(),
+    ];
 
-      result = await this.triggerEventListener.createOrUpdate(
-        name,
-        {body},
-        pipelineNamespace,
-      );
-    } catch (err) {
-      const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
-        TriggerDefinitionVersion.V0_4,
-        name,
-        {
-          name: bindingName,
-          triggerBinding,
-          triggerTemplate,
-          filter,
-          serviceAccount
-        },
-        eventListener,
-      );
+    const result = await handlers
+      .reduce(async (p: Promise<TriggerEventListener<TriggerDefinition>>, current: EventListenerHandler): Promise<TriggerEventListener<TriggerDefinition>> => {
+          try {
+          const val: TriggerEventListener<TriggerDefinition> = await p;
+          if (val) {
+            return val;
+          }
+        } catch (error) { }
 
-      result = await this.triggerEventListener.createOrUpdate(
-        name,
-        {body},
-        pipelineNamespace,
-      );
-    }
+        return current.createEventListener(name, {name: bindingName, triggerBinding, triggerTemplate, filter, serviceAccount}, eventListener, pipelineNamespace);
+      }, Promise.resolve(undefined))
 
     const deploymentName = `el-${name}`;
     await progressBar(this.logger)(
@@ -762,100 +739,6 @@ export class RegisterTektonPipeline implements RegisterPipeline {
 
   buildTriggerBindingName(repo: string, branch: string): string {
     return repo.replace('/', '-') + '-' + branch;
-  }
-
-  buildTriggerEventListener(version: TriggerDefinitionVersion, name: string, triggerConfig: TriggerConfig, eventListener?: TriggerEventListener<TriggerDefinition>): TriggerEventListener<TriggerDefinition> {
-    if (!eventListener) {
-      this.logger.log('  Creating new event listener');
-
-      return {
-        metadata: {
-          name,
-          annotations: {
-            version: version
-          },
-          labels: {
-            app: name,
-          },
-        },
-        spec: {
-          serviceAccountName: triggerConfig.serviceAccount,
-          triggers: [this.buildTriggerDefinition(version, triggerConfig)]
-        }
-      }
-    }
-
-    const triggers: TriggerDefinition[] = eventListener.spec.triggers;
-
-    if (!triggers.map(trigger => trigger.name).includes(triggerConfig.name)) {
-      const triggerVersion = this.determineTriggerVersion(eventListener);
-
-      const updatedTriggers = [...triggers, this.buildTriggerDefinition(triggerVersion, triggerConfig)];
-
-      const spec = Object.assign({}, eventListener.spec, {triggers: updatedTriggers});
-      return Object.assign({}, eventListener, {spec});
-    }
-
-    return eventListener;
-  }
-
-  determineTriggerVersion(eventListener: TriggerEventListener<TriggerDefinition>): TriggerDefinitionVersion {
-    const version = _.get(eventListener, 'metadata.annotations.version');
-
-    if (version) {
-      return version;
-    }
-
-    const triggers = eventListener.spec.triggers;
-
-    const bindings = triggers.map(trigger => trigger.bindings).reduce(
-      (result: Array<TriggerBindings>, current: TriggerBindingsArrays) => {
-        result.push(...current);
-        return result;
-      },
-      []);
-
-    if (bindings.some(binding => isTriggerBinding_v0_6(binding))) {
-      return TriggerDefinitionVersion.V0_6;
-    }
-
-    return TriggerDefinitionVersion.V0_4;
-  }
-
-  buildTriggerDefinition(version: TriggerDefinitionVersion, {name, triggerBinding, triggerTemplate, filter}: {name: string, triggerBinding: string, triggerTemplate: string, filter: string}): TriggerDefinition {
-    if (version === TriggerDefinitionVersion.V0_6) {
-      return {
-        name: name,
-        bindings: [{
-          ref: triggerBinding,
-        }],
-        template: {
-          name: triggerTemplate
-        },
-        interceptors: [{
-          cel: {
-            filter: filter
-          }
-        }]
-      }
-    }
-
-    return {
-      name: name,
-      bindings: [{
-        name: triggerBinding
-      }],
-      template: {
-        name: triggerTemplate
-      },
-      interceptors: [
-        {
-          cel: {
-            filter: filter
-          }
-        }
-      ]
-    }
   }
 
   async createTriggerRoute(
@@ -906,6 +789,187 @@ export class RegisterTektonPipeline implements RegisterPipeline {
     return Object.assign(
       defaultOptions,
       cliOptions,
+    );
+  }
+}
+
+interface EventListenerHandler {
+  createEventListener: (name: string, triggerConfig: TriggerConfig, eventListener: TriggerEventListener<TriggerDefinition>, pipelineNamespace: string) => Promise<TriggerEventListener<TriggerDefinition>>;
+}
+
+abstract class BaseEventListenerHandler implements EventListenerHandler {
+  readonly logger: Logger;
+  readonly triggerEventListener: KubeTektonTriggerEventListener;
+
+  constructor() {
+    this.logger = Container.get(Logger);
+    this.triggerEventListener = Container.get(KubeTektonTriggerEventListener);
+  }
+
+  abstract createEventListener(name: string, triggerConfig: TriggerConfig, eventListener: TriggerEventListener<TriggerDefinition>, pipelineNamespace: string): Promise<TriggerEventListener<TriggerDefinition>>;
+
+  buildTriggerEventListener(version: TriggerDefinitionVersion, name: string, triggerConfig: TriggerConfig, eventListener?: TriggerEventListener<TriggerDefinition>): TriggerEventListener<TriggerDefinition> {
+    if (!eventListener) {
+      this.logger.log('  Creating new event listener');
+
+      return {
+        metadata: {
+          name,
+          annotations: {
+            version: version
+          },
+          labels: {
+            app: name,
+          },
+        },
+        spec: {
+          serviceAccountName: triggerConfig.serviceAccount,
+          triggers: [this.buildTriggerDefinition(version, triggerConfig)]
+        }
+      }
+    }
+
+    const triggers: TriggerDefinition[] = eventListener.spec.triggers;
+
+    if (!triggers.map(trigger => trigger.name).includes(triggerConfig.name)) {
+      const triggerVersion = this.determineTriggerVersion(eventListener);
+
+      const updatedTriggers = [...triggers, this.buildTriggerDefinition(triggerVersion, triggerConfig)];
+
+      const spec = Object.assign({}, eventListener.spec, {triggers: updatedTriggers});
+      return Object.assign({}, eventListener, {spec});
+    }
+
+    return eventListener;
+  }
+
+  determineTriggerVersion(eventListener: TriggerEventListener<TriggerDefinition>): TriggerDefinitionVersion {
+    const version = _.get(eventListener, 'metadata.annotations.version');
+
+    if (version) {
+      return version;
+    }
+
+    const triggers = eventListener.spec.triggers;
+
+    const templates = triggers.map((trigger: TriggerDefinition) => trigger.template);
+    const bindings = triggers.map((trigger: TriggerDefinition) => trigger.bindings).reduce(
+      (result: Array<TriggerBindings>, current: TriggerBindingsArrays) => {
+        result.push(...current);
+        return result;
+      },
+      []);
+
+    if (templates.some(template => isTriggerTemplate_v1_14(template))) {
+      return TriggerDefinitionVersion.V1_14;
+    }
+
+    if (bindings.some(binding => isTriggerBinding_v0_6(binding))) {
+      return TriggerDefinitionVersion.V0_6;
+    }
+
+    return TriggerDefinitionVersion.V0_4;
+  }
+
+  buildTriggerDefinition(version: TriggerDefinitionVersion, {name, triggerBinding, triggerTemplate, filter}: {name: string, triggerBinding: string, triggerTemplate: string, filter: string}): TriggerDefinition {
+    if (version === TriggerDefinitionVersion.V1_14) {
+      return {
+        name: name,
+        bindings: [{
+          ref: triggerBinding,
+        }],
+        template: {
+          ref: triggerTemplate
+        },
+        interceptors: [{
+          cel: {
+            filter: filter
+          }
+        }]
+      }
+    } else if (version === TriggerDefinitionVersion.V0_6) {
+      return {
+        name: name,
+        bindings: [{
+          ref: triggerBinding,
+        }],
+        template: {
+          name: triggerTemplate
+        },
+        interceptors: [{
+          cel: {
+            filter: filter
+          }
+        }]
+      }
+    }
+
+    return {
+      name: name,
+      bindings: [{
+        name: triggerBinding
+      }],
+      template: {
+        name: triggerTemplate
+      },
+      interceptors: [
+        {
+          cel: {
+            filter: filter
+          }
+        }
+      ]
+    }
+  }
+}
+
+class EventListenerHandlerV1_14 extends BaseEventListenerHandler {
+  async createEventListener(name: string, triggerConfig: TriggerConfig, eventListener: TriggerEventListener<TriggerDefinition>, pipelineNamespace: string): Promise<TriggerEventListener<TriggerDefinition>> {
+    const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
+      TriggerDefinitionVersion.V1_14,
+      name,
+      triggerConfig,
+      eventListener,
+    );
+
+    return this.triggerEventListener.createOrUpdate(
+      name,
+      {body},
+      pipelineNamespace,
+    );
+  }
+}
+
+class EventListenerHandlerV0_6 extends BaseEventListenerHandler {
+  async createEventListener(name: string, triggerConfig: TriggerConfig, eventListener: TriggerEventListener<TriggerDefinition>, pipelineNamespace: string): Promise<TriggerEventListener<TriggerDefinition>> {
+    const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
+      TriggerDefinitionVersion.V0_6,
+      name,
+      triggerConfig,
+      eventListener,
+    );
+
+    return this.triggerEventListener.createOrUpdate(
+      name,
+      {body},
+      pipelineNamespace,
+    );
+  }
+}
+
+class EventListenerHandlerV0_4 extends BaseEventListenerHandler {
+  async createEventListener(name: string, triggerConfig: TriggerConfig, eventListener: TriggerEventListener<TriggerDefinition>, pipelineNamespace: string): Promise<TriggerEventListener<TriggerDefinition>> {
+    const body: TriggerEventListener<TriggerDefinition> = this.buildTriggerEventListener(
+      TriggerDefinitionVersion.V0_4,
+      name,
+      triggerConfig,
+      eventListener,
+    );
+
+    return this.triggerEventListener.createOrUpdate(
+      name,
+      {body},
+      pipelineNamespace,
     );
   }
 }

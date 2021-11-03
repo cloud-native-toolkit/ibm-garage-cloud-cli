@@ -96,7 +96,7 @@ describe('enable', () => {
             },
           };
 
-          (superagent as any).__setMockResponse({text: YAML.safeDump(expectedResult)});
+          (superagent as any).__setMockResponse({text: YAML.dump(expectedResult)});
 
           const actualResult = await classUnderTest.getPipelineRepoIndex(repoUrl);
 

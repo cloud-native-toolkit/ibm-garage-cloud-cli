@@ -65,7 +65,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
     const fileName = await this.fsPromises.writeFile(
       path.join(process.cwd(), './pipeline-build-config.yaml'),
-      YAML.safeDump(buildConfig)
+      YAML.dump(buildConfig)
     );
 
     await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);

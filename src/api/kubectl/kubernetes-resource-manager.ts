@@ -110,11 +110,23 @@ interface CustomResourceDefinition extends KubeResource {
   status?: object;
 }
 
+async function getCrd(client: KubeClient, name: string): Promise<KubeBody<CustomResourceDefinition>> {
+  try {
+    const scope = client.apis['apiextensions.k8s.io']['v1beta1'].customresourcedefinitions(name);
+
+    return await throttle<KubeBody<CustomResourceDefinition>[], KubeBody<CustomResourceDefinition>>(scope.get.bind(scope))();
+  } catch (error) {
+    const scope = client.apis['apiextensions.k8s.io']['v1'].customresourcedefinitions(name);
+
+    return await throttle<KubeBody<CustomResourceDefinition>[], KubeBody<CustomResourceDefinition>>(scope.get.bind(scope))();
+  }
+}
+
 async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): Promise<boolean> {
   try {
     const client: KubeClient = await wrappedClient.get();
-    const scope = client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions(name);
-    const crd: KubeBody<CustomResourceDefinition> = await throttle<KubeBody<CustomResourceDefinition>[], KubeBody<CustomResourceDefinition>>(scope.get.bind(scope))();
+
+    const crd: KubeBody<CustomResourceDefinition> = await getCrd(client, name);
 
     if (!crd || !crd.body) {
       console.log(`crd not found: ${name}`);
@@ -131,7 +143,7 @@ async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): 
 
     return true;
   } catch (err) {
-    console.log('Error registering crd: ', err);
+    console.error('Error registering crd: ' + name);
     return false;
   }
 }

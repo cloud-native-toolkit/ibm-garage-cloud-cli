@@ -1,4 +1,4 @@
-import {Client1_13 as Client} from 'kubernetes-client';
+import {Client1_22 as Client} from '@cloudnativetoolkit/kubernetes-client';
 import {BuildContext, Container, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {KubeBackend} from './client.api';

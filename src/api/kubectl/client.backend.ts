@@ -12,6 +12,6 @@ export class InClusterBackend implements KubeBackend {
 
 export class DefaultBackend implements KubeBackend {
   getValue(): any {
-    return { version: '1.13' };
+    return { version: '1.22' };
   }
 }

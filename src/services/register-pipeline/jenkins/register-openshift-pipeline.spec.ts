@@ -89,7 +89,7 @@ describe('register-openshift-pipeline', () => {
 
         expect(result.jenkinsUrl).toEqual(`https://${jenkinsHost}`);
 
-        expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.yaml`, YAML.safeDump(buildConfig));
+        expect(mock_writeFile).toHaveBeenCalledWith(`${process.cwd()}/pipeline-build-config.yaml`, YAML.dump(buildConfig));
 
         expect(mock_createBuildPipeline).toHaveBeenCalledWith(pipelineName, fileName, pipelineNamespace);
       });
