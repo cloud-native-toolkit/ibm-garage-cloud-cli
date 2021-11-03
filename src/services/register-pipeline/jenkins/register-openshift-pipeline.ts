@@ -1,6 +1,6 @@
 import {Inject} from 'typescript-ioc';
 import {prompt, QuestionCollection} from 'inquirer';
-import * as YAML from 'json2yaml';
+import * as YAML from 'js-yaml';
 import path = require('path');
 
 import {JenkinsMissingError, RegisterPipelineOptions} from '../register-pipeline.api';
@@ -65,7 +65,7 @@ export class RegisterOpenshiftPipeline implements RegisterPipelineType {
 
     const fileName = await this.fsPromises.writeFile(
       path.join(process.cwd(), './pipeline-build-config.yaml'),
-      YAML.safeDump(buildConfig)
+      YAML.dump(buildConfig)
     );
 
     await this.createBuildPipeline(buildConfig.metadata.name, fileName, options.pipelineNamespace);

@@ -1,6 +1,6 @@
 import {Container} from 'typescript-ioc';
 import * as superagent from 'superagent';
-import * as YAML from 'json2yaml';
+import * as YAML from 'js-yaml';
 
 import {EnablePipelineImpl} from './enable';
 import {factoryFromValue, mockField} from '../../testHelper';
@@ -96,7 +96,7 @@ describe('enable', () => {
             },
           };
 
-          (superagent as any).__setMockResponse({text: YAML.safeDump(expectedResult)});
+          (superagent as any).__setMockResponse({text: YAML.dump(expectedResult)});
 
           const actualResult = await classUnderTest.getPipelineRepoIndex(repoUrl);
 
