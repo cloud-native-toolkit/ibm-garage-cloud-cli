@@ -46,7 +46,7 @@ exports.handler = async (argv: Arguments<{namespace: string; yaml: boolean} & Co
 
     if (argv.yaml) {
       console.log('Credentials:');
-      console.log(YAML.stringify(result));
+      console.log(YAML.dump(result));
     } else {
       console.log('Credentials: ', result);
     }

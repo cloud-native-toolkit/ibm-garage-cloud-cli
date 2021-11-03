@@ -45,6 +45,6 @@ export class Kustomization implements IKustomization {
   }
 
   asYamlString(): string {
-    return YAML.safeDump(this.asJson());
+    return YAML.dump(this.asJson());
   }
 }

@@ -19,6 +19,6 @@ exports.handler = async (argv: Arguments<YqWriteOptions>) => {
   const result = await yqWrite.write(argv);
 
   if (!argv.inplace) {
-    console.log(YAML.safeDump(result));
+    console.log(YAML.dump(result));
   }
 };

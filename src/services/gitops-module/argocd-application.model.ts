@@ -67,6 +67,6 @@ export class ArgoApplication implements IArgoApplication {
   }
 
   asYamlString(): string {
-    return YAML.safeDump(this.asJson());
+    return YAML.dump(this.asJson());
   }
 }

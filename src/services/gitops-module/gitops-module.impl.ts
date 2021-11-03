@@ -84,7 +84,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     if (gitopsConfigFile) {
       return await parseFile(gitopsConfigFile) as GitOpsConfig;
     } else if (process.env.GITOPS_CONFIG) {
-      return YAML.load(process.env.GITOPS_CONFIG);
+      return YAML.load(process.env.GITOPS_CONFIG) as GitOpsConfig;
     } else {
       const credential: GitOpsCredential = this.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
 
@@ -100,7 +100,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     if (gitopsCredentialsFile) {
       return await parseFile(gitopsCredentialsFile) as GitOpsCredentials;
     } else if (process.env.GIT_CREDENTIALS) {
-      return YAML.load(process.env.GIT_CREDENTIALS);
+      return YAML.load(process.env.GIT_CREDENTIALS) as GitOpsCredentials;
     } else {
       return [{
         repo: '*',
