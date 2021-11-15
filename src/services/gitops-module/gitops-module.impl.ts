@@ -40,6 +40,10 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
     const argocdRepoConfig = await this.setupArgo(input, layerConfig['argocd-config'], payloadRepoConfig);
 
+    if (options.autoMerge) {
+
+    }
+
     return {payloadRepoConfig, argocdRepoConfig};
   }
 
@@ -136,10 +140,19 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       await git.cwd({path: repoDir, root: true});
 
-      if (input.branch) {
-        this.logger.debug(`Switching to branch ${input.branch}`);
-        await git.checkoutBranch(input.branch, `origin/${input.branch}`);
+      const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
+        if (inputBranch) {
+          return inputBranch;
+        }
+
+        return git.branch().then(result => result.current);
       }
+
+      const currentBranch = await getCurrentBranch(input.branch)
+      const devBranch = `${input.name}-payload`;
+
+      this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
+      await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
 
       this.logger.debug('Configuring git username and password');
       await git.addConfig('user.email', this.userConfig.email, true, 'local');
@@ -149,9 +162,9 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
       this.logger.debug('Result from copy', copyResult);
 
-      await this.addCommitPush(git, `Adds payload yaml for ${input.name}`, 'ours', async () => false);
+      await this.addCommitPushBranch(git, `Adds payload yaml for ${input.name}`, devBranch);
 
-      this.logger.log(`  Application payload added to ${config.repo} in path ${payloadPath}`)
+      this.logger.log(`  Application payload added to ${config.repo} branch ${devBranch} in path ${payloadPath}`)
 
       const branchResult = await git.branch();
 
@@ -188,7 +201,21 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       await git.cwd({path: repoDir, root: true});
 
-      this.logger.debug('Configuring git username and password');
+      const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
+        if (inputBranch) {
+          return inputBranch;
+        }
+
+        return git.branch().then(result => result.current);
+      }
+
+      const currentBranch = await getCurrentBranch(input.branch)
+      const devBranch = `${input.name}-argocd`;
+
+      this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
+      await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
+
+      this.logger.debug('Configuring git username and email');
       await git.addConfig('user.email', this.userConfig.email, true, 'local');
       await git.addConfig('user.name', this.userConfig.name, true, 'local');
 
@@ -230,11 +257,10 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       await addKustomizeResource();
 
       // commit and push changes
-      await this.addCommitPush(
+      await this.addCommitPushBranch(
         git,
         `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`,
-        'theirs',
-        addKustomizeResource
+        devBranch
       );
 
       this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
@@ -255,6 +281,15 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       // clean up repo dir
       await fs.remove(repoDir).catch(err => null);
     }
+  }
+
+  async addCommitPushBranch(git: SimpleGit, message: string, branch: string): Promise<void> {
+    this.logger.debug(`  ** Adding and committing changes to repo`);
+    await git.add('.');
+    await git.commit(message);
+
+    this.logger.debug(`  ** Pushing changes`);
+    const success = await git.push('origin', branch).then(() => true).catch(() => false);
   }
 
   async addCommitPush(git: SimpleGit, message: string, strategy: 'theirs' | 'ours', reapplyChanges: () => Promise<boolean>, retryCount: number = 20): Promise<void> {

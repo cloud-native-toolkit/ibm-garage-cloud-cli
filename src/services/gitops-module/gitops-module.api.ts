@@ -41,6 +41,7 @@ export type GitOpsModuleOptions = GitOpsModuleInputBase & Partial<GitOpsModuleIn
   bootstrapRepoUrl?: string;
   gitopsConfigFile?: string;
   gitopsCredentialsFile?: string;
+  autoMerge?: boolean;
   token?: string;
   valueFiles?: string;
 };
