@@ -32,11 +32,11 @@ export async function apiFromUrl(repoUrl: string, credentials: {username: string
 }
 
 export async function gitRepoConfigFromUrl(repoUrl: string, credentials: {username: string, password: string}, branch = 'master'): Promise<TypedGitRepoConfig> {
-  const config: AuthGitRepoConfig = Object.assign({}, parseGitUrl(repoUrl), _.pick(credentials, ['username', 'password']), {branch});
+  const config: AuthGitRepoConfig = Object.assign({}, parseGitUrl(repoUrl), _.pick(credentials, ['username', 'password']), {branch}) as any;
 
   const type: GitHost = await getGitRepoType(config);
 
-  return Object.assign({}, config, {type});
+  return Object.assign({}, config, {type}) as any;
 }
 
 async function getGitRepoType(config: AuthGitRepoConfig): Promise<GitHost> {

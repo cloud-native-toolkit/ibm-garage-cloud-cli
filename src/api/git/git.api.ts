@@ -61,6 +61,26 @@ export enum GitEvent {
   PUSH = 'push'
 }
 
+export interface CreatePullRequestOptions {
+  title: string;
+  sourceBranch: string;
+  targetBranch: string;
+  draft?: boolean;
+  issue?: number;
+  maintainer_can_modify?: boolean;
+}
+
+export interface MergePullRequestOptions {
+  pullNumber: number;
+  method: 'merge' | 'squash' | 'rebase';
+  title?: string;
+  message?: string;
+}
+
+export interface PullRequest {
+  pullNumber: number;
+}
+
 export abstract class LocalGitApi {
   abstract listFiles(): Promise<Array<{path: string, url?: string}>>;
 
@@ -75,6 +95,10 @@ export abstract class GitApi extends LocalGitApi {
   abstract createWebhook(request: CreateWebhook): Promise<string>;
 
   abstract buildWebhookParams(eventId: GitEvent): WebhookParams;
+
+  abstract createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest>;
+
+  abstract mergePullRequest(options: MergePullRequestOptions): Promise<string>;
+
+  abstract updatePullRequestBranch(pullNumber: number): Promise<string>;
 }
-
-

@@ -1,6 +1,14 @@
 import {get, post, Response} from 'superagent';
 
-import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
+import {
+  CreatePullRequestOptions,
+  CreateWebhook,
+  GitApi,
+  GitEvent,
+  GitHeader, MergePullRequestOptions, PullRequest,
+  UnknownWebhookError,
+  WebhookAlreadyExists
+} from './git.api';
 import {GitBase} from './git.base';
 import {TypedGitRepoConfig} from './git.model';
 import {isResponseError} from '../../util/superagent-support';
@@ -92,6 +100,21 @@ export class Gitlab extends GitBase implements GitApi {
     const fileResponse: FileResponse = response.body;
 
     return new Buffer(fileResponse.content, fileResponse.encoding);
+  }
+
+  async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest> {
+
+    throw new Error('Method not implemented: createPullRequest')
+  }
+
+  async mergePullRequest(options: MergePullRequestOptions): Promise<string> {
+
+    throw new Error('Method not implemented: mergePullRequest')
+  }
+
+  async updatePullRequestBranch(pullNumber:number): Promise<string> {
+
+    throw new Error('Method not implemented: updatePullRequestBranch')
   }
 
   async getDefaultBranch(): Promise<string> {

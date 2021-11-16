@@ -1,12 +1,19 @@
-import {get, post, Response} from 'superagent';
+import {get, post, put, Response} from 'superagent';
 
-import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
-import {TypedGitRepoConfig} from './git.model';
+import {
+  CreatePullRequestOptions,
+  CreateWebhook,
+  GitApi,
+  GitEvent,
+  GitHeader,
+  MergePullRequestOptions,
+  PullRequest,
+  UnknownWebhookError,
+  WebhookAlreadyExists
+} from './git.api';
+import {GitHookConfig, GitHookContentType, TypedGitRepoConfig} from './git.model';
 import {GitBase} from './git.base';
 import {isResponseError} from '../../util/superagent-support';
-import {GitHookConfig} from '../../services/git-secret';
-import fs from 'fs';
-import path from 'path';
 
 export interface GitHookData {
   name: 'web';
@@ -89,6 +96,37 @@ abstract class GithubCommon extends GitBase implements GitApi {
     return treeResponse.default_branch;
   }
 
+  async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest> {
+
+    const response: Response = await this.post('/pulls', {
+      title: options.title,
+      head: options.sourceBranch,
+      base: options.targetBranch,
+      maintainer_can_modify: options.maintainer_can_modify,
+      draft: options.draft || false,
+    });
+
+    return {pullNumber: response.body.number}
+  }
+
+  async mergePullRequest(options: MergePullRequestOptions): Promise<string> {
+
+    const response: Response = await this.put(`/pulls/${options.pullNumber}/merge`, {
+      commit_title: options.title,
+      commit_message: options.message,
+      merge_method: options.method,
+    });
+
+    return response.body.message;
+  }
+
+  async updatePullRequestBranch(pullNumber:number): Promise<string> {
+
+    const response: Response = await this.put(`/pulls/${pullNumber}/update-branch`);
+
+    return response.body.message;
+  }
+
   async createWebhook(options: CreateWebhook): Promise<string> {
 
     try {
@@ -153,18 +191,28 @@ abstract class GithubCommon extends GitBase implements GitApi {
       .send(data);
   }
 
+  async put(uri: string, data: any = {}): Promise<Response> {
+    return put(this.getBaseUrl() + uri)
+      .auth(this.config.username, this.config.password)
+      .set('User-Agent', `${this.config.username} via ibm-garage-cloud cli`)
+      .accept('application/vnd.github.v3+json')
+      .send(data);
+  }
+
   buildWebhookData({jenkinsUrl, webhookUrl}: {jenkinsUrl?: string, webhookUrl?: string}): GitHookData {
-    const url = webhookUrl ? webhookUrl : `${jenkinsUrl}/github-webhook/`;
+    const url: string = webhookUrl ? webhookUrl : `${jenkinsUrl}/github-webhook/`;
+
+    const config: GitHookConfig = {
+      url,
+      content_type: GitHookContentType.json,
+      insecure_ssl: GitHookUrlVerification.performed as any,
+    };
 
     const pushGitHook: GitHookData = {
       name: 'web',
       events: [GithubEvent.push],
       active: true,
-      config: {
-        url,
-        content_type: 'json',
-        insecure_ssl: GitHookUrlVerification.performed,
-      }
+      config,
     };
 
     return pushGitHook;

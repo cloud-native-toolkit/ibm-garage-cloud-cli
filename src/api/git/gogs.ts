@@ -3,7 +3,15 @@ import * as _ from 'lodash';
 import * as fs from 'fs';
 import * as StreamZip from 'node-stream-zip';
 
-import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
+import {
+  CreatePullRequestOptions,
+  CreateWebhook,
+  GitApi,
+  GitEvent,
+  GitHeader, MergePullRequestOptions, PullRequest,
+  UnknownWebhookError,
+  WebhookAlreadyExists
+} from './git.api';
 import {GitBase} from './git.base';
 import {TypedGitRepoConfig} from './git.model';
 import {isResponseError} from '../../util/superagent-support';
@@ -109,6 +117,21 @@ export class Gogs extends GitBase implements GitApi {
     return response.body.sha1;
   }
 
+  async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest> {
+
+    throw new Error('Method not implemented: createPullRequest')
+  }
+
+  async mergePullRequest(options: MergePullRequestOptions): Promise<string> {
+
+    throw new Error('Method not implemented: mergePullRequest')
+  }
+
+  async updatePullRequestBranch(pullNumber:number): Promise<string> {
+
+    throw new Error('Method not implemented: updatePullRequestBranch')
+  }
+
   async listFiles(): Promise<Array<{path: string, url?: string, contents?: string}>> {
     try {
       const token: string = await this.getToken();
@@ -128,7 +151,7 @@ export class Gogs extends GitBase implements GitApi {
         storeEntries: true,
       });
 
-      return new Promise((resolve) => {
+      return new Promise<Array<{path: string, url?: string, contents?: string}>>((resolve) => {
         zip.on('ready', () => {
           const files = Object.values(zip.entries())
             .filter(entry => !entry.isDirectory)

@@ -1,6 +1,14 @@
 import {get, post, Response} from 'superagent';
 
-import {CreateWebhook, GitApi, GitEvent, GitHeader, UnknownWebhookError, WebhookAlreadyExists} from './git.api';
+import {
+  CreatePullRequestOptions,
+  CreateWebhook,
+  GitApi,
+  GitEvent,
+  GitHeader, MergePullRequestOptions, PullRequest,
+  UnknownWebhookError,
+  WebhookAlreadyExists
+} from './git.api';
 import {TypedGitRepoConfig} from './git.model';
 import {GitBase} from './git.base';
 import {isResponseError} from '../../util/superagent-support';
@@ -56,6 +64,21 @@ export class Bitbucket extends GitBase implements GitApi {
 
   getBaseUrl(): string {
     return `${this.config.protocol}://api.bitbucket.org/2.0/repositories/${this.config.owner}/${this.config.repo}`;
+  }
+
+  async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest> {
+
+    throw new Error('Method not implemented: createPullRequest')
+  }
+
+  async mergePullRequest(options: MergePullRequestOptions): Promise<string> {
+
+    throw new Error('Method not implemented: mergePullRequest')
+  }
+
+  async updatePullRequestBranch(pullNumber:number): Promise<string> {
+
+    throw new Error('Method not implemented: updatePullRequestBranch')
   }
 
   async listFiles(): Promise<Array<{path: string, url?: string}>> {
