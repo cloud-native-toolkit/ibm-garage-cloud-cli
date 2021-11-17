@@ -5,16 +5,21 @@ import {
   NamespaceMissingError,
   PipelineNamespaceNotProvided,
   RegisterPipeline,
-  RegisterPipelineOptions, WebhookError
+  RegisterPipelineOptions,
+  WebhookError
 } from './register-pipeline.api';
 import {RegisterIksPipeline, RegisterOpenshiftPipeline, RegisterPipelineType} from './jenkins';
 import {CreateWebhook, CreateWebhookOptions} from '../create-webhook';
-import {CreateGitSecret, GitConfig, GitParams} from '../git-secret';
+import {CreateGitSecret, GitParams} from '../git-secret';
 import {Namespace as NamespaceService} from '../namespace';
-import {gitRepoConfigFromUrl, isCreateWebhookError, TypedGitRepoConfig, UnknownWebhookError, WebhookAlreadyExists, CreateWebhookErrorTypes} from '../../api/git'
+import {
+  CreateWebhookErrorTypes,
+  gitRepoConfigFromUrl,
+  isCreateWebhookError,
+  TypedGitRepoConfig
+} from '@cloudnativetoolkit/git-client';
 import {KubeConfigMap, KubeNamespace, KubeSecret} from '../../api/kubectl';
 import {ClusterType} from '../../util/cluster-type';
-import {CommandError, ErrorSeverity, ErrorType} from '../../util/errors';
 
 const noopNotifyStatus: (status: string) => void = () => {};
 

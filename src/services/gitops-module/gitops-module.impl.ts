@@ -16,7 +16,7 @@ import {ArgoApplication} from './argocd-application.model';
 import {IKustomization, Kustomization} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
-import {apiFromUrl, GitApi} from '../../api/git';
+import {apiFromUrl, GitApi} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
 import {File} from '../../util/file-util';
 

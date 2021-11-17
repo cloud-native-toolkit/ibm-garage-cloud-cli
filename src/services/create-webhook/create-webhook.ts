@@ -1,6 +1,6 @@
 import {CreateWebhookOptions} from './create-webhook-options.model';
 import {CreateWebhook} from './create-webhook.api';
-import {apiFromUrl, GitApi} from '../../api/git'
+import {apiFromUrl, GitApi} from '@cloudnativetoolkit/git-client';
 
 export class CreateWebhookImpl implements CreateWebhook {
 

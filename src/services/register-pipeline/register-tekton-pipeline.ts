@@ -53,10 +53,10 @@ import {
   GitEvent,
   isCreateWebhookError,
   LocalGitApi,
-  WebhookParams
-} from '../../api/git'
+  WebhookParams,
+  LocalGitRepo,
+} from '@cloudnativetoolkit/git-client'
 import {GetConsoleUrlApi} from '../console';
-import {LocalGitRepo} from '../../api/git/local';
 import {Logger} from '../../util/logger';
 import progressBar from '../../util/progress-bar';
 
