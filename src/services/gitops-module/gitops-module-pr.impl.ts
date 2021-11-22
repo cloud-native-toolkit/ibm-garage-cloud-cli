@@ -16,11 +16,11 @@ import {ArgoApplication} from './argocd-application.model';
 import {IKustomization, Kustomization} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
-import {apiFromUrl, GitApi} from '@cloudnativetoolkit/git-client';
+import {apiFromUrl, GitApi, PullRequest} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
 import {File} from '../../util/file-util';
 
-export class GitopsModuleImpl implements GitOpsModuleApi {
+export class GitopsModulePRImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
   userConfig = {
     email: 'cloudnativetoolkit@gmail.com',
@@ -36,11 +36,24 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     const layerConfig: LayerConfig = input.gitopsConfig[input.layer];
     this.logger.debug('Building with layer config: ', layerConfig);
 
-    const payloadRepoConfig = await this.setupPayload(input, layerConfig.payload);
+    const payloadGit: GitApi = await this.loadGitApi(input, layerConfig.payload);
+    const payloadRepoConfig = await this.setupPayload(payloadGit, input, layerConfig.payload);
 
-    const argocdRepoConfig = await this.setupArgo(input, layerConfig['argocd-config'], payloadRepoConfig);
+    const argocdGit: GitApi = await this.loadGitApi(input, layerConfig['argocd-config']);
+    const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig);
+
+    if (options.autoMerge) {
+      await payloadGit.mergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash'});
+      await argocdGit.mergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash'});
+    }
 
     return {payloadRepoConfig, argocdRepoConfig};
+  }
+
+  async loadGitApi(input: GitOpsModuleInput, config: PayloadConfig): Promise<GitApi> {
+    const credentials: GitOpsCredential = this.lookupGitCredential(input.gitopsCredentials, config.repo)
+
+    return apiFromUrl(config.url, {username: credentials.username, password: credentials.token});
   }
 
   async defaultInputs(options: GitOpsModuleOptions): Promise<GitOpsModuleInput> {
@@ -111,51 +124,51 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupPayload(input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string}> {
-    const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
+  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber: number}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
     const payloadPath = input.isNamespace
       ? `${config.path}/namespace/${input.name}/namespace`
       : `${config.path}/namespace/${input.namespace}/${input.applicationPath}`;
+    const message = `Adds payload yaml for ${input.name}`;
 
     // create repo dir
     await fs.mkdirp(repoDir);
 
     try {
 
-      const git: SimpleGit = simpleGit({baseDir: input.tmpDir});
+      const git: SimpleGit = await gitApi.clone(repoDir, {baseDir: input.tmpDir, config: {'user.email': this.userConfig.email, 'user.name': this.userConfig.name}})
 
-      this.logger.debug(`Cloning ${config.repo} into ${repoDir}`);
+      const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
+        if (inputBranch) {
+          return inputBranch;
+        }
 
-      // clone into repo dir
-      await git.clone(`https://${token}@${config.repo}`, repoDir);
-
-      this.logger.debug(`Changing working directory to ${repoDir}`);
-
-      await git.cwd({path: repoDir, root: true});
-
-      if (input.branch) {
-        this.logger.debug(`Switching to branch ${input.branch}`);
-        await git.checkoutBranch(input.branch, `origin/${input.branch}`);
+        return git.branch().then(result => result.current);
       }
 
-      this.logger.debug('Configuring git username and password');
-      await git.addConfig('user.email', this.userConfig.email, true, 'local');
-      await git.addConfig('user.name', this.userConfig.name, true, 'local');
+      const currentBranch = await getCurrentBranch(input.branch)
+      const devBranch = `${input.name}-payload`;
+
+      this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
+      await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
 
       this.logger.debug(`Copying from ${input.contentDir} to ${repoDir}/${payloadPath}`);
       const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
       this.logger.debug('Result from copy', copyResult);
 
-      await this.addCommitPush(git, `Adds payload yaml for ${input.name}`, 'ours', async () => false);
+      await this.addCommitPushBranch(git, message, devBranch);
 
-      this.logger.log(`  Application payload added to ${config.repo} in path ${payloadPath}`)
+      this.logger.log(`  Application payload added to ${config.repo} branch ${devBranch} in path ${payloadPath}`)
 
-      const branchResult = await git.branch();
+      const pullRequest: PullRequest = await gitApi.createPullRequest({
+        title: message,
+        sourceBranch: devBranch,
+        targetBranch: currentBranch,
+      });
 
-      const result = {path: payloadPath, url: `https://${config.repo}`, branch: branchResult.current};
+      const result = {path: payloadPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber};
 
       this.logger.debug('Application payload result', {result});
 
@@ -169,8 +182,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupArgo(input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string}> {
-    const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
+  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string, pullNumber: number}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -179,18 +191,21 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     await fs.mkdirp(repoDir);
 
     try {
-      const git: SimpleGit = simpleGit({baseDir: input.tmpDir});
+      const git: SimpleGit = await gitApi.clone(repoDir, {baseDir: input.tmpDir, userConfig: this.userConfig})
 
-      this.logger.debug(`Cloning ${config.repo} into ${repoDir}`);
+      const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
+        if (inputBranch) {
+          return inputBranch;
+        }
 
-      // clone into repo dir
-      await git.clone(`https://${token}@${config.repo}`, repoDir);
+        return git.branch().then(result => result.current);
+      }
 
-      await git.cwd({path: repoDir, root: true});
+      const currentBranch = await getCurrentBranch(input.branch)
+      const devBranch = `${input.name}-argocd`;
 
-      this.logger.debug('Configuring git username and password');
-      await git.addConfig('user.email', this.userConfig.email, true, 'local');
-      await git.addConfig('user.name', this.userConfig.name, true, 'local');
+      this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
+      await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
 
       // create overlay config path
       const overlayPath = `${config.path}/cluster/${input.serverName}`;
@@ -229,21 +244,19 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
 
       await addKustomizeResource();
 
+      const message = `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`;
       // commit and push changes
-      await this.addCommitPush(
-        git,
-        `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`,
-        'theirs',
-        addKustomizeResource
-      );
+      await this.addCommitPushBranch(git, message, devBranch);
 
       this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
 
-      const branchResult = await git.branch();
+      const pullRequest: PullRequest = await gitApi.createPullRequest({
+        title: message,
+        sourceBranch: devBranch,
+        targetBranch: currentBranch,
+      });
 
-      await git.cwd({path: input.tmpDir, root: true});
-
-      const result = {path: overlayPath, url: `https://${config.repo}`, branch: branchResult.current};
+      const result = {path: overlayPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber};
 
       this.logger.debug('ArgoCD config result', {result})
 
@@ -255,6 +268,15 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
       // clean up repo dir
       await fs.remove(repoDir).catch(err => null);
     }
+  }
+
+  async addCommitPushBranch(git: SimpleGit, message: string, branch: string): Promise<void> {
+    this.logger.debug(`  ** Adding and committing changes to repo`);
+    await git.add('.');
+    await git.commit(message);
+
+    this.logger.debug(`  ** Pushing changes`);
+    const success = await git.push('origin', branch).then(() => true).catch(() => false);
   }
 
   async addCommitPush(git: SimpleGit, message: string, strategy: 'theirs' | 'ours', reapplyChanges: () => Promise<boolean>, retryCount: number = 20): Promise<void> {

@@ -1,9 +1,6 @@
 import {Arguments, Argv} from 'yargs';
-import {Container} from 'typescript-ioc';
 
-import {GitOpsModuleApi, GitOpsModuleOptions} from '../services/gitops-module';
-import {Logger, verboseLoggerFactory} from '../util/logger';
-import {ClaimedMutex, IMutex, Mutex, NoopMutex} from '../util/mutex';
+import {GitOpsModuleOptions} from '../services/gitops-module';
 import {commonHandler} from './support/gitops-module-common';
 
 export const command = 'gitops-namespace [name] [contentDir]';
@@ -72,8 +69,14 @@ export const builder = (yargs: Argv<any>) => {
     .option('lock', {
       describe: 'Git repo locking style',
       demandOption: false,
-      choices: ['optimistic', 'pessimistic', 'o', 'p'],
-      default: 'optimistic',
+      choices: ['optimistic', 'pessimistic', 'branch', 'o', 'p', 'b'],
+      default: 'pessimistic',
+    })
+    .option('autoMerge', {
+      describe: 'Flag indicating that the branch/PR should be automatically merged. Only applies if lock strategy is branch',
+      type: 'boolean',
+      demandOption: false,
+      default: true
     })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',

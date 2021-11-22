@@ -1,13 +1,6 @@
 import {GitParametersOptions} from './git-parameters-options.model';
 import {GitParams} from './index';
 
-export enum GitEvents {
-  push = 'push',
-  pullRequest = 'pull_request'
-}
-
-type GitHookContentType = 'json' | 'form';
-
 export class GitSlug {
   protocol: string;
   host: string;
@@ -18,25 +11,6 @@ export class GitSlug {
 export class GitConfig extends GitSlug {
   url: string;
   type: string;
-}
-
-export enum GitHookUrlVerification {
-  performed = '0',
-  notPerformed = '1'
-}
-
-export interface GitHookData {
-  name: 'web';
-  active: boolean;
-  events: GitEvents[];
-  config: GitHookConfig;
-}
-
-export interface GitHookConfig {
-  url: string;
-  content_type: GitHookContentType;
-  secret?: string;
-  insecure_ssl?: GitHookUrlVerification;
 }
 
 export interface GitlabHookData {

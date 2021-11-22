@@ -4,7 +4,7 @@ import {GitParametersOptions} from './git-parameters-options.model';
 import {GitParams} from './git-params.model';
 import {execPromise, ExecResult} from '../../util/child-process';
 import {QuestionBuilder} from '../../util/question-builder';
-import {apiFromUrl, GitApi, parseGitUrl} from '../../api/git';
+import {apiFromUrl, GitApi, parseGitUrl} from '@cloudnativetoolkit/git-client';
 import * as chalk from 'chalk';
 
 interface GitQuestion {

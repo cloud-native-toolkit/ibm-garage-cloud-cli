@@ -4,9 +4,13 @@ import {Container} from 'typescript-ioc';
 import {GitOpsModuleApi, GitOpsModuleOptions} from '../../services/gitops-module';
 import {Logger, verboseLoggerFactory} from '../../util/logger';
 import {ClaimedMutex, IMutex, Mutex, NoopMutex} from '../../util/mutex';
+import {GitopsModulePRImpl} from '../../services/gitops-module/gitops-module-pr.impl';
 
 export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}>) => {
   Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
+  if (argv.lock === 'branch' || argv.lock === 'b') {
+    Container.bind(GitOpsModuleApi).to(GitopsModulePRImpl);
+  }
 
   const logger: Logger = Container.get(Logger);
 
@@ -27,9 +31,9 @@ export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug
 };
 
 function createMutex(lock: string, tmpDir: string, scope: string, logger: Logger): IMutex {
-  if (lock === 'optimistic' || lock === 'o') {
-    return new NoopMutex();
+  if (lock === 'pessimistic' || lock === 'p') {
+    return new Mutex(tmpDir, scope, logger);
   }
 
-  return new Mutex(tmpDir, scope, logger);
+  return new NoopMutex();
 }
