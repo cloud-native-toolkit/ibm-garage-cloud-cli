@@ -43,8 +43,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig);
 
     if (options.autoMerge) {
-      await payloadGit.mergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash'});
-      await argocdGit.mergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash'});
+      await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash'});
+      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash'});
     }
 
     return {payloadRepoConfig, argocdRepoConfig};
