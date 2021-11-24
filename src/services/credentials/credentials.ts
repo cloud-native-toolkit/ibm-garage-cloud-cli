@@ -96,8 +96,8 @@ export class CredentialsImpl implements Credentials {
         this.getArgoCdCredentials(namespace),
         this.getJenkinsCredentials(namespace),
       ]),
-      this.kubeSecret.listData(listOptions, ['jenkins-access']),
-      this.kubeConfigMap.listData(listOptions, ['ibmcloud-config', 'cloud-config']),
+      this.kubeSecret.listData<object>(listOptions, ['jenkins-access']),
+      this.kubeConfigMap.listData<object>(listOptions, ['ibmcloud-config', 'cloud-config']),
     ]);
 
     return this.group(_.assign({}, ...(_.flatten(results))));
