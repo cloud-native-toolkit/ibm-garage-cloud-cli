@@ -1,6 +1,6 @@
 import {Inject} from 'typescript-ioc';
 import * as _ from 'lodash';
-import {query} from 'jsonpath';
+import * as jsonpath from 'jsonpath';
 import * as YAML from 'js-yaml';
 
 import {YqWriteOptions} from './yq-write.options';
@@ -35,7 +35,7 @@ export class YqWriteImpl implements YqWrite {
       const jsonQuery = field.substring(0, pos);
       const leaf = field.substring(pos + 1);
 
-      const childObj = query(obj, jsonQuery);
+      const childObj = jsonpath.query(obj, jsonQuery);
 
       if (Array.isArray(childObj)) {
         childObj.forEach(element => {
