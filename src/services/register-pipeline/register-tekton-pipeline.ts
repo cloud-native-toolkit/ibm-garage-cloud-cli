@@ -425,7 +425,7 @@ export class RegisterTektonPipeline implements RegisterPipeline {
       pipeline
     );
 
-    const pipelineChoices: Array<ChoiceOptions<{ pipelineName: string }>> = filteredPipelines
+    const pipelineChoices: Array<ChoiceOptions> = filteredPipelines
       .map(p => p.metadata.name)
       .map(name => ({ name, value: name }));
 

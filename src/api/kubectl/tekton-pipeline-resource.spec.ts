@@ -9,15 +9,15 @@ describe('tekton-pipeline-resource', () => {
     expect(true).toEqual(true);
   });
 
-  describe('given KubeTektonPipelineResource', () => {
-    let classUnderTest: KubeTektonPipelineResource;
-
-    beforeEach(() => {
-      Container
-        .bind(KubeClient)
-        .factory(mockKubeClientFactory);
-
-      classUnderTest = Container.get(KubeTektonPipelineResource);
-    });
-  });
+  // describe('given KubeTektonPipelineResource', () => {
+  //   let classUnderTest: KubeTektonPipelineResource;
+  //
+  //   beforeEach(() => {
+  //     Container
+  //       .bind(KubeClient)
+  //       .factory(mockKubeClientFactory);
+  //
+  //     classUnderTest = Container.get(KubeTektonPipelineResource);
+  //   });
+  // });
 });

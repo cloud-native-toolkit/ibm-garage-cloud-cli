@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 
 import {GitOpsModuleOptions} from '../services/gitops-module';
-import {commonHandler} from './support/gitops-module-common';
+import {defaultAutoMerge, commonHandler} from './support/gitops-module-common';
 
 export const command = 'gitops-namespace [name] [contentDir]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';
@@ -76,7 +76,7 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Flag indicating that the branch/PR should be automatically merged. Only applies if lock strategy is branch',
       type: 'boolean',
       demandOption: false,
-      default: true
+      default: defaultAutoMerge(),
     })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',

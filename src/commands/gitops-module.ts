@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 
 import {GitOpsLayer, GitOpsModuleOptions} from '../services/gitops-module';
-import {commonHandler} from './support/gitops-module-common';
+import {defaultAutoMerge, commonHandler} from './support/gitops-module-common';
 
 export const command = 'gitops-module [name] [contentDir]';
 export const desc = 'Populates the gitops repo with the provided module contents and configures the ArgoCD application';
@@ -87,7 +87,7 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Flag indicating that the branch/PR should be automatically merged. Only applies if lock strategy is branch',
       type: 'boolean',
       demandOption: false,
-      default: true
+      default: defaultAutoMerge(),
     })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
