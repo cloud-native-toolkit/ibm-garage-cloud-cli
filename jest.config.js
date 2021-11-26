@@ -1,5 +1,5 @@
 module.exports = {
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   coveragePathIgnorePatterns: [
     "node_modules/",
@@ -20,4 +20,9 @@ module.exports = {
   setupFiles: [
     "jest-plugin-context/setup"
   ],
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
 };

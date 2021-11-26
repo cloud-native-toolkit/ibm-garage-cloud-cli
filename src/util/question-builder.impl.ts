@@ -1,8 +1,8 @@
 import inquirer, {ChoiceOptions, ListQuestion, prompt, Question} from 'inquirer';
 import {QuestionBuilder} from './question-builder.api';
 
-function isChoiceOption<T>(choice: ChoiceOptions<T>): choice is ChoiceOptions<T> {
-  return choice && !!(choice as ChoiceOptions<T>).value;
+function isChoiceOption<T>(choice: ChoiceOptions): choice is ChoiceOptions {
+  return choice && !!(choice as ChoiceOptions).value;
 }
 
 export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
@@ -34,14 +34,14 @@ export class QuestionBuilderImpl<T = any> extends QuestionBuilder<T> {
   }
 
   getChoiceValues(question: Question<T> | ListQuestion<T>): string[] {
-    const choices = (((question as ListQuestion<T>).choices) as Array<ChoiceOptions<T>>) || [];
+    const choices = (((question as ListQuestion<T>).choices) as Array<ChoiceOptions>) || [];
 
     return choices
       .map(this.mapChoiceTypeToValue)
       .filter(value => value !== undefined);
   }
 
-  mapChoiceTypeToValue(choice: ChoiceOptions<T> | string): string | undefined {
+  mapChoiceTypeToValue(choice: ChoiceOptions | string): string | undefined {
     if (typeof choice === 'string') {
       return choice;
     } else if (isChoiceOption(choice)) {

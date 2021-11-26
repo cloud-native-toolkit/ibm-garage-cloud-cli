@@ -6,6 +6,16 @@ import {Logger, verboseLoggerFactory} from '../../util/logger';
 import {ClaimedMutex, IMutex, Mutex, NoopMutex} from '../../util/mutex';
 import {GitopsModulePRImpl} from '../../services/gitops-module/gitops-module-pr.impl';
 
+export const defaultAutoMerge = (defaultValue: boolean = true): boolean => {
+  const autoMerge: string | undefined = process.env.AUTO_MERGE;
+
+  if (autoMerge === undefined || autoMerge === null || autoMerge === '') {
+    return defaultValue;
+  }
+
+  return autoMerge === 'true';
+}
+
 export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}>) => {
   Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
   if (argv.lock === 'branch' || argv.lock === 'b') {

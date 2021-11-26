@@ -9,15 +9,15 @@ describe('tekton-task', () => {
     expect(true).toEqual(true);
   });
 
-  describe('given KubeTektonTask', () => {
-    let classUnderTest: KubeTektonTask;
-
-    beforeEach(() => {
-      Container
-        .bind(KubeClient)
-        .factory(mockKubeClientFactory);
-
-      classUnderTest = Container.get(KubeTektonTask);
-    });
-  });
+  // describe('given KubeTektonTask', () => {
+  //   let classUnderTest: KubeTektonTask;
+  //
+  //   beforeEach(() => {
+  //     Container
+  //       .bind(KubeClient)
+  //       .factory(mockKubeClientFactory);
+  //
+  //     classUnderTest = Container.get(KubeTektonTask);
+  //   });
+  // });
 });

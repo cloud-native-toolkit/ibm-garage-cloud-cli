@@ -9,15 +9,15 @@ describe('tekton-pipeline', () => {
     expect(true).toEqual(true);
   });
 
-  describe('given KubeTektonPipeline', () => {
-    let classUnderTest: KubeTektonPipeline;
-
-    beforeEach(() => {
-      Container
-        .bind(KubeClient)
-        .factory(mockKubeClientFactory);
-
-      classUnderTest = Container.get(KubeTektonPipeline);
-    });
-  });
+  // describe('given KubeTektonPipeline', () => {
+  //   let classUnderTest: KubeTektonPipeline;
+  //
+  //   beforeEach(() => {
+  //     Container
+  //       .bind(KubeClient)
+  //       .factory(mockKubeClientFactory);
+  //
+  //     classUnderTest = Container.get(KubeTektonPipeline);
+  //   });
+  // });
 });
