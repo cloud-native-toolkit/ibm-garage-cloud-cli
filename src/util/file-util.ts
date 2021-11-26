@@ -20,6 +20,10 @@ export class FsPromises {
   }
 }
 
+export function isFile(file: File | string): file is File {
+  return !!file && !!(file as File).exists && !!(file as File).read && !!(file as File).write;
+}
+
 export class File {
   constructor(public filename: string) {}
 

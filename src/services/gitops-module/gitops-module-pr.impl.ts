@@ -1,24 +1,42 @@
 import * as fs from 'fs-extra';
-import simpleGit, {SimpleGit} from 'simple-git';
+import {SimpleGit} from 'simple-git';
 import * as YAML from 'js-yaml';
 import {Container} from 'typescript-ioc';
 
 import {
-  ArgoConfig, GitOpsConfig, GitOpsCredential,
+  ArgoConfig,
+  GitOpsConfig,
+  GitOpsCredential,
   GitOpsCredentials,
   GitOpsLayer,
   GitOpsModuleApi,
   GitOpsModuleInput,
   GitOpsModuleOptions,
-  GitOpsModuleResult, LayerConfig, PayloadConfig
+  GitOpsModuleResult,
+  LayerConfig,
+  PayloadConfig
 } from './gitops-module.api';
 import {ArgoApplication} from './argocd-application.model';
-import {IKustomization, Kustomization} from './kustomization.model';
+import {addKustomizeResource} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {apiFromUrl, GitApi, PullRequest} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
-import {File} from '../../util/file-util';
+
+const argocdResolver = (applicationPath: string) => {
+  return async (git: SimpleGit, conflicts: string[]): Promise<boolean> => {
+    const kustomizeYaml: string | undefined = first(conflicts.filter(f => /.*kustomization.yaml/.test(f)));
+
+    if (kustomizeYaml) {
+      await git.raw(['restore', kustomizeYaml]);
+      await addKustomizeResource(kustomizeYaml, applicationPath);
+
+      return true;
+    }
+
+    return false;
+  }
+}
 
 export class GitopsModulePRImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
@@ -44,7 +62,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
     if (options.autoMerge) {
       await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash'});
-      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash'});
+      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', resolver: argocdResolver(argocdRepoConfig.applicationFile)});
     }
 
     return {payloadRepoConfig, argocdRepoConfig};
@@ -182,7 +200,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string, pullNumber: number}> {
+  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string, pullNumber: number, applicationFile: string}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -228,21 +246,9 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       });
       await fs.writeFile(`${repoDir}/${overlayPath}/${applicationFile}`, argoApplication.asYamlString());
 
-      const kustomizeFile: File = new File(`${repoDir}/${overlayPath}/kustomization.yaml`);
+      const kustomizeFile: string =`${repoDir}/${overlayPath}/kustomization.yaml`;
 
-      const addKustomizeResource = async (): Promise<boolean> => {
-        const kustomize: Kustomization = await this.loadKustomize(kustomizeFile);
-
-        if (kustomize.containsResource(applicationFile)) {
-          return false;
-        }
-
-        kustomize.addResource(applicationFile);
-
-        return kustomizeFile.write(kustomize.asYamlString()).then(() => true);
-      };
-
-      await addKustomizeResource();
+      await addKustomizeResource(kustomizeFile, applicationFile);
 
       const message = `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`;
       // commit and push changes
@@ -256,7 +262,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         targetBranch: currentBranch,
       });
 
-      const result = {path: overlayPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber};
+      const result = {path: overlayPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber, applicationFile};
 
       this.logger.debug('ArgoCD config result', {result})
 
@@ -277,32 +283,6 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
     this.logger.debug(`  ** Pushing changes`);
     const success = await git.push('origin', branch).then(() => true).catch(() => false);
-  }
-
-  async addCommitPush(git: SimpleGit, message: string, strategy: 'theirs' | 'ours', reapplyChanges: () => Promise<boolean>, retryCount: number = 20): Promise<void> {
-    let success = false;
-    let count = 0;
-    do {
-      count += 1;
-
-      this.logger.debug(`  ** Adding and committing changes to repo`);
-      await git.add('.');
-      await git.commit(message);
-
-      this.logger.debug(`  ** Pulling from the repo to pick up any changes`);
-      await git.pull({'--rebase': 'true', '-s': 'recursive', '-X': strategy});
-
-      if (await reapplyChanges()) {
-        continue;
-      }
-
-      this.logger.debug(`  ** Pushing changes`);
-      success = await git.push().then(() => true).catch(() => false);
-    } while (!success && count < retryCount);
-
-    if (count >= retryCount) {
-      throw new Error('Exceeded retry count to push changes');
-    }
   }
 
   lookupGitCredential(credentials: GitOpsCredentials, repo: string): GitOpsCredential {
@@ -329,17 +309,6 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
 
     return credential.token;
-  }
-
-  async loadKustomize(kustomizeFile: File): Promise<Kustomization> {
-
-    if (!await kustomizeFile.exists()) {
-      return new Kustomization();
-    }
-
-    const kustomize: IKustomization = await kustomizeFile.readYaml();
-
-    return new Kustomization(kustomize);
   }
 }
 

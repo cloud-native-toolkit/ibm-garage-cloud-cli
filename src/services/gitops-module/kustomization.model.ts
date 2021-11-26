@@ -1,4 +1,5 @@
 import * as YAML from 'js-yaml';
+import {File, isFile} from '../../util/file-util';
 
 export interface IKustomization {
   resources: string[];
@@ -10,7 +11,7 @@ export class Kustomization implements IKustomization {
 
   constructor(config?: IKustomization) {
     Object.assign(
-      this,
+      this as any,
       config && config.resources ? config : {resources: []},
       config ? {config} : {config: {apiVersion: 'kustomize.config.k8s.io/v1beta1', kind: 'Kustomization'}}
     );
@@ -19,6 +20,7 @@ export class Kustomization implements IKustomization {
   addResource(resource: string): Kustomization {
     if (!this.containsResource(resource)) {
       this.resources.push(resource);
+      this.resources.sort()
     }
 
     return this;
@@ -47,4 +49,32 @@ export class Kustomization implements IKustomization {
   asYamlString(): string {
     return YAML.dump(this.asJson());
   }
+}
+
+export const addKustomizeResource = async (kustomizeFile: string | File, path: string): Promise<boolean> => {
+
+  const file: File = isFile(kustomizeFile) ? kustomizeFile : new File(kustomizeFile);
+
+  const kustomize: Kustomization = await loadKustomize(kustomizeFile);
+
+  if (kustomize.containsResource(path)) {
+    return false;
+  }
+
+  kustomize.addResource(path);
+
+  return file.write(kustomize.asYamlString()).then(() => true);
+};
+
+export const loadKustomize = async (kustomizeFile: File | string): Promise<Kustomization> => {
+
+  const file: File = isFile(kustomizeFile) ? kustomizeFile : new File(kustomizeFile);
+
+  if (!await file.exists()) {
+    return new Kustomization();
+  }
+
+  const kustomize: IKustomization = await file.readYaml();
+
+  return new Kustomization(kustomize);
 }
