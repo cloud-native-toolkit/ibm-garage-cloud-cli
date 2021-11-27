@@ -42,6 +42,7 @@ export type GitOpsModuleOptions = GitOpsModuleInputBase & Partial<GitOpsModuleIn
   gitopsConfigFile?: string;
   gitopsCredentialsFile?: string;
   autoMerge?: boolean;
+  rateLimit?: boolean;
   token?: string;
   valueFiles?: string;
 };
