@@ -22,6 +22,7 @@ import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {apiFromUrl, GitApi, PullRequest} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
+import {timer} from '../../util/timer';
 
 const argocdResolver = (applicationPath: string) => {
   return async (git: SimpleGit, conflicts: string[]): Promise<boolean> => {
@@ -55,14 +56,20 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     this.logger.debug('Building with layer config: ', layerConfig);
 
     const payloadGit: GitApi = await this.loadGitApi(input, layerConfig.payload);
+    if (options.rateLimit) {
+      await timer(1000);
+    }
     const payloadRepoConfig = await this.setupPayload(payloadGit, input, layerConfig.payload);
 
     const argocdGit: GitApi = await this.loadGitApi(input, layerConfig['argocd-config']);
+    if (options.rateLimit) {
+      await timer(1000);
+    }
     const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig);
 
     if (options.autoMerge) {
-      await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash'});
-      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', resolver: argocdResolver(argocdRepoConfig.applicationFile)});
+      await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit});
+      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdResolver(argocdRepoConfig.applicationFile)});
     }
 
     return {payloadRepoConfig, argocdRepoConfig};

@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 
 import {GitOpsModuleOptions} from '../services/gitops-module';
-import {defaultAutoMerge, commonHandler} from './support/gitops-module-common';
+import {defaultAutoMerge, commonHandler, defaultRateLimit} from './support/gitops-module-common';
 
 export const command = 'gitops-namespace [name] [contentDir]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';
@@ -77,6 +77,12 @@ export const builder = (yargs: Argv<any>) => {
       type: 'boolean',
       demandOption: false,
       default: defaultAutoMerge(),
+    })
+    .option('rateLimit', {
+      describe: 'Flag indicating that the calls to the git api should be rate limited.',
+      type: 'boolean',
+      demandOption: false,
+      default: defaultRateLimit(),
     })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',

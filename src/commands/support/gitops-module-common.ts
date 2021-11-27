@@ -16,6 +16,16 @@ export const defaultAutoMerge = (defaultValue: boolean = true): boolean => {
   return autoMerge === 'true';
 }
 
+export const defaultRateLimit = (defaultValue: boolean = false): boolean => {
+  const rateLimit: string | undefined = process.env.RATE_LIMIT;
+
+  if (rateLimit === undefined || rateLimit === null || rateLimit === '') {
+    return defaultValue;
+  }
+
+  return rateLimit === 'true';
+}
+
 export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}>) => {
   Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
   if (argv.lock === 'branch' || argv.lock === 'b') {
