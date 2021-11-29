@@ -27,6 +27,8 @@ export const defaultRateLimit = (defaultValue: boolean = false): boolean => {
 }
 
 export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug: boolean, lock: string}>) => {
+  process.env.VERBOSE_LOGGING = argv.debug ? 'true' : 'false';
+
   Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
   if (argv.lock === 'branch' || argv.lock === 'b') {
     Container.bind(GitOpsModuleApi).to(GitopsModulePRImpl);
