@@ -238,7 +238,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       this.logger.debug(`Creating overlay path: ${overlayPath}/${input.type}`);
       await fs.mkdirp(`${repoDir}/${overlayPath}/${input.type}`);
 
-      const nameSuffix = payloadRepo.branch !== 'main' && payloadRepo.branch !== 'master' ? `-${payloadRepo.branch}` : '';
+      const nameSuffix = currentBranch !== 'main' && currentBranch !== 'master' ? `-${currentBranch}` : '';
       const applicationName = buildApplicationName(input.name, input.namespace, nameSuffix, input.isNamespace);
       const applicationFile = `${input.type}/${applicationName}.yaml`;
 
