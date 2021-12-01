@@ -80,7 +80,7 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
-    "@cloudnativetoolkit/git-client": "^1.4.13",
+    "@cloudnativetoolkit/git-client": "^1.4.14",
     "@cloudnativetoolkit/kubernetes-client": "^9.1.1",
     "chalk": "^4.1.2",
     "dot-properties": "^1.0.1",
