@@ -20,22 +20,24 @@ import {ArgoApplication} from './argocd-application.model';
 import {addKustomizeResource} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
-import {apiFromUrl, GitApi, PullRequest} from '@cloudnativetoolkit/git-client';
+import {apiFromUrl, GitApi, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
+import path from 'path';
 
 const argocdResolver = (applicationPath: string) => {
-  return async (git: SimpleGit, conflicts: string[]): Promise<boolean> => {
-    const kustomizeYaml: string | undefined = first(conflicts.filter(f => /.*kustomization.yaml/.test(f)));
+  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[]}> => {
+    const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
 
-    if (kustomizeYaml) {
-      await git.raw(['restore', kustomizeYaml]);
-      await addKustomizeResource(kustomizeYaml, applicationPath);
+    const resolvedConflicts: string[] = await Promise.all(kustomizeYamls.map(async (kustomizeYaml: string) => {
+      await git.raw(['checkout', '--ours', kustomizeYaml]);
 
-      return true;
-    }
+      await addKustomizeResource(path.join(git.repoDir, kustomizeYaml), applicationPath);
 
-    return false;
+      return kustomizeYaml;
+    }));
+
+    return {resolvedConflicts};
   }
 }
 
