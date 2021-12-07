@@ -20,24 +20,33 @@ import {ArgoApplication} from './argocd-application.model';
 import {addKustomizeResource} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
-import {apiFromUrl, GitApi, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
+import {apiFromUrl, GitApi, MergeResolver, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
 import path from 'path';
+import {isString} from '../../util/string-util';
+import {isError} from '../../util/error-util';
 
-const argocdResolver = (applicationPath: string) => {
-  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[]}> => {
+const argocdResolver = (applicationPath: string): MergeResolver => {
+  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
     const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
 
-    const resolvedConflicts: string[] = await Promise.all(kustomizeYamls.map(async (kustomizeYaml: string) => {
-      await git.raw(['checkout', '--ours', kustomizeYaml]);
+    const promises: Array<Promise<string | Error>> = kustomizeYamls
+      .map(async (kustomizeYaml: string) => {
+        await git.raw(['checkout', '--ours', kustomizeYaml]);
 
-      await addKustomizeResource(path.join(git.repoDir, kustomizeYaml), applicationPath);
+        await addKustomizeResource(path.join(git.repoDir, kustomizeYaml), applicationPath);
 
-      return kustomizeYaml;
-    }));
+        return kustomizeYaml;
+      })
+      .map(p => p.catch(error => error));
 
-    return {resolvedConflicts};
+    const result: Array<string | Error> = await Promise.all(promises);
+
+    const resolvedConflicts: string[] = result.filter(isString);
+    const conflictErrors: Error[] = result.filter(isError);
+
+    return {resolvedConflicts, conflictErrors};
   }
 }
 
