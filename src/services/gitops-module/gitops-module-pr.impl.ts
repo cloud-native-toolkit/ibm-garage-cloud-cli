@@ -1,6 +1,8 @@
 import * as fs from 'fs-extra';
 import {SimpleGit} from 'simple-git';
 import * as YAML from 'js-yaml';
+import {join as pathJoin} from 'path';
+import {apiFromUrl, GitApi, MergeResolver, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
 import {Container} from 'typescript-ioc';
 
 import {
@@ -20,10 +22,8 @@ import {ArgoApplication} from './argocd-application.model';
 import {addKustomizeResource} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
-import {apiFromUrl, GitApi, MergeResolver, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
-import path from 'path';
 import {isString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
 
@@ -35,7 +35,7 @@ const argocdResolver = (applicationPath: string): MergeResolver => {
       .map(async (kustomizeYaml: string) => {
         await git.raw(['checkout', '--ours', kustomizeYaml]);
 
-        await addKustomizeResource(path.join(git.repoDir, kustomizeYaml), applicationPath);
+        await addKustomizeResource(pathJoin(git.repoDir, kustomizeYaml), applicationPath);
 
         return kustomizeYaml;
       })
