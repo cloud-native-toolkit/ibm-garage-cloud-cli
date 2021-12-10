@@ -81,7 +81,7 @@ export const builder = (yargs: Argv<any>) => {
       describe: 'Git repo locking style',
       demandOption: false,
       choices: ['optimistic', 'pessimistic', 'branch', 'o', 'p', 'b'],
-      default: process.env.LOCK || 'pessimistic',
+      default: process.env.LOCK || 'branch',
     })
     .option('autoMerge', {
       describe: 'Flag indicating that the branch/PR should be automatically merged. Only applies if lock strategy is branch',
