@@ -11,7 +11,7 @@ export interface RoleRef {
 export interface RoleSubject {
   kind: string;
   name: string;
-  namespace: string;
+  namespace?: string;
 }
 
 export interface RoleBinding extends KubeResource {
