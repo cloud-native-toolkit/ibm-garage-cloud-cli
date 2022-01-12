@@ -33,6 +33,18 @@ export const builder = (yargs: Argv<any>) => {
       default: false,
       type: 'boolean'
     })
+    .option('argocd', {
+      alias: 'a',
+      describe: 'flag indicating that argocd should be given permission to manage the namespace',
+      default: false,
+      type: 'boolean'
+    })
+    .option('argocdNamespace', {
+      alias: 'x',
+      describe: 'the namespace where argocd is running',
+      default: 'openshift-gitops',
+      type: 'string'
+    })
     .option('verbose', {
       describe: 'flag to produce more verbose logging',
       type: 'boolean'

@@ -18,7 +18,7 @@ import {
   ListOptions,
   OcpProjectCli,
   Pod,
-  QueryString,
+  QueryString, RoleBinding,
   Secret,
   ServiceAccount
 } from '../../api/kubectl';
@@ -97,7 +97,7 @@ export class NamespaceImpl implements Namespace {
     return namespace;
   }
 
-  async create({namespace, templateNamespace, serviceAccount, tekton}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount, tekton, argocd, argocdNamespace}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -110,18 +110,27 @@ export class NamespaceImpl implements Namespace {
       await nsManager.create(namespace);
     }
 
-    const progress = progressBar(this.logger);
-
-    await progress(this.copyConfigMaps(namespace, templateNamespace), 'Copying ConfigMaps');
-    await progress(this.copySecrets(namespace, templateNamespace), 'Copying Secrets');
-
-    if (tekton) {
+    if (argocd) {
       try {
-        notifyStatus('Adding privileged SCC to pipeline service account');
-        await this.setupTektonPipelineSA(namespace);
+        notifyStatus(`Giving ArgoCD service accounts in ${argocdNamespace} namespace permission to manage this namespace`)
+        await this.grantPermissionToArgoCD(namespace, argocdNamespace)
       } catch (error) {
-        notifyStatus('  Error adding SCC');
-        throw error;
+        notifyStatus('  Error granting ArgoCD permission')
+      }
+    } else {
+      const progress = progressBar(this.logger);
+
+      await progress(this.copyConfigMaps(namespace, templateNamespace), 'Copying ConfigMaps');
+      await progress(this.copySecrets(namespace, templateNamespace), 'Copying Secrets');
+
+      if (tekton) {
+        try {
+          notifyStatus('Adding privileged SCC to pipeline service account');
+          await this.setupTektonPipelineSA(namespace);
+        } catch (error) {
+          notifyStatus('  Error adding SCC');
+          throw error;
+        }
       }
     }
 
@@ -129,6 +138,27 @@ export class NamespaceImpl implements Namespace {
     await this.setCurrentProject(namespace);
 
     return namespace;
+  }
+
+  async grantPermissionToArgoCD(namespace: string, argocdNamespace: string) {
+    // create role binding for argocd
+    const name = 'argocd-admin';
+    const roleBinding: RoleBinding = {
+      metadata: {
+        name
+      },
+      roleRef: {
+        apiGroup: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRole',
+        name: 'admin'
+      },
+      subjects: [{
+        kind: 'Group',
+        name: `system:serviceaccounts:${argocdNamespace}`
+      }]
+    }
+
+    await this.roleBindings.create(name, {body: roleBinding}, namespace)
   }
 
   async setupPullSecrets(namespace: string, fromNamespace: string = 'default'): Promise<any> {
