@@ -19,7 +19,7 @@ import {
   PayloadConfig
 } from './gitops-module.api';
 import {ArgoApplication} from './argocd-application.model';
-import {addKustomizeResource} from './kustomization.model';
+import {addKustomizeResource, removeKustomizeResource} from './kustomization.model';
 import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {ChildProcess} from '../../util/child-process';
@@ -50,12 +50,57 @@ const argocdResolver = (applicationPath: string): MergeResolver => {
   }
 }
 
+const argocdDeleteResolver = (applicationPath: string): MergeResolver => {
+  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
+    const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
+
+    const promises: Array<Promise<string | Error>> = kustomizeYamls
+      .map(async (kustomizeYaml: string) => {
+        await git.raw(['checkout', '--ours', kustomizeYaml]);
+
+        await removeKustomizeResource(pathJoin(git.repoDir, kustomizeYaml), applicationPath);
+
+        return kustomizeYaml;
+      })
+      .map(p => p.catch(error => error));
+
+    const result: Array<string | Error> = await Promise.all(promises);
+
+    const resolvedConflicts: string[] = result.filter(isString);
+    const conflictErrors: Error[] = result.filter(isError);
+
+    return {resolvedConflicts, conflictErrors};
+  }
+}
+
 export class GitopsModulePRImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
   userConfig = {
     email: 'cloudnativetoolkit@gmail.com',
     name: 'Cloud-Native Toolkit',
   };
+
+  async delete(options: GitOpsModuleOptions): Promise<GitOpsModuleResult> {
+
+    this.logger.log(`Deleting gitops repo entry for component ${options.name} in namespace ${options.namespace}`);
+
+    const input: GitOpsModuleInput = await this.defaultInputs(options);
+
+    const layerConfig: LayerConfig = input.gitopsConfig[input.layer];
+    this.logger.debug('Deleting with layer config: ', layerConfig);
+
+    const argocdGit: GitApi = await this.loadGitApi(input, layerConfig['argocd-config']);
+    if (options.rateLimit) {
+      await timer(1000);
+    }
+    const argocdRepoConfig = await this.deleteArgo(argocdGit, input, layerConfig['argocd-config']);
+
+    if (argocdRepoConfig.fileChange && options.autoMerge) {
+      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdDeleteResolver(argocdRepoConfig.applicationFile)});
+    }
+
+    return {};
+  }
 
   async populate(options: GitOpsModuleOptions): Promise<GitOpsModuleResult> {
 
@@ -287,6 +332,72 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       return result;
     } catch (error) {
       this.logger.error('Error updating ArgoCD config', {error});
+      throw error;
+    } finally {
+      // clean up repo dir
+      await fs.remove(repoDir).catch(err => null);
+    }
+  }
+
+  async deleteArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig): Promise<{path: string, url: string, branch: string, pullNumber?: number, applicationFile: string, fileChange?: boolean}> {
+
+    const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
+    const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
+
+    // create repo dir
+    await fs.mkdirp(repoDir);
+
+    try {
+      const git: SimpleGit = await gitApi.clone(repoDir, {baseDir: input.tmpDir, userConfig: this.userConfig})
+
+      const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
+        if (inputBranch) {
+          return inputBranch;
+        }
+
+        return git.branch().then(result => result.current);
+      }
+
+      const currentBranch = await getCurrentBranch(input.branch)
+      const devBranch = `${input.name}-argocd-delete`;
+
+      this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
+      await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
+
+      // create overlay config path
+      const overlayPath = `${config.path}/cluster/${input.serverName}`;
+
+      const nameSuffix = currentBranch !== 'main' && currentBranch !== 'master' ? `-${currentBranch}` : '';
+      const applicationName = buildApplicationName(input.name, input.namespace, nameSuffix, input.isNamespace);
+      const applicationFile = `${input.type}/${applicationName}.yaml`;
+
+      const kustomizeFile: string =`${repoDir}/${overlayPath}/kustomization.yaml`;
+
+      const fileChange: boolean = await removeKustomizeResource(kustomizeFile, applicationFile);
+
+      if (!fileChange) {
+        return {fileChange, path: overlayPath, url: `https://${config.repo}`, branch: devBranch, applicationFile};
+      }
+
+      const message = `Removes argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`;
+      // commit and push changes
+      await this.addCommitPushBranch(git, message, devBranch);
+
+      this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
+
+      const pullRequest: PullRequest = await gitApi.createPullRequest({
+        title: message,
+        sourceBranch: devBranch,
+        targetBranch: currentBranch,
+      });
+
+      const result = {path: overlayPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber, applicationFile};
+
+      this.logger.debug('ArgoCD config delete result', {result})
+
+      return result;
+    } catch (error) {
+      this.logger.error('Error deleting ArgoCD config', {error});
       throw error;
     } finally {
       // clean up repo dir

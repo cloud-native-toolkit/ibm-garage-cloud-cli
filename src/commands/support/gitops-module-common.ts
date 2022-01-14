@@ -44,7 +44,11 @@ export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug
 
     const service: GitOpsModuleApi = Container.get(GitOpsModuleApi);
 
-    await service.populate(argv);
+    if (argv.delete) {
+      await service.delete(argv);
+    } else {
+      await service.populate(argv);
+    }
   } catch (err) {
     console.error('Error running populate', err);
   } finally {

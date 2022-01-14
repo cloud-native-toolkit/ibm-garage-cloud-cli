@@ -26,6 +26,17 @@ export class Kustomization implements IKustomization {
     return this;
   }
 
+  removeResource(resource: string): Kustomization {
+    if (this.containsResource(resource)) {
+      const index = this.resources.indexOf(resource);
+
+      this.resources.splice(index, 1);
+      this.resources.sort();
+    }
+
+    return this;
+  }
+
   containsResource(resource: string): boolean {
     return this.resources.includes(resource);
   }
@@ -64,6 +75,21 @@ export const addKustomizeResource = async (kustomizeFile: string | File, path: s
   kustomize.addResource(path);
 
   return file.write(kustomize.asYamlString()).then(() => true);
+};
+
+export const removeKustomizeResource = async (kustomizeFile: string | File, path: string): Promise<boolean> => {
+
+  const file: File = isFile(kustomizeFile) ? kustomizeFile : new File(kustomizeFile);
+
+  const kustomize: Kustomization = await loadKustomize(kustomizeFile);
+
+  if (kustomize.containsResource(path)) {
+    kustomize.removeResource(path);
+
+    return file.write(kustomize.asYamlString()).then(() => true);
+  }
+
+  return false;
 };
 
 export const loadKustomize = async (kustomizeFile: File | string): Promise<Kustomization> => {

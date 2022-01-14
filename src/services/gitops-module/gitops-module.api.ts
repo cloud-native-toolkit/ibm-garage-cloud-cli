@@ -45,6 +45,7 @@ export type GitOpsModuleOptions = GitOpsModuleInputBase & Partial<GitOpsModuleIn
   rateLimit?: boolean;
   token?: string;
   valueFiles?: string;
+  delete?: boolean;
 };
 export type GitOpsModuleInput = GitOpsModuleInputBase & GitOpsModuleInputDefaults & {
   valueFiles: string[];
@@ -71,5 +72,6 @@ export interface GitOpsModuleInputDefaults {
 export interface GitOpsModuleResult {}
 
 export abstract class GitOpsModuleApi {
+  abstract delete(options: GitOpsModuleOptions): Promise<GitOpsModuleResult>;
   abstract populate(options: GitOpsModuleOptions): Promise<GitOpsModuleResult>;
 }

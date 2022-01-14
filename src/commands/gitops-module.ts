@@ -89,6 +89,13 @@ export const builder = (yargs: Argv<any>) => {
       demandOption: false,
       default: defaultAutoMerge(),
     })
+    .option('delete', {
+      alias: 'd',
+      describe: 'Flag indicating that the content should be deleted from the repo',
+      type: 'boolean',
+      demandOption: false,
+      default: false,
+    })
     .option('rateLimit', {
       describe: 'Flag indicating that the calls to the git api should be rate limited.',
       type: 'boolean',
