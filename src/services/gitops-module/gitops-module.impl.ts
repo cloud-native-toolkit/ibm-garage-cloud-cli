@@ -27,6 +27,10 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     name: 'Cloud-Native Toolkit',
   };
 
+  async delete(options: GitOpsModuleOptions): Promise<GitOpsModuleResult> {
+    return {}
+  }
+
   async populate(options: GitOpsModuleOptions): Promise<GitOpsModuleResult> {
 
     this.logger.log(`Populating gitops repo for component ${options.name} in namespace ${options.namespace}`);
