@@ -231,6 +231,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       }
 
       const currentBranch = await getCurrentBranch(input.branch)
+      this.logger.debug(`Using ${currentBranch} as base branch`)
       const devBranch = `${input.name}-payload`;
 
       this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
