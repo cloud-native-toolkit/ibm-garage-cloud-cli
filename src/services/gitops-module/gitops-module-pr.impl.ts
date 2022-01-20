@@ -250,7 +250,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         targetBranch: currentBranch,
       });
 
-      const result = {path: payloadPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber};
+      const result = {path: payloadPath, url: `https://${config.repo}`, branch: currentBranch, pullNumber: pullRequest.pullNumber};
 
       this.logger.debug('Application payload result', {result});
 
