@@ -95,6 +95,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
     const argocdRepoConfig = await this.deleteArgo(argocdGit, input, layerConfig['argocd-config']);
 
+    this.logger.debug('ArgoCD repo config:', {argocdRepoConfig});
     if (argocdRepoConfig.fileChange && options.autoMerge) {
       await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdDeleteResolver(argocdRepoConfig.applicationFile)});
     }
@@ -383,7 +384,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       // commit and push changes
       await this.addCommitPushBranch(git, message, devBranch);
 
-      this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
+      this.logger.log(`  ArgoCD config removed from ${config.repo} in path ${overlayPath}/${applicationFile}`)
 
       const pullRequest: PullRequest = await gitApi.createPullRequest({
         title: message,

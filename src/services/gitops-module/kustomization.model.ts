@@ -1,5 +1,8 @@
 import * as YAML from 'js-yaml';
+import {Container} from 'typescript-ioc';
+
 import {File, isFile} from '../../util/file-util';
+import {Logger} from '../../util/logger';
 
 export interface IKustomization {
   resources: string[];
@@ -79,6 +82,8 @@ export const addKustomizeResource = async (kustomizeFile: string | File, path: s
 
 export const removeKustomizeResource = async (kustomizeFile: string | File, path: string): Promise<boolean> => {
 
+  const logger: Logger = Container.get(Logger);
+
   const file: File = isFile(kustomizeFile) ? kustomizeFile : new File(kustomizeFile);
 
   const kustomize: Kustomization = await loadKustomize(kustomizeFile);
@@ -87,6 +92,8 @@ export const removeKustomizeResource = async (kustomizeFile: string | File, path
     kustomize.removeResource(path);
 
     return file.write(kustomize.asYamlString()).then(() => true);
+  } else {
+    logger.debug(`Kustomize does not contain resource: ${path}`, {resources: kustomize.resources})
   }
 
   return false;
