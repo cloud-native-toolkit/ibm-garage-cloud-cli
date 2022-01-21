@@ -403,7 +403,11 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       throw error;
     } finally {
       // clean up repo dir
-      await fs.remove(repoDir).catch(err => null);
+      this.logger.debug('Cleaning up repo dir')
+      await fs.remove(repoDir).catch(err => {
+        this.logger.debug('Error cleaning up repo dir')
+        return null
+      });
     }
   }
 
