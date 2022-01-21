@@ -8,6 +8,8 @@ export abstract class Logger {
   abstract logn(message: string, context?: any): void;
   abstract debug(message: string, context?: any): void;
   abstract error(message: string, context?: any): void;
+  abstract errorDetail(message: string, context?: any): void;
+  abstract warn(message: string, context?: any): void;
   abstract stop(): void;
 }
 
@@ -58,6 +60,12 @@ class OraLogger implements Logger {
 
   stop() {
     this.ora.stop();
+  }
+
+  warn(message: string, context?: any): void {
+  }
+
+  errorDetail(message: string, context?: any): void {
   }
 }
 
@@ -112,6 +120,24 @@ class VerboseLogger implements Logger {
   }
 
   stop() {}
+
+  warn(message: string, context?: any): void {
+    if (context) {
+      console.log(`WARN: ${message}`, context);
+    } else {
+      console.log(`WARN: ${message}`);
+    }
+  }
+
+  errorDetail(message: string, context?: any): void {
+    if (!this.verbose) return;
+
+    if (context) {
+      console.error(message, context);
+    } else {
+      console.error(message);
+    }
+  }
 }
 
 Container.bind(Logger).factory(verboseLoggerFactory());

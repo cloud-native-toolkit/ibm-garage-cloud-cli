@@ -91,10 +91,10 @@ export const removeKustomizeResource = async (kustomizeFile: string | File, path
   if (kustomize.containsResource(path)) {
     kustomize.removeResource(path);
 
-    logger.debug(`Updated kustomization.yaml file: ${kustomize.asYamlString()}`)
+    console.log(`Updated kustomization.yaml file: ${kustomize.asYamlString()}`)
     const result: boolean = await file.write(kustomize.asYamlString()).then(() => true);
 
-    logger.debug(`  File changed: ${result}`)
+    console.log(`  File changed: ${result}`)
     return result;
   } else {
     logger.debug(`Kustomize does not contain resource: ${path}`, {resources: kustomize.resources})
@@ -105,9 +105,14 @@ export const removeKustomizeResource = async (kustomizeFile: string | File, path
 
 export const loadKustomize = async (kustomizeFile: File | string): Promise<Kustomization> => {
 
+  const logger: Logger = Container.get(Logger)
+
   const file: File = isFile(kustomizeFile) ? kustomizeFile : new File(kustomizeFile);
 
+  logger.debug(`Loading kustomize file: ${file.filename}`)
+
   if (!await file.exists()) {
+    logger.warn(`Kustomize file does not exist: ${file.filename}`)
     return new Kustomization();
   }
 
