@@ -91,7 +91,11 @@ export const removeKustomizeResource = async (kustomizeFile: string | File, path
   if (kustomize.containsResource(path)) {
     kustomize.removeResource(path);
 
-    return file.write(kustomize.asYamlString()).then(() => true);
+    logger.debug(`Updated kustomization.yaml file: ${kustomize.asYamlString()}`)
+    const result: boolean = await file.write(kustomize.asYamlString()).then(() => true);
+
+    logger.debug(`  File changed: ${result}`)
+    return result;
   } else {
     logger.debug(`Kustomize does not contain resource: ${path}`, {resources: kustomize.resources})
   }
