@@ -393,7 +393,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         targetBranch: currentBranch,
       });
 
-      const result = {path: overlayPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber, applicationFile};
+      const result = {fileChange, path: overlayPath, url: `https://${config.repo}`, branch: devBranch, pullNumber: pullRequest.pullNumber, applicationFile};
 
       this.logger.debug('ArgoCD config delete result', {result})
 
