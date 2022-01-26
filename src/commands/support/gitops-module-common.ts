@@ -6,6 +6,8 @@ import {Logger, verboseLoggerFactory} from '../../util/logger';
 import {ClaimedMutex, IMutex, Mutex, NoopMutex} from '../../util/mutex';
 import {GitopsModulePRImpl} from '../../services/gitops-module/gitops-module-pr.impl';
 
+const KUBE_NAME_LENGTH = 53
+
 export const defaultAutoMerge = (defaultValue: boolean = true): boolean => {
   const autoMerge: string | undefined = process.env.AUTO_MERGE;
 
@@ -43,6 +45,10 @@ export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug
     claim = await mutex.claim({name: argv.name, namespace: argv.namespace, contentDir: argv.contentDir});
 
     const service: GitOpsModuleApi = Container.get(GitOpsModuleApi);
+
+    if (argv.name.length > KUBE_NAME_LENGTH) {
+      argv.name = argv.name.substring(0, KUBE_NAME_LENGTH)
+    }
 
     if (argv.delete) {
       await service.delete(argv);
