@@ -9,6 +9,12 @@ export interface IArgoApplication {
   sourceBranch: string;
   valueFiles?: string[];
   server?: string;
+  releaseName?: string;
+}
+
+interface ArgocdHelm {
+  valueFiles?: string;
+  releaseName?: string;
 }
 
 export class ArgoApplication implements IArgoApplication {
@@ -20,21 +26,37 @@ export class ArgoApplication implements IArgoApplication {
   sourceBranch: string;
   valueFiles?: string[];
   server: string;
+  releaseName?: string;
 
   constructor(config: IArgoApplication) {
     Object.assign(this, config, {server: config.server || 'https://kubernetes.default.svc'});
   }
 
+  buildHelmBlock(): ArgocdHelm | undefined {
+    const result: ArgocdHelm = Object.assign(
+      {},
+      this.valueFiles && this.valueFiles.length > 0 ? {valueFiles: this.valueFiles} : {},
+      this.releaseName ? {releaseName: this.releaseName} : {}
+    ) as any
+
+    if (Object.keys(result).length === 0) {
+      return undefined
+    }
+
+    return result
+  }
+
   asJson(): object {
+
+    const helm: ArgocdHelm | undefined = this.buildHelmBlock()
+
     const source = Object.assign(
       {
         path: this.sourcePath,
           repoURL: this.sourceRepoUrl,
           targetRevision: this.sourceBranch,
       },
-      this.valueFiles && this.valueFiles.length > 0
-        ? {helm: {valueFiles: this.valueFiles}}
-        : {}
+      helm ? {helm} : {}
     );
 
     const applicationResource = {

@@ -308,6 +308,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         sourceRepoUrl: payloadRepo.url,
         sourceBranch: payloadRepo.branch,
         valueFiles: input.valueFiles,
+        releaseName: input.name,
       });
       await fs.writeFile(`${repoDir}/${overlayPath}/${applicationFile}`, argoApplication.asYamlString());
 
