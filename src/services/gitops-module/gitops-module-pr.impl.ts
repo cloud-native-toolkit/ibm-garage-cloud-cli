@@ -206,7 +206,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber: number}> {
+  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber: number, isHelm?: boolean}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
@@ -251,7 +251,13 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         targetBranch: currentBranch,
       });
 
-      const result = {path: payloadPath, url: `https://${config.repo}`, branch: currentBranch, pullNumber: pullRequest.pullNumber};
+      const result = {
+        path: payloadPath,
+        url: `https://${config.repo}`,
+        branch: currentBranch,
+        pullNumber: pullRequest.pullNumber,
+        isHelm: this.isHelmChart(input.contentDir)
+      };
 
       this.logger.debug('Application payload result', {result});
 
@@ -265,7 +271,13 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string, pullNumber: number, applicationFile: string}> {
+  isHelmChart(contentDir: string): boolean {
+    const chartFile = pathJoin(contentDir, 'Chart.yaml')
+
+    return fs.existsSync(chartFile)
+  }
+
+  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean}): Promise<{path: string, url: string, branch: string, pullNumber: number, applicationFile: string}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -309,6 +321,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         sourceBranch: payloadRepo.branch,
         valueFiles: input.valueFiles,
         releaseName: input.name,
+        isHelm: payloadRepo.isHelm,
       });
       await fs.writeFile(`${repoDir}/${overlayPath}/${applicationFile}`, argoApplication.asYamlString());
 
