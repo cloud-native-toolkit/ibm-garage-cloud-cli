@@ -10,6 +10,7 @@ export interface IArgoApplication {
   valueFiles?: string[];
   server?: string;
   releaseName?: string;
+  isHelm?: boolean;
 }
 
 interface ArgocdHelm {
@@ -27,12 +28,17 @@ export class ArgoApplication implements IArgoApplication {
   valueFiles?: string[];
   server: string;
   releaseName?: string;
+  isHelm?: boolean;
 
   constructor(config: IArgoApplication) {
     Object.assign(this, config, {server: config.server || 'https://kubernetes.default.svc'});
   }
 
   buildHelmBlock(): ArgocdHelm | undefined {
+    if (!this.isHelm) {
+      return undefined
+    }
+
     const result: ArgocdHelm = Object.assign(
       {},
       this.valueFiles && this.valueFiles.length > 0 ? {valueFiles: this.valueFiles} : {},
