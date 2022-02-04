@@ -57,6 +57,7 @@ export interface GitOpsModuleInputBase {
   name: string;
   namespace: string;
   gitopsConfig: GitOpsConfig;
+  ignoreDiff?: string;
 }
 export interface GitOpsModuleInputDefaults {
   isNamespace: boolean;
