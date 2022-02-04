@@ -122,7 +122,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     if (options.rateLimit) {
       await timer(1000);
     }
-    const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig);
+    const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig, parseIgnoreDiff(options.ignoreDiff));
 
     if (options.autoMerge) {
       await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit});
@@ -277,7 +277,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     return fs.existsSync(chartFile)
   }
 
-  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean}): Promise<{path: string, url: string, branch: string, pullNumber: number, applicationFile: string}> {
+  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean}, ignoreDifferences: object[] | undefined): Promise<{path: string, url: string, branch: string, pullNumber: number, applicationFile: string}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -322,6 +322,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         valueFiles: input.valueFiles,
         releaseName: input.name,
         isHelm: payloadRepo.isHelm,
+        ignoreDifferences
       });
       await fs.writeFile(`${repoDir}/${overlayPath}/${applicationFile}`, argoApplication.asYamlString());
 
@@ -516,4 +517,16 @@ function buildApplicationName(name: string, namespace: string, nameSuffix: strin
     : truncatedName;
 
   return cleansedName + nameSuffix;
+}
+
+const parseIgnoreDiff = (ignoreDiff?: string): object[] | undefined => {
+  if (!ignoreDiff) {
+    return
+  }
+
+  try {
+    return JSON.parse(ignoreDiff)
+  } catch (err) {
+    return
+  }
 }

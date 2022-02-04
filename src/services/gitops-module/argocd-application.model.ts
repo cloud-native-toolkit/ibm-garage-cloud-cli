@@ -11,6 +11,7 @@ export interface IArgoApplication {
   server?: string;
   releaseName?: string;
   isHelm?: boolean;
+  ignoreDifferences?: object[]
 }
 
 interface ArgocdHelm {
@@ -29,6 +30,7 @@ export class ArgoApplication implements IArgoApplication {
   server: string;
   releaseName?: string;
   isHelm?: boolean;
+  ignoreDifferences?: object[]
 
   constructor(config: IArgoApplication) {
     Object.assign(this, config, {server: config.server || 'https://kubernetes.default.svc'});
@@ -83,7 +85,8 @@ export class ArgoApplication implements IArgoApplication {
             prune: true,
             selfHeal: true,
           }
-        }
+        },
+        ignoreDifferences: this.ignoreDifferences || [],
       }
     };
 

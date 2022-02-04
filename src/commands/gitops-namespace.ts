@@ -85,6 +85,12 @@ export const builder = (yargs: Argv<any>) => {
       demandOption: false,
       default: false,
     })
+    .option('ignoreDiff', {
+      describe: 'JSON string containing the ignoreDifferences block for the ArgoCD application',
+      type: 'string',
+      demandOption: false,
+      default: false,
+    })
     .option('rateLimit', {
       describe: 'Flag indicating that the calls to the git api should be rate limited.',
       type: 'boolean',
