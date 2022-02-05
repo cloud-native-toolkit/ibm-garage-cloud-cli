@@ -127,6 +127,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     if (options.autoMerge) {
       await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit})
       try {
+        console.log('Deleting branch: ', payloadRepoConfig.branch)
         await payloadGit.deleteBranch({branch: payloadRepoConfig.branch})
       } catch (err) {
         console.log('Error deleting branch: ', err)
@@ -134,6 +135,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
       await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdResolver(argocdRepoConfig.applicationFile)});
       try {
+        console.log('Deleting branvh: ', argocdRepoConfig.branch)
         await argocdGit.deleteBranch({branch: argocdRepoConfig.branch})
       } catch (err) {
         console.log('Error deleting branch: ', err)
