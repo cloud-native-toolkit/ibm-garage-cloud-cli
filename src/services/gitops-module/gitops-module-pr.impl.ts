@@ -125,8 +125,11 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig, parseIgnoreDiff(options.ignoreDiff));
 
     if (options.autoMerge) {
-      await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit});
+      await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit})
+      await payloadGit.deleteBranch({branch: payloadRepoConfig.branch})
+
       await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdResolver(argocdRepoConfig.applicationFile)});
+      await argocdGit.deleteBranch({branch: argocdRepoConfig.branch})
     }
 
     return {payloadRepoConfig, argocdRepoConfig};
