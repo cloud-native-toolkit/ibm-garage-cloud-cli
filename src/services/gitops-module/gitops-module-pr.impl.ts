@@ -245,7 +245,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
       const currentBranch = await getCurrentBranch(input.branch)
       this.logger.debug(`Using ${currentBranch} as base branch`)
-      const devBranch = `${input.name}-payload`;
+      const devBranch = `${input.name}-payload-${suffix}`;
 
       this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
       await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
@@ -310,7 +310,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       }
 
       const currentBranch = await getCurrentBranch(input.branch)
-      const devBranch = `${input.name}-argocd`;
+      const devBranch = `${input.name}-argocd-${suffix}`;
 
       this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
       await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
