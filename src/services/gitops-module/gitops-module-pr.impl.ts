@@ -4,7 +4,7 @@ import * as YAML from 'js-yaml';
 import {join as pathJoin} from 'path';
 import {apiFromUrl, GitApi, MergeResolver, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
 import {Container} from 'typescript-ioc';
-import http from 'http';
+import { http, https } from 'follow-redirects';
 
 import {
   ArgoConfig,
@@ -499,9 +499,12 @@ async function copy(sourceDir: string, destDir: string): Promise<{stdout: string
   await fs.mkdirp(destDir);
 
   if (/^https?:\/\/*/.test(sourceDir)) {
+    const protocol = sourceDir.replace(/^(https?):\/\/.*/, '$1')
+
+    const get = protocol === 'https' ? https.get : http.get;
     const file = fs.createWriteStream(pathJoin(destDir, 'content.yaml'));
     return new Promise<{stdout: string, stderr: string}>((resolve) => {
-      http.get(sourceDir, response => {
+      get(sourceDir, response => {
         response.pipe(file);
 
         resolve({stdout: '', stderr: ''})
