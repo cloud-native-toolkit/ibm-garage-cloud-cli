@@ -3,7 +3,7 @@ import {Arguments, Argv} from 'yargs';
 import {GitOpsLayer, GitOpsModuleOptions} from '../services/gitops-module';
 import {defaultAutoMerge, commonHandler, defaultRateLimit} from './support/gitops-module-common';
 
-export const command = 'gitops-module [name] [contentDir]';
+export const command = 'gitops-module [name]';
 export const desc = 'Populates the gitops repo with the provided module contents and configures the ArgoCD application';
 export const builder = (yargs: Argv<any>) => {
   return yargs
@@ -13,8 +13,8 @@ export const builder = (yargs: Argv<any>) => {
       demandOption: true,
     })
     .option('contentDir', {
-      alias: 'c',
-      description: 'The directory where the payload content has been placed. If not provided defaults to current working directory.',
+      alias: ['c', "content"],
+      description: 'The directory or url where the payload content has been placed. If not provided defaults to current working directory.',
       type: 'string',
       demandOption: false,
     })
