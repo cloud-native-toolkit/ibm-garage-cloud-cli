@@ -2,9 +2,25 @@
 
 Command-line tool to simplify activities related to IBM Cloud.
 
-## Usage
+## Installation
 
-1. Install the latest CLI by running:
+### Install the binary
+
+To install the latest version of igc into `/usr/local/bin`, run the following:
+
+```shell
+curl -sL https://raw.githubusercontent.com/cloud-native-toolkit/ibm-garage-cloud-cli/main/install.sh | sh
+```
+
+If you would like to install a different version of the CLI and/or put it in a different directory, use the following:
+
+```shell
+curl -sL https://raw.githubusercontent.com/cloud-native-toolkit/ibm-garage-cloud-cli/main/install.sh | RELEASE=1.32.0 DEST_DIR=~/bin sh
+```
+
+### Install via NPM
+
+Install the latest CLI by running:
 
     ```
     npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
@@ -14,12 +30,6 @@ Command-line tool to simplify activities related to IBM Cloud.
 
     ```
     npm rm -g @garage-catalyst/ibm-garage-cloud-cli
-    ```
-
-2. Run the following to list the available commands:
-
-    ```
-    igc --help
     ```
 
 ### Beta release
@@ -36,6 +46,14 @@ To return to the non-beta version of the cli, simply run:
 ```
 npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
 ```
+
+## Usage
+
+Run the following to list the available commands:
+
+    ```
+    igc --help
+    ```
 
 ## Available commands
 
