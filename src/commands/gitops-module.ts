@@ -113,7 +113,7 @@ export const builder = (yargs: Argv<any>) => {
         describe: 'Flag indicating that the GitOps application should be configured to perform a cascading delete.',
         type: 'boolean',
         demandOption: false,
-        default: false,
+        default: true,
       },
       'tmpDir': {
         describe: 'The temp directory where the gitops repo should be checked out',
