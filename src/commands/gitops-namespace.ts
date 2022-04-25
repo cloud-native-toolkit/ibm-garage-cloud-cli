@@ -97,6 +97,12 @@ export const builder = (yargs: Argv<any>) => {
       demandOption: false,
       default: defaultRateLimit(),
     })
+    .option('cascadingDelete', {
+      describe: 'Flag indicating that the GitOps application should be configured to perform a cascading delete.',
+      type: 'boolean',
+      demandOption: false,
+      default: false,
+    })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
       type: 'string',

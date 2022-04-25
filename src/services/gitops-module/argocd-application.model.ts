@@ -11,7 +11,8 @@ export interface IArgoApplication {
   server?: string;
   releaseName?: string;
   isHelm?: boolean;
-  ignoreDifferences?: object[]
+  ignoreDifferences?: object[];
+  cascadingDelete?: boolean;
 }
 
 interface ArgocdHelm {
@@ -30,7 +31,8 @@ export class ArgoApplication implements IArgoApplication {
   server: string;
   releaseName?: string;
   isHelm?: boolean;
-  ignoreDifferences?: object[]
+  ignoreDifferences?: object[];
+  cascadingDelete?: boolean;
 
   constructor(config: IArgoApplication) {
     Object.assign(this, config, {server: config.server || 'https://kubernetes.default.svc'});
@@ -89,6 +91,10 @@ export class ArgoApplication implements IArgoApplication {
         ignoreDifferences: this.ignoreDifferences || [],
       }
     };
+
+    if (this.cascadingDelete) {
+      (applicationResource.metadata as any).finalizers = ['resources-finalizer.argocd.argoproj.io']
+    }
 
     return applicationResource;
   }

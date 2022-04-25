@@ -51,6 +51,7 @@ export type GitOpsModuleInput = GitOpsModuleInputBase & GitOpsModuleInputDefault
   valueFiles: string[];
   gitopsCredentials: GitOpsCredentials;
   gitopsConfig: GitOpsConfig;
+  cascadingDelete?: boolean;
 };
 
 export interface GitOpsModuleInputBase {

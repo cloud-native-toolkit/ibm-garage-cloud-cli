@@ -323,7 +323,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         valueFiles: input.valueFiles,
         releaseName: input.name,
         isHelm: payloadRepo.isHelm,
-        ignoreDifferences
+        ignoreDifferences,
+        cascadingDelete: input.cascadingDelete,
       });
       await fs.writeFile(`${repoDir}/${overlayPath}/${applicationFile}`, argoApplication.asYamlString());
 
