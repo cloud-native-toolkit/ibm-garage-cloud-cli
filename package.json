@@ -87,7 +87,7 @@
     "dot-properties": "^1.0.1",
     "follow-redirects": "^1.14.8",
     "fs-extra": "^10.0.0",
-    "inquirer": "^8.2.0",
+    "inquirer": "^8.2.2",
     "js-yaml": "^4.1.0",
     "jsonpath": "^1.1.1",
     "lodash": "^4.17.21",
