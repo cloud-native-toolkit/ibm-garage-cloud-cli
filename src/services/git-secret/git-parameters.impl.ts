@@ -12,6 +12,16 @@ interface GitQuestion {
   password: string;
 }
 
+export class NoGitRepo extends Error {
+  constructor(message: string, public readonly directory) {
+    super(message);
+  }
+}
+
+export const isNoGitRepoError = (error: Error): error is NoGitRepo => {
+  return !!error && !!(error as NoGitRepo).directory;
+}
+
 export class GetGitParametersImpl implements GetGitParameters {
 
   async getGitParameters(options: GitParametersOptions = {}, notifyStatus?: (s: string) => void): Promise<GitParams> {
@@ -88,7 +98,12 @@ export class GetGitParametersImpl implements GetGitParameters {
       {
         cwd: workingDir
       },
-    );
+    ).catch(err => {
+      if (/not a git repository/.test(err.message)) {
+        throw new NoGitRepo(err.message, workingDir)
+      }
+      throw err
+    });
 
     const lines: string[] = stdout.toString().trim().split(/\r?\n/);
 
