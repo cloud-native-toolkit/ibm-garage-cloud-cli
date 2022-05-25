@@ -10,13 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - uses: actions/setup-node@v2-beta
+      - uses: actions/setup-node@v3
         with:
-          node-version: '12'
+          node-version: '16'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
 
       - name: Build
         run: npm ci && npm run build
@@ -34,8 +37,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./igc-linux
+          asset_path: ./igc-linux-x64
           asset_name: igc-linux
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux x64 cli
+        id: upload-linux-x64-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./igc-linux-x64
+          asset_name: igc-linux-x64
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux arm64 cli
+        id: upload-linux-arm64-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./igc-linux-arm64
+          asset_name: igc-linux-arm64
           asset_content_type: application/octet-stream
 
       - name: Upload MacOS cli
@@ -45,8 +70,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./igc-macos
+          asset_path: ./igc-macos-x64
           asset_name: igc-macos
+          asset_content_type: application/octet-stream
+
+      - name: Upload MacOS x64 cli
+        id: upload-macos-x64-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./igc-macos-x64
+          asset_name: igc-macos-x64
+          asset_content_type: application/octet-stream
+
+      - name: Upload MacOS arm64 cli
+        id: upload-macos-arm64-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./igc-macos-arm64
+          asset_name: igc-macos-arm64
           asset_content_type: application/octet-stream
 
       - name: Upload Alpine cli
@@ -56,6 +103,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./igc-alpine
+          asset_path: ./igc-alpine-x64
           asset_name: igc-alpine
+          asset_content_type: application/octet-stream
+
+      - name: Upload Alpine x64 cli
+        id: upload-alpine-x64-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./igc-alpine-x64
+          asset_name: igc-alpine-x64
+          asset_content_type: application/octet-stream
+
+      - name: Upload Alpine arm64 cli
+        id: upload-alpine-arm64-cli
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./igc-alpine-arm64
+          asset_name: igc-alpine-arm64
           asset_content_type: application/octet-stream
