@@ -3,7 +3,7 @@ import {AsyncKubeClient, KubeClient} from './client';
 import {ThrottleInput, Throttler} from '../../util/throttle';
 import {Container} from 'typescript-ioc';
 import {ThrottledFunction} from 'p-throttle';
-import {Subject} from 'rxjs';
+import {searchAndRemove} from '../../util/searchandremove';
 
 export type ListOptions<T extends KubeResource> = { namespace?: string } & Query<T>;
 
@@ -393,20 +393,16 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
   async createOrUpdate(name: string, input: KubeBody<T>, namespace: string = 'default'): Promise<T> {
 
     const kubeResource = await this.resourceNode(this.group, this.version, this.name, namespace);
-
     if (kubeResource) {
       const processedName = this.processName(name);
-
       if (await this.exists(processedName, namespace)) {
         const current: T = await this.get(processedName, namespace);
-
+        
         const processedBody: KubeBody<T> = this.processInputs(processedName, input.body, current);
-
         const scope = kubeResource(processedName);
         return throttle<KubeBody<T>[], KubeBody<T>>(scope.put.bind(scope))(processedBody).then(result => result.body);
       } else {
         const processedBody = this.processInputs(processedName, input.body);
-
         return throttle<KubeBody<T>[], KubeBody<T>>(kubeResource.post.bind(kubeResource))(processedBody).then(result => result.body);
       }
     } else {
@@ -490,21 +486,37 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     );
   }
 
-  async copyAll(options: ListOptions<T>, toNamespace: string): Promise<Array<T>> {
+  async copyAll(options: ListOptions<T>, toNamespace: string,updater: (val: T) => T = (val: T) => val): Promise<Array<T>> {
     const results: T[] = await this.list(options);
+    
+    console.log("before copy:", results);
+    return Promise.all((results || []).map(result =>  {
+      var deletelabel: string = "";
+      //result
+    return Object.assign(
+      {},//target
+      result,
+      {
+        metadata: searchAndRemove(result.metadata,deletelabel)
 
-    return Promise.all((results || []).map(result => {
+       
+      },
+    )}).map(result => {
       return this.createOrUpdate(
         result.metadata.name,
         {
-          body: this.updateWithNamespace(result, toNamespace)
+          body : this.updateWithNamespace<T>(result, toNamespace),
+          
         },
         toNamespace,
+        
       );
-    }));
+      
+    }, console.log("Result of copy--",results[0].metadata.labels) ));
+    //console.log("Result of copy",results); 
   }
 
-  updateWithNamespace(obj: T, namespace: string, toName?: string): T {
+  updateWithNamespace <T extends KubeResource<KubeMetadata>>(obj: T  , namespace: string, toName?: string): T {
     if (!obj) {
       return {} as any;
     }

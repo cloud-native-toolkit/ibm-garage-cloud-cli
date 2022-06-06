@@ -91,6 +91,11 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     description: 'Flag indicating that requests to the kubernetes api should be throttled',
     demandOption: false,
     default: process.env.CLOUDSHELL === 'true',
+  }).option('throttle', {
+    type: 'boolean',
+    description: 'Flag indicating that requests to the kubernetes api should be throttled',
+    demandOption: false,
+    default: process.env.CLOUDSHELL === 'true',
   });
 exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean, throttle: boolean}> & {param?: string[]}) => {
   Container.bind(Logger).factory(logFactory({spinner: false, verbose: argv.debug})).scope(Scope.Singleton);
