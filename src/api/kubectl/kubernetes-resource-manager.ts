@@ -505,7 +505,7 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
       return this.createOrUpdate(
         result.metadata.name,
         {
-          body : this.updateWithNamespace<T>(result, toNamespace),
+          body : this.updateWithNamespace(result, toNamespace),
           
         },
         toNamespace,
@@ -516,7 +516,7 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     //console.log("Result of copy",results); 
   }
 
-  updateWithNamespace <T extends KubeResource<KubeMetadata>>(obj: T  , namespace: string, toName?: string): T {
+  updateWithNamespace (obj: T  , namespace: string, toName?: string): T {
     if (!obj) {
       return {} as any;
     }

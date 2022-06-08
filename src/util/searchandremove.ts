@@ -2,7 +2,7 @@
 
 //import { KubeBody, } from "puppeteer";
 //import { KubeBackend } from "src/api/kubectl";
-import {KubeBody,KubeResource,KubeMetadata} from "src/api/kubectl";
+import {KubeMetadata} from "src/api/kubectl";
 
 //import { JSONObject } from "puppeteer";
 
@@ -21,18 +21,18 @@ export function searchAndRemove<T extends KubeMetadata>(text: T ,deletelabel?: s
               
                       console.log('match found!', json[labelkey01]); // do stuff here!
                       
-                      delete json.labels[labelkey01];
+                      delete json[labelkey01];
                       console.log("blah1",json.labels);
                   }
                if (json.hasOwnProperty(labelkey02)) {
               
                       console.log('match found!', json[labelkey02]); // do stuff here!
-                      delete json.labels[labelkey01];
+                      delete json[labelkey02];
                       console.log("blah2",json.labels);
                   }
               if(deletelabel != ""){
                   console.log("optional");
-                  delete json[labelkey01];
+                  delete json[deletelabel];
                   console.log("blah3",json.labels);
               }
             }
