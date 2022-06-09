@@ -10,29 +10,29 @@ export function searchAndRemove<T extends KubeMetadata>(text: T ,deletelabel?: s
           for (var key in json) {
               if (json.hasOwnProperty(labelkey01)) {
               
-                      console.log('match found!', json[labelkey01]); // do stuff here!
+                      //console.log('match found!', json[labelkey01]); // do stuff here!
                       
                       delete json[labelkey01];
-                      console.log("blah1",json.labels);
+                      
                   }
                if (json.hasOwnProperty(labelkey02)) {
               
-                      console.log('match found!', json[labelkey02]); // do stuff here!
+                      //console.log('match found!', json[labelkey02]); // do stuff here!
                       delete json[labelkey02];
-                      console.log("blah2",json.labels);
+                      
                   }
               if(deletelabel != ""){
-                  console.log("optional");
+                  //console.log("optional");
                   delete json[deletelabel];
-                  console.log("blah3",json.labels);
+                  
               }
             }
              text.labels=json;
               
               
           
-      console.log("----SemiFinale-----",text);
-      console.log("----Finale-----",json);
+      //console.log("----SemiFinale-----",text);
+      //console.log("----Finale-----",json);
       
       return text;
       }

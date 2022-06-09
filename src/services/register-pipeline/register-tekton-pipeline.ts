@@ -207,9 +207,9 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         options.pipelineNamespace,
         this.generatePipelineName(gitParams),
         (val: TektonPipeline): TektonPipeline => {
-          console.log("Pipeline params",val.metadata);
+          //console.log("Pipeline params",val.metadata);
           val.metadata= searchAndRemove(val.metadata)
-          console.log("--------------AFTER------------",val.metadata);
+          //console.log("--------------AFTER------------",val.metadata);
           params.forEach(p => {
             val.spec.params
               .filter(param => param.name === p.name)
