@@ -4,7 +4,7 @@ import * as chalk from 'chalk';
 import {get} from 'superagent';
 import * as _ from 'lodash';
 import {Subject} from 'rxjs';
-
+import {searchAndRemove} from '../../util/searchandremove';
 import {
   NamespaceMissingError,
   PipelineNamespaceNotProvided,
@@ -201,12 +201,15 @@ export class RegisterTektonPipeline implements RegisterPipeline {
         `Copying tasks from ${chalk.yellow(options.templateNamespace)}`
       );
 
-      const pipelineName: string = await this.pipeline.copy(
+      const pipelineName: string = await this.pipeline.copy( 
         templatePipelineName,
         options.templateNamespace,
         options.pipelineNamespace,
         this.generatePipelineName(gitParams),
         (val: TektonPipeline): TektonPipeline => {
+          console.log("Pipeline params",val.metadata);
+          val.metadata= searchAndRemove(val.metadata)
+          console.log("--------------AFTER------------",val.metadata);
           params.forEach(p => {
             val.spec.params
               .filter(param => param.name === p.name)
