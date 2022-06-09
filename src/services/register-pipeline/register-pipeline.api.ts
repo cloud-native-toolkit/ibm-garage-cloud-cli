@@ -71,6 +71,7 @@ export class RegisterPipelineOptions<T = any> {
   pipeline?: string;
   replaceGitSecret?: boolean;
   pipelineParams?: T;
+  removeargocdlabel?: string;
 }
 
 export const REGISTER_PIPELINE_ERROR_TYPES: {[key: string]: ErrorType} = {

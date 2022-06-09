@@ -29,7 +29,8 @@ describe('searchandremove', () => {
       test('then return the jsonobject without label'+ value1, () => {
         const actualres:KubeMetadata=searchAndRemove(metadata);
         //expect(actualres.labels.hasOwnProperty(value1)).toEqual(false);
-        expect(Object.keys(actualres.labels)).not.toContain(value1);
+        //expect(Object.keys(actualres.labels)).not.toContain(value1);
+        expect(Object.keys(actualres.labels)).not.toHaveProperty(value1);
       });
     });
     describe('when jsonobject has label with'+ value2, () => {
@@ -39,23 +40,31 @@ describe('searchandremove', () => {
       test('then return the jsonobject without label'+ value2, () => {
         const actualres:KubeMetadata=searchAndRemove(metadata);
         //expect(searchAndRemove(lines)).hasOwnProperty(value2)).toEqual(false);
-        expect(Object.keys(actualres.labels)).not.toContain(value2);
+        //expect(Object.keys(actualres.labels)).not.toContain(value2);
+        expect(Object.keys(actualres.labels)).not.toHaveProperty(value2);
       });
-      /*describe('when the optional deletelabel is empty string', () => {
+      describe('when the optional deletelabel is empty string', () => {
         test('then return the jsonobject as it is', () => {
-          const actualres:KubeMetadata=searchAndRemove(metadata);
-          expect(Object.keys(actualres.labels)).not.toContain(value2).not.toContain(value1);
+          const actualres:KubeMetadata=searchAndRemove(metadata,'');
+         // expect(Object.keys(actualres.labels)).not.toContain(value2).not.toContain(value1);
+         expect(Object.keys(actualres.labels)).not.toHaveProperty(value2);
+         expect(Object.keys(actualres.labels)).not.toHaveProperty(value1);
         });
       });
       describe('when the optional deletelabel is not empty string', () => {
         test('then return the jsonobject without label'+ deletelabel, () => {
-          expect(searchAndRemove(JSON.parse(lines),deletelabel).hasOwnProperty(deletelabel)).toEqual(false);
+          const actualres:KubeMetadata=searchAndRemove(metadata,deletelabel);
+          //expect(searchAndRemove(JSON.parse(lines),deletelabel).hasOwnProperty(deletelabel)).toEqual(false);
+        expect(Object.keys(actualres.labels)).not.toHaveProperty(value2);
+        expect(Object.keys(actualres.labels)).not.toHaveProperty(value1);
+        expect(Object.keys(actualres.labels)).not.toHaveProperty(deletelabel);
         });
       });
       describe('when the optional deletelabel is undefined string', () => {
         test('then return the jsonobject as it is', () => {
-          const actualres:KubeMetadata=searchAndRemove(metadata);
-          expect(searchAndRemove(JSON.parse(lines),null)).toEqual(lines);
+          const actualres:KubeMetadata=searchAndRemove(metadata,undefined);
+          expect(Object.keys(actualres.labels)).not.toHaveProperty(value2);
+          expect(Object.keys(actualres.labels)).not.toHaveProperty(value1);
           
           //expect(searchAndRemove(JSON.parse(lines),undefined)).toEqual(lines);
         });
@@ -63,9 +72,11 @@ describe('searchandremove', () => {
   
       describe('when the optional deletelabel is null string', () => {
         test('then return the jsonobject as it is', () => {
-          expect(searchAndRemove(JSON.parse(lines),null)).toEqual(lines);
+          const actualres:KubeMetadata=searchAndRemove(metadata,null);
+          expect(Object.keys(actualres.labels)).not.toHaveProperty(value2);
+          expect(Object.keys(actualres.labels)).not.toHaveProperty(value1); 
         });
-      });*/
+      });
     });
   });
 });

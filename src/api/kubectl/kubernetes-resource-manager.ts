@@ -486,13 +486,11 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     );
   }
 
-  async copyAll(options: ListOptions<T>, toNamespace: string,updater: (val: T) => T = (val: T) => val): Promise<Array<T>> {
+  async copyAll(options: ListOptions<T>, toNamespace: string): Promise<Array<T>> {
     const results: T[] = await this.list(options);
     
-    console.log("before copy:", results);
     return Promise.all((results || []).map(result =>  {
       var deletelabel: string = "";
-      //result
     return Object.assign(
       {},//target
       result,
@@ -512,8 +510,8 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
         
       );
       
-    }, console.log("Result of copy--",results[0].metadata.labels) ));
-    //console.log("Result of copy",results); 
+    },  ));
+    
   }
 
   updateWithNamespace (obj: T  , namespace: string, toName?: string): T {
