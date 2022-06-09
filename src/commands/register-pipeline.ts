@@ -91,12 +91,20 @@ export const builder = (yargs: Argv<any>) => new DefaultOptionBuilder<RegisterPi
     description: 'Flag indicating that requests to the kubernetes api should be throttled',
     demandOption: false,
     default: process.env.CLOUDSHELL === 'true',
+  }).option('removeargocdlabel', {
+    type: 'string',
+    description: 'Parameter to pass any argocd label to be deleted for tasks and pipelines',
+    demandOption: false,
   });
 exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOptions & {jenkins: boolean, tekton: boolean, throttle: boolean}> & {param?: string[]}) => {
   Container.bind(Logger).factory(logFactory({spinner: false, verbose: argv.debug})).scope(Scope.Singleton);
   if (argv.throttle) {
     Container.bind(ThrottleConfig).factory(cloudshellThrottleConfig);
   }
+ /* if(argv.removeargocdlabel)
+  {
+
+  }*/
 
   const spinner: Logger = Container.get(Logger);
   process.on('exit', () => {
@@ -128,6 +136,9 @@ exports.handler = async (argv: Arguments<RegisterPipelineOptions & CommandLineOp
     if (argv.throttle) {
       spinner.log('Throttling requests to the cluster api');
     }
+    /*if (argv.removeargocdlabel) {
+      spinner.log('Removing the argocd labels from pipeline and tasks');
+    }*/
 
     if (!argv.jenkins && !argv.tekton) {
       const questionBuilder: QuestionBuilder<{pipelineType: 'jenkins' | 'tekton'}> = Container.get(QuestionBuilder);
