@@ -10,6 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Setup variables
+        id: variables
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "${TAG_NAME}" =~ beta ]]; then
+            echo "::set-output name=NPM_TAG::--tag beta"
+          fi
+
       - uses: actions/checkout@v3
         with:
           ref: ${{ github.event.release.tag_name }}
@@ -22,6 +32,7 @@ jobs:
       - name: Publish to npm
         run: |
           npm ci
-          npm publish --access public
+          npm publish --access public ${TAG_NAME}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TAG_NAME: ${{ steps.variables.outputs.NPM_TAG }}
