@@ -57,6 +57,7 @@ export const commonHandler = async (argv: Arguments<GitOpsModuleOptions & {debug
     }
   } catch (err) {
     console.error('Error running populate', err);
+    process.exit(1)
   } finally {
     await claim.release();
   }
