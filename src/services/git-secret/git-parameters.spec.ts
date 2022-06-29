@@ -80,7 +80,7 @@ describe('git-parameters', () => {
         test('should return url and name from git url', async () => {
           const value = await classUnderTest.getGitParameters();
 
-          expect(value.url).toEqual(url);
+          expect(value.url).toEqual(url.replace(/[.]git$/, ''));
           expect(value.name).toEqual(`${owner}.${repo}.${branch}`);
           expect(value.username).toEqual(username);
           expect(value.password).toEqual(password);
@@ -89,7 +89,7 @@ describe('git-parameters', () => {
         test('should return url and name from git url', async () => {
           const value = await classUnderTest.getGitParameters();
 
-          expect(value.url).toEqual(url);
+          expect(value.url).toEqual(url.replace(/[.]git$/, ''));
           expect(value.name).toEqual(`${owner}.${repo}.${branch}`);
           expect(value.username).toEqual(username);
           expect(value.password).toEqual(password);
