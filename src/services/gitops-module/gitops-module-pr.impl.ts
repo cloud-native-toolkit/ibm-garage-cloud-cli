@@ -126,8 +126,21 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     const argocdRepoConfig = await this.setupArgo(argocdGit, input, layerConfig['argocd-config'], payloadRepoConfig, parseIgnoreDiff(options.ignoreDiff));
 
     if (options.autoMerge) {
-      await payloadGit.updateAndMergePullRequest({pullNumber: payloadRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit})
-      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdResolver(argocdRepoConfig.applicationFile)});
+      if (payloadRepoConfig.pullNumber) {
+        await payloadGit.updateAndMergePullRequest({
+          pullNumber: payloadRepoConfig.pullNumber,
+          method: 'squash',
+          rateLimit: options.rateLimit
+        })
+      }
+      if (argocdRepoConfig.pullNumber) {
+        await argocdGit.updateAndMergePullRequest({
+          pullNumber: argocdRepoConfig.pullNumber,
+          method: 'squash',
+          rateLimit: options.rateLimit,
+          resolver: argocdResolver(argocdRepoConfig.applicationFile)
+        });
+      }
     }
 
     return {payloadRepoConfig, argocdRepoConfig};
@@ -207,7 +220,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber: number, isHelm?: boolean}> {
+  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber?: number, isHelm?: boolean}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
@@ -242,15 +255,30 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
       this.logger.debug('Result from copy', copyResult);
 
-      await this.addCommitPushBranch(git, message, devBranch);
+      const pushResult = await this.addCommitPushBranch(git, message, devBranch);
+
+      if (!pushResult) {
+        this.logger.log(`  No changes to application payload for ${config.repo} branch ${devBranch} in path ${payloadPath}`)
+        return {
+          path: payloadPath,
+          url: `https://${config.repo}`,
+          branch: currentBranch,
+          isHelm: this.isHelmChart(input.contentDir)
+        }
+      }
 
       this.logger.log(`  Application payload added to ${config.repo} branch ${devBranch} in path ${payloadPath}`)
 
-      const pullRequest: PullRequest = await gitApi.createPullRequest({
-        title: message,
-        sourceBranch: devBranch,
-        targetBranch: currentBranch,
-      });
+      const pullRequest: PullRequest = await (gitApi
+        .createPullRequest({
+          title: message,
+          sourceBranch: devBranch,
+          targetBranch: currentBranch,
+        })
+        .catch(err => {
+          console.log('Error creating pull request: ', err)
+          throw err
+        }) as Promise<PullRequest>);
 
       const result = {
         path: payloadPath,
@@ -278,7 +306,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     return fs.existsSync(chartFile)
   }
 
-  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean}, ignoreDifferences: object[] | undefined): Promise<{path: string, url: string, branch: string, pullNumber: number, applicationFile: string}> {
+  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean}, ignoreDifferences: object[] | undefined): Promise<{path: string, url: string, branch: string, pullNumber?: number, applicationFile: string}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -334,7 +362,12 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
       const message = `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`;
       // commit and push changes
-      await this.addCommitPushBranch(git, message, devBranch);
+      const pushResult = await this.addCommitPushBranch(git, message, devBranch);
+
+      if (!pushResult) {
+        this.logger.log(`  No changes to ArgoCD config for ${config.repo} in path ${overlayPath}/${applicationFile}`)
+        return {path: overlayPath, url: `https://${config.repo}`, branch: devBranch, applicationFile}
+      }
 
       this.logger.log(`  ArgoCD config added to ${config.repo} in path ${overlayPath}/${applicationFile}`)
 
@@ -428,13 +461,20 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
   }
 
-  async addCommitPushBranch(git: SimpleGit, message: string, branch: string): Promise<void> {
+  async addCommitPushBranch(git: SimpleGit, message: string, branch: string): Promise<boolean> {
+    const status: any = await git.status()
+    if (status.not_added.length === 0 && status.deleted.length === 0 && status.conflicted.length === 0 && status.staged.length === 0 && status.modified.length === 0) {
+      return false
+    }
+
     this.logger.debug(`  ** Adding and committing changes to repo`);
     await git.add('.');
     await git.commit(message);
 
     this.logger.debug(`  ** Pushing changes`);
-    const success = await git.push('origin', branch).then(() => true).catch(() => false);
+    await git.push('origin', branch).then(() => true).catch(() => false);
+
+    return true
   }
 
   lookupGitCredential(credentials: GitOpsCredentials, repo: string): GitOpsCredential {
