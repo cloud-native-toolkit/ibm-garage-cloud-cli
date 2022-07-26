@@ -35,6 +35,52 @@ import {timer} from '../../util/timer';
 import {isString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
 
+const argocdResolver = (applicationPath: string): MergeResolver => {
+  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
+    const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
+
+    const promises: Array<Promise<string | Error>> = kustomizeYamls
+      .map(async (kustomizeYaml: string) => {
+        await git.raw(['checkout', '--ours', kustomizeYaml]);
+
+        await addKustomizeResource(pathJoin(git.repoDir, kustomizeYaml), applicationPath);
+
+        return kustomizeYaml;
+      })
+      .map(p => p.catch(error => error));
+
+    const result: Array<string | Error> = await Promise.all(promises);
+
+    const resolvedConflicts: string[] = result.filter(isString);
+    const conflictErrors: Error[] = result.filter(isError);
+
+    return {resolvedConflicts, conflictErrors};
+  }
+}
+
+const argocdDeleteResolver = (applicationPath: string): MergeResolver => {
+  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
+    const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
+
+    const promises: Array<Promise<string | Error>> = kustomizeYamls
+      .map(async (kustomizeYaml: string) => {
+        await git.raw(['checkout', '--ours', kustomizeYaml]);
+
+        await removeKustomizeResource(pathJoin(git.repoDir, kustomizeYaml), applicationPath);
+
+        return kustomizeYaml;
+      })
+      .map(p => p.catch(error => error));
+
+    const result: Array<string | Error> = await Promise.all(promises);
+
+    const resolvedConflicts: string[] = result.filter(isString);
+    const conflictErrors: Error[] = result.filter(isError);
+
+    return {resolvedConflicts, conflictErrors};
+  }
+}
+
 export class GitopsModulePRImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
   userConfig = {
@@ -64,7 +110,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         method: 'squash',
         rateLimit: options.rateLimit,
         waitForBlocked: options.waitForBlocked,
-        resolver: unionMergeResolver
+        resolver: argocdDeleteResolver(argocdRepoConfig.applicationFile)
       });
     }
 
@@ -107,7 +153,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
           method: 'squash',
           rateLimit: options.rateLimit,
           waitForBlocked: options.waitForBlocked,
-          resolver: unionMergeResolver
+          resolver: argocdResolver(argocdRepoConfig.applicationFile)
         });
       }
     }
