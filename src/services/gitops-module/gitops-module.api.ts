@@ -46,6 +46,7 @@ export type GitOpsModuleOptions = GitOpsModuleInputBase & Partial<GitOpsModuleIn
   token?: string;
   valueFiles?: string;
   delete?: boolean;
+  waitForBlocked?: string;
 };
 export type GitOpsModuleInput = GitOpsModuleInputBase & GitOpsModuleInputDefaults & {
   valueFiles: string[];

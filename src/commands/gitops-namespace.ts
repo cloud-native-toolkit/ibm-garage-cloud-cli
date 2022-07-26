@@ -103,6 +103,12 @@ export const builder = (yargs: Argv<any>) => {
       demandOption: false,
       default: true,
     })
+    .option('waitForBlocked', {
+      describe: 'The amount of time to wait for blocked pull requests. The format is "1h30m10s" or any combination.',
+      type: 'string',
+      default: '1h',
+      require: false
+    })
     .option('tmpDir', {
       describe: 'The temp directory where the gitops repo should be checked out',
       type: 'string',

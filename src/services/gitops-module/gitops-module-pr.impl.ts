@@ -2,7 +2,14 @@ import * as fs from 'fs-extra';
 import {SimpleGit} from 'simple-git';
 import * as YAML from 'js-yaml';
 import {join as pathJoin} from 'path';
-import {apiFromUrl, GitApi, MergeResolver, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
+import {
+  apiFromUrl,
+  GitApi,
+  MergeResolver,
+  PullRequest,
+  SimpleGitWithApi,
+  unionMergeResolver
+} from '@cloudnativetoolkit/git-client';
 import {Container} from 'typescript-ioc';
 import { http, https } from 'follow-redirects';
 
@@ -28,52 +35,6 @@ import {timer} from '../../util/timer';
 import {isString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
 
-const argocdResolver = (applicationPath: string): MergeResolver => {
-  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
-    const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
-
-    const promises: Array<Promise<string | Error>> = kustomizeYamls
-      .map(async (kustomizeYaml: string) => {
-        await git.raw(['checkout', '--ours', kustomizeYaml]);
-
-        await addKustomizeResource(pathJoin(git.repoDir, kustomizeYaml), applicationPath);
-
-        return kustomizeYaml;
-      })
-      .map(p => p.catch(error => error));
-
-    const result: Array<string | Error> = await Promise.all(promises);
-
-    const resolvedConflicts: string[] = result.filter(isString);
-    const conflictErrors: Error[] = result.filter(isError);
-
-    return {resolvedConflicts, conflictErrors};
-  }
-}
-
-const argocdDeleteResolver = (applicationPath: string): MergeResolver => {
-  return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
-    const kustomizeYamls: string[] = conflicts.filter(f => /.*kustomization.yaml/.test(f));
-
-    const promises: Array<Promise<string | Error>> = kustomizeYamls
-      .map(async (kustomizeYaml: string) => {
-        await git.raw(['checkout', '--ours', kustomizeYaml]);
-
-        await removeKustomizeResource(pathJoin(git.repoDir, kustomizeYaml), applicationPath);
-
-        return kustomizeYaml;
-      })
-      .map(p => p.catch(error => error));
-
-    const result: Array<string | Error> = await Promise.all(promises);
-
-    const resolvedConflicts: string[] = result.filter(isString);
-    const conflictErrors: Error[] = result.filter(isError);
-
-    return {resolvedConflicts, conflictErrors};
-  }
-}
-
 export class GitopsModulePRImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
   userConfig = {
@@ -98,7 +59,13 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
     this.logger.debug('ArgoCD repo config:', {argocdRepoConfig});
     if (argocdRepoConfig.fileChange && options.autoMerge) {
-      await argocdGit.updateAndMergePullRequest({pullNumber: argocdRepoConfig.pullNumber, method: 'squash', rateLimit: options.rateLimit, resolver: argocdDeleteResolver(argocdRepoConfig.applicationFile)});
+      await argocdGit.updateAndMergePullRequest({
+        pullNumber: argocdRepoConfig.pullNumber,
+        method: 'squash',
+        rateLimit: options.rateLimit,
+        waitForBlocked: options.waitForBlocked,
+        resolver: unionMergeResolver
+      });
     }
 
     return {};
@@ -130,7 +97,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         await payloadGit.updateAndMergePullRequest({
           pullNumber: payloadRepoConfig.pullNumber,
           method: 'squash',
-          rateLimit: options.rateLimit
+          rateLimit: options.rateLimit,
+          waitForBlocked: options.waitForBlocked
         })
       }
       if (argocdRepoConfig.pullNumber) {
@@ -138,7 +106,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
           pullNumber: argocdRepoConfig.pullNumber,
           method: 'squash',
           rateLimit: options.rateLimit,
-          resolver: argocdResolver(argocdRepoConfig.applicationFile)
+          waitForBlocked: options.waitForBlocked,
+          resolver: unionMergeResolver
         });
       }
     }
@@ -411,7 +380,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       }
 
       const currentBranch = await getCurrentBranch(input.branch)
-      const devBranch = `${input.name}-argocd-delete`;
+      const devBranch = `${input.name}-argocd-delete-${suffix}`;
 
       this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
       await git.checkoutBranch(devBranch, `origin/${currentBranch}`)

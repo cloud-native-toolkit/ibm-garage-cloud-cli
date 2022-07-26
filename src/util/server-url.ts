@@ -1,4 +1,4 @@
-const {KubeConfig} = require('kubernetes-client');
+const {KubeConfig} = require('@cloudnativetoolkit/kubernetes-client');
 
 export class ServerUrl {
   async getServerUrl(): Promise<string> {

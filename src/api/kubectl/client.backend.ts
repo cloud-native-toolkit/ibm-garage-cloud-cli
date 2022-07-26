@@ -1,6 +1,6 @@
 import {KubeBackend} from './client.api';
 
-const Request = require('kubernetes-client/backends/request');
+const Request = require('@cloudnativetoolkit/kubernetes-client/backends/request');
 
 export class InClusterBackend implements KubeBackend {
   getValue(): any {
