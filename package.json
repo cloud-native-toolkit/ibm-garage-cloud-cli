@@ -96,7 +96,7 @@
     "lodash": "^4.17.21",
     "node-stream-zip": "^1.15.0",
     "open": "^8.4.0",
-    "openshift-rest-client": "^1.6.5",
+    "openshift-rest-client": "^7.0.0",
     "ora": "^5.4.1",
     "p-throttle": "^4.1.1",
     "rimraf": "^3.0.2",
