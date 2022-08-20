@@ -4,7 +4,7 @@ import {Namespace} from './namespace.api';
 import {NamespaceOptionsModel} from './namespace-options.model';
 import {CreateServiceAccount} from '../create-service-account';
 import {
-  AbstractKubeNamespace,
+  AbstractKubeNamespace, KubeBody,
   KubeConfigMap,
   KubeMetadata,
   KubeNamespace,
@@ -97,7 +97,7 @@ export class NamespaceImpl implements Namespace {
     return namespace;
   }
 
-  async create({namespace, templateNamespace, serviceAccount, tekton, argocd, argocdNamespace}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
+  async create({namespace, templateNamespace, serviceAccount, tekton, argocd, argocdNamespace, puller}: NamespaceOptionsModel, notifyStatus: (status: string) => void = noopNotifyStatus): Promise<string> {
 
     const {clusterType, serverUrl} = await this.clusterType.getClusterType(templateNamespace);
 
@@ -134,10 +134,40 @@ export class NamespaceImpl implements Namespace {
       }
     }
 
+    if (puller) {
+      notifyStatus(`Adding image-puller permission for service accounts in ${namespace}`)
+      await this.addImagePullerRoleBinding(namespace)
+        .catch(() => notifyStatus(`  Error adding image-puller permission`));
+    }
+
     notifyStatus(`Setting current ${label} to ${namespace}`)
     await this.setCurrentProject(namespace);
 
     return namespace;
+  }
+
+  async addImagePullerRoleBinding(namespace: string) {
+
+    const name = 'image-puller';
+
+    const body: RoleBinding = {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'RoleBinding',
+      metadata: {
+        name,
+      },
+      roleRef: {
+        apiGroup: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRole',
+        name: 'system:image-puller'
+      },
+      subjects: [{
+        kind: 'Group',
+        name: `system:serviceaccounts:${namespace}`
+      }]
+    }
+
+    return this.roleBindings.createOrUpdate(name, {body}, namespace)
   }
 
   async grantPermissionToArgoCD(namespace: string, argocdNamespace: string) {

@@ -33,6 +33,11 @@ export const builder = (yargs: Argv<any>) => {
       default: false,
       type: 'boolean'
     })
+    .option('puller', {
+      describe: 'Flag indicating image-puller permission should be granted in the namespace',
+      default: true,
+      type: 'boolean'
+    })
     .option('argocd', {
       alias: 'a',
       describe: 'flag indicating that argocd should be given permission to manage the namespace',
@@ -76,8 +81,6 @@ exports.handler = async (argv: Arguments<NamespaceOptionsModel & {verbose: boole
   if (argv.throttle) {
     logger.log('  Throttling requests to the cluster api');
   }
-
-  logger.text = 'Setting up namespace: ' + argv.namespace;
 
   function statusCallback(status: string) {
     logger.text = status;

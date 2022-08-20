@@ -6,4 +6,5 @@ export class NamespaceOptionsModel {
   tekton?: boolean;
   argocd?: boolean;
   argocdNamespace?: string;
+  puller?: boolean;
 }
