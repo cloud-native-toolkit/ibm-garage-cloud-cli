@@ -19,10 +19,7 @@ export interface ComponentUrl {
 export type ComponentInfo = ComponentCredentials & ComponentUrl
 
 export interface Secrets {
-  jenkins?: ComponentInfo;
-  argocd?: ComponentInfo;
-  sonarqube?: ComponentInfo;
-  artifactory?: ComponentInfo;
+  [tool: string]: ComponentInfo;
 }
 
 interface JenkinsConfig {
@@ -91,63 +88,42 @@ export class CredentialsImpl implements Credentials {
     const qs: QueryString = {labelSelector: 'grouping=garage-cloud-native-toolkit'};
     const listOptions: ListOptions<any> = {namespace, qs};
 
-    const results: Array<Array<object>> = await Promise.all([
-      Promise.all([
-        this.getArgoCdCredentials(namespace),
-        this.getJenkinsCredentials(namespace),
-      ]),
+    const resultArrays: Array<Array<object>> = await Promise.all([
       this.kubeSecret.listData<object>(listOptions, ['jenkins-access']),
       this.kubeConfigMap.listData<object>(listOptions, ['ibmcloud-config', 'cloud-config']),
     ]);
 
-    return this.group(_.assign({}, ...(_.flatten(results))));
+    const results: Array<object> = _.flatten(resultArrays);
+
+    return processResults(results);
   }
+}
 
-  async getJenkinsCredentials(namespace: string): Promise<{JENKINS_USER?: string, JENKINS_PASSWORD?: string, JENKINS_APITOKEN?: string}> {
+export const processResults = (results: Array<object>): Secrets => {
+  const val: Secrets = results.reduce<Secrets>((result: Secrets, current: object) => {
 
-    try {
-      const jenkinsAccess: {username: string, password: string, api_token: string} = await this.kubeSecret.getData('jenkins-access', namespace);
+    const secret: Secrets = Object
+      .keys(current)
+      .filter((key: string) => key.includes('_'))
+      .reduce<Secrets>((previous: Secrets, currentKey: string) => {
 
-      return {
-        JENKINS_USER: jenkinsAccess.username,
-        JENKINS_PASSWORD: jenkinsAccess.password,
-        JENKINS_APITOKEN: jenkinsAccess.api_token,
-      };
-    } catch (err) {
-      return {};
-    }
-  }
+        const pos: number = currentKey.lastIndexOf('_');
 
-  async getArgoCdCredentials(namespace: string): Promise<ArgoCdCredentials> {
-    try {
-      const result = await this.kubeClient.api.v1.namespace(namespace).pods.get();
+        const tool: string = currentKey.substring(0, pos).toLowerCase();
+        const key: string = currentKey.substring(pos + 1).toLowerCase();
+        const value: string = current[currentKey];
 
-      const ARGOCD_PASSWORD = result.body.items
-        .map(item => item.metadata.name)
-        .filter(name => name.startsWith('argocd-server'))[0];
+        const currentTool = previous[tool] || {};
 
-      return {ARGOCD_USER: 'admin', ARGOCD_PASSWORD};
-    } catch (err) {
-      return {};
-    }
-  }
+        currentTool[key] = value;
 
-  group(values: FlattenedInfo): Secrets {
-    return Object.keys(values)
-      .filter(key => key.split('_').length === 2)
-      .reduce((secrets: object, compositeKey: string) => {
-        if (compositeKey.split('_').length < 2) {
-          return secrets;
-        }
+        previous[tool] = currentTool;
 
-        const group = compositeKey.toLowerCase().split('_')[0];
-        const key = compositeKey.toLowerCase().split('_')[1];
+        return previous;
+      }, {})
 
-        const groupValues = secrets[group] || {};
-        groupValues[key] = values[compositeKey];
-        secrets[group] = groupValues;
+    return _.merge(result, secret);
+  }, {} as Secrets)
 
-        return secrets;
-      }, {});
-  }
+  return val;
 }

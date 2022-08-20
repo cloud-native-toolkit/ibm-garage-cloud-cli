@@ -1,6 +1,6 @@
 import {Container} from 'typescript-ioc';
 import {Credentials} from './credentials.api';
-import {CredentialsImpl} from './credentials';
+import {CredentialsImpl, processResults} from './credentials';
 import {KubeConfigMap, KubeSecret} from '../../api/kubectl';
 import {factoryFromValue} from '../../testHelper';
 import Mock = jest.Mock;
@@ -14,80 +14,26 @@ describe('credentials', () => {
     expect(Container.get(Credentials)).not.toBeUndefined();
   });
 
-  describe('given Credentials', () => {
-    let classUnderTest: CredentialsImpl;
+  describe('given processResults()', () => {
+    describe('when called', () => {
+      test('then return secrets', async () => {
+        const objects = [
+          {ARTIFACTORY_USERNAME: 'artifactory', ARTIFACTORY_PASSWORD: 'password1', ARTIFACTORY_URL: 'http://artifactory.tools.svc'},
+          {SONARQUBE_USERNAME: 'sonarqube', SONARQUBE_PASSWORD: 'password2', SONARQUBE_URL: 'http://sonarqube.tools.svc'},
+          {PACT_BROKER_URL: 'https://pact-broker.public.com'},
+          {ARGOCD_URL: 'https://argocd.public.com'},
+          {ARTIFACTORY_URL: 'https://artifactory.public.com'}
+        ]
 
-    let secret_listData: Mock;
-    let configMap_listData: Mock;
+        const result = processResults(objects)
 
-    beforeEach(() => {
-      secret_listData = jest.fn();
-      Container.bind(KubeSecret).factory(factoryFromValue({
-        listData: secret_listData,
-      }));
-
-      configMap_listData = jest.fn();
-      Container.bind(KubeConfigMap).factory(factoryFromValue({
-        listData: configMap_listData,
-      }));
-
-      classUnderTest = Container.get(CredentialsImpl);
-    });
-
-    describe('given getCredentials()', () => {
-      let getArgoCdCredentials: Mock;
-      let getJenkinsCredentials: Mock;
-      let group: Mock;
-      beforeEach(() => {
-        classUnderTest.getArgoCdCredentials = getArgoCdCredentials = jest.fn();
-        classUnderTest.getJenkinsCredentials = getJenkinsCredentials = jest.fn();
-        classUnderTest.group = group = jest.fn();
+        expect(result).toEqual({
+          artifactory: {username: 'artifactory', password: 'password1', url: 'https://artifactory.public.com'},
+          sonarqube: {username: 'sonarqube', password: 'password2', url: 'http://sonarqube.tools.svc'},
+          pact_broker: {url: 'https://pact-broker.public.com'},
+          argocd: {url: 'https://argocd.public.com'}
+        })
       });
-
-      describe('when called', () => {
-        test('then combine configMaps, secrets, and ArgoCd credentials', async () => {
-
-          const configMapData = [{JENKINS_URL: 'jenkins url'}, {ARTIFACTORY_URL: 'artifactory url'}];
-          configMap_listData.mockResolvedValue(configMapData);
-
-          const secretData = [{JENKINS_USER: 'jenkins user'}, {ARTIFACTORY_USER: 'artifactory user'}];
-          secret_listData.mockResolvedValue(secretData);
-
-          const argoCdCredentials = {ARGOCD_PASSWORD: 'password', ARGOCD_USER: 'argo user'};
-          getArgoCdCredentials.mockResolvedValue(argoCdCredentials);
-
-          const jenkinsCredentials = {JENKINS_PASSWORD: 'jpassword', JENKINS_USER: 'jenkins user'};
-          getJenkinsCredentials.mockResolvedValue(jenkinsCredentials);
-
-          const expectedResult = {};
-          group.mockReturnValue(expectedResult);
-
-          const namespace = 'namespace';
-          const result = await classUnderTest.getCredentials(namespace);
-
-          expect(result).toBe(expectedResult);
-        });
-      });
-    });
-
-    describe('given group()', () => {
-      describe('when called with empty object', () => {
-        test('return empty object', () => {
-          expect(classUnderTest.group({})).toEqual({});
-        });
-      });
-
-      describe('when called with keys having format <group>_<type>', () => {
-        test('return <group>: {<type>: <value>} as lowercase', () => {
-          expect(classUnderTest.group({JENKINS_URL: 'url', JENKINS_USER: 'user'})).toEqual({jenkins: {url: 'url', user: 'user'}});
-        });
-      });
-
-      describe('when called with keys not containing underscore', () => {
-        test('ignore the key', () => {
-          expect(classUnderTest.group({JENKINSURL: 'url', JENKINS_USER: 'user'} as any)).toEqual({jenkins: {user: 'user'}});
-        });
-      })
     });
   });
 });
