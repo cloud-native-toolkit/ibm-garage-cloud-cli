@@ -86,30 +86,7 @@ exports.handler =  async (argv: Arguments<{namespace: string; yaml: boolean; pri
       process.exit(0);
     }
 
-    if (argv.print) {
-      console.log(`Endpoints in the '${argv.namespace}' namespace`);
-      printResults();
-      process.exit(0);
-    }
-
-    const input: SelectedIngress = await prompt([{
-      type: 'rawlist',
-      choices: [{
-        key: 'x',
-        name: 'Exit',
-        value: 'exit'
-      } as { key?: string, name: string, value: string }].concat(...choices),
-      name: 'selection',
-      message: `Endpoints in the '${argv.namespace}' namespace. Select an endpoint to launch the default browser or 'Exit'.`,
-      default: true,
-      suffix: '\n'
-    }]);
-
-    if (input.selection !== 'exit') {
-      await open(input.selection);
-    } else {
-      printResults();
-    }
+    printResults();
   } catch (err) {
     if (spinner) {
       spinner.stop();
@@ -119,7 +96,7 @@ exports.handler =  async (argv: Arguments<{namespace: string; yaml: boolean; pri
     if (argv.debug) {
       console.log('Error getting credentials:', err);
     }
-    process.exit(1);
 
+    process.exit(1);
   }
 };
