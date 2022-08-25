@@ -27,7 +27,17 @@ else
   exit 1
 fi
 
-echo "Installing version ${RELEASE} of Cloud-Native Toolkit cli for ${TYPE} into ${DEST_DIR}"
-curl --progress-bar -Lo "${DEST_DIR}/igc" "https://github.com/cloud-native-toolkit/ibm-garage-cloud-cli/releases/download/${RELEASE}/igc-${TYPE}" && chmod +x "${DEST_DIR}/igc"
+ARCH=""
+case $(uname -m) in
+    i386)    ARCH="x64" ;;
+    i686)    ARCH="x64" ;;
+    x86_64)  ARCH="x64" ;;
+    aarch64) ARCH="arm64" ;;
+    arm64)   ARCH="arm64" ;;
+    *)       echo "Unable to determine system architecture" >&2; exit 1 ;;
+esac
+
+echo "Installing version ${RELEASE} of Cloud-Native Toolkit cli for ${TYPE}-${ARCH} into ${DEST_DIR}"
+curl --progress-bar -Lo "${DEST_DIR}/igc" "https://github.com/cloud-native-toolkit/ibm-garage-cloud-cli/releases/download/${RELEASE}/igc-${TYPE}-${ARCH}" && chmod +x "${DEST_DIR}/igc"
 echo "Installing igc cli as plugins to kubectl/oc clis"
 "${DEST_DIR}/igc" plugins --path "${DEST_DIR}"
