@@ -38,6 +38,6 @@ case $(uname -m) in
 esac
 
 echo "Installing version ${RELEASE} of Cloud-Native Toolkit cli for ${TYPE}-${ARCH} into ${DEST_DIR}"
-curl --progress-bar -Lo "${DEST_DIR}/igc" "https://github.com/cloud-native-toolkit/ibm-garage-cloud-cli/releases/download/${RELEASE}/igc-${TYPE}=${ARCH}" && chmod +x "${DEST_DIR}/igc"
+curl --progress-bar -Lo "${DEST_DIR}/igc" "https://github.com/cloud-native-toolkit/ibm-garage-cloud-cli/releases/download/${RELEASE}/igc-${TYPE}-${ARCH}" && chmod +x "${DEST_DIR}/igc"
 echo "Installing igc cli as plugins to kubectl/oc clis"
 "${DEST_DIR}/igc" plugins --path "${DEST_DIR}"
