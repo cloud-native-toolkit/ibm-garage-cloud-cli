@@ -12,6 +12,11 @@ export const builder = (yargs: Argv<any>) => {
       type: 'string',
       demandOption: true,
     })
+    .option('caCert', {
+      type: 'string',
+      description: 'Name of the file containing the ca certificate for SSL connections. The value can also be provided in the `GIT_CA_CERT` environment variable.',
+      demandOption: false
+    })
     .options({
       'contentDir': {
         alias: ['c', "content"],
@@ -24,6 +29,11 @@ export const builder = (yargs: Argv<any>) => {
         type: 'string',
         describe: 'Namespace where the secret should be created',
         demandOption: true,
+      },
+      'caCert': {
+        type: 'string',
+        description: 'Name of the file containing the ca certificate for SSL connections. The value can also be provided in the `GIT_CA_CERT` environment variable.',
+        demandOption: false
       },
       'layer': {
         alias: 'l',

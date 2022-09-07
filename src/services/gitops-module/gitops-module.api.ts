@@ -60,6 +60,7 @@ export interface GitOpsModuleInputBase {
   namespace: string;
   gitopsConfig: GitOpsConfig;
   ignoreDiff?: string;
+  caCert?: string;
 }
 export interface GitOpsModuleInputDefaults {
   isNamespace: boolean;

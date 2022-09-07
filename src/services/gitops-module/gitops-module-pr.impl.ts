@@ -164,7 +164,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
   async loadGitApi(input: GitOpsModuleInput, config: PayloadConfig): Promise<GitApi> {
     const credentials: GitOpsCredential = this.lookupGitCredential(input.gitopsCredentials, config.repo)
 
-    return apiFromUrl(config.url, {username: credentials.username, password: credentials.token});
+    return apiFromUrl(config.url, {username: credentials.username, password: credentials.token, caCert: input.caCert});
   }
 
   async defaultInputs(options: GitOpsModuleOptions): Promise<GitOpsModuleInput> {
