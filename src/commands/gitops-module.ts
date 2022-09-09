@@ -24,6 +24,22 @@ export const builder = (yargs: Argv<any>) => {
         type: 'string',
         demandOption: false,
       },
+      'helmRepoUrl': {
+        alias: ['r'],
+        description: 'The helm repo url that should be used for the application logic',
+        type: 'string',
+        demandOption: false
+      },
+      'helmChart': {
+        description: 'The name of the helm chart in the helm repo that should be used',
+        type: 'string',
+        demandOption: false
+      },
+      'helmChartVersion': {
+        description: 'The version of the helm chart in the helm repo that should be used',
+        type: 'string',
+        demandOption: false
+      },
       'namespace': {
         alias: 'n',
         type: 'string',

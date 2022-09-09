@@ -26,6 +26,22 @@ export const builder = (yargs: Argv<any>) => {
         demandOption: false,
         default: 'default'
       },
+      'helmRepoUrl': {
+        alias: ['r'],
+        description: 'The helm repo url that should be used for the application logic',
+        type: 'string',
+        demandOption: false
+      },
+      'helmChart': {
+        description: 'The name of the helm chart in the helm repo that should be used',
+        type: 'string',
+        demandOption: false
+      },
+      'helmChartVersion': {
+        description: 'The version of the helm chart in the helm repo that should be used',
+        type: 'string',
+        demandOption: false
+      },
       'gitopsConfigFile': {
         describe: 'Name of yaml or json file that contains the gitops config values',
         type: 'string',
