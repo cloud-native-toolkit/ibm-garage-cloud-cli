@@ -1,7 +1,7 @@
 import * as fs from 'fs-extra';
 import {SimpleGit} from 'simple-git';
 import * as YAML from 'js-yaml';
-import {join as pathJoin} from 'path';
+import {join as pathJoin, basename} from 'path';
 import {
   apiFromUrl,
   GitApi,
@@ -34,6 +34,7 @@ import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
 import {isString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
+import {readFile, writeFile} from 'fs-extra';
 
 const argocdResolver = (applicationPath: string): MergeResolver => {
   return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
@@ -266,9 +267,15 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
       await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
 
-      this.logger.debug(`Copying from ${input.contentDir} to ${repoDir}/${payloadPath}`);
-      const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
-      this.logger.debug('Result from copy', copyResult);
+      if (input.helmRepoUrl && input.helmChart && input.helmChartVersion) {
+        this.logger.debug(`Setting up chart ${input.helmChart} from ${input.helmRepoUrl} to ${repoDir}/${payloadPath}`);
+        const copyResult = await setupHelmChartDir(input.helmRepoUrl, input.helmChart, input.helmChartVersion, input.valueFiles, `${repoDir}/${payloadPath}`);
+        this.logger.debug('Result from chart setup', copyResult);
+      } else {
+        this.logger.debug(`Copying from ${input.contentDir} to ${repoDir}/${payloadPath}`);
+        const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
+        this.logger.debug('Result from copy', copyResult);
+      }
 
       const pushResult = await this.addCommitPushBranch(git, message, devBranch);
 
@@ -278,7 +285,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
           path: payloadPath,
           url: `https://${config.repo}`,
           branch: currentBranch,
-          isHelm: this.isHelmChart(input.contentDir)
+          isHelm: !!input.helmRepoUrl || this.isHelmChart(input.contentDir)
         }
       }
 
@@ -355,6 +362,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       const nameSuffix = currentBranch !== 'main' && currentBranch !== 'master' ? `-${currentBranch}` : '';
       const applicationName = buildApplicationName(input.name, input.namespace, nameSuffix, input.isNamespace);
       const applicationFile = `${input.type}/${applicationName}.yaml`;
+
+      const valueFiles = processValueFiles(input.valueFiles)
 
       const argoApplication: ArgoApplication = new ArgoApplication({
         name: applicationName,
@@ -600,4 +609,49 @@ const parseIgnoreDiff = (ignoreDiff?: string): object[] | undefined => {
   } catch (err) {
     return
   }
+}
+
+const setupHelmChartDir = async (repository: string, name: string, version: string, valueFiles: string[], destination: string): Promise<string> => {
+  // create Chart.yaml in destination
+  const chartConfig = {
+    apiVersion: 'v2',
+    name,
+    description: `A helm chart to wrap ${name} from ${repository}`,
+    type: 'application',
+    version: '0.1.0',
+    appVersion: '0.1.0',
+    dependencies: [
+      {
+        name,
+        version,
+        repository
+      }
+    ]
+  }
+
+  await writeFile(pathJoin(destination, 'Chart.yaml'), YAML.dump(chartConfig))
+
+  for (let i = 0; i < (valueFiles || []).length; i++) {
+    const file = valueFiles[0]
+
+    const contents: Buffer = await readFile(file)
+    const valuesContent = {}
+    valuesContent[name] = YAML.load(contents.toString())
+
+    const filename = basename(file)
+
+    await writeFile(pathJoin(destination, filename), YAML.dump(valuesContent))
+  }
+
+  // TODO download the helm tar.gz file into the charts/ folder
+
+  return destination
+}
+
+const processValueFiles = (valueFiles?: string[]): string[] | undefined => {
+  if (!valueFiles) {
+    return
+  }
+
+  return (valueFiles || []).map(valueFile => valueFile.includes('/') ? basename(valueFile) : valueFile)
 }

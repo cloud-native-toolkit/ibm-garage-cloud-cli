@@ -61,6 +61,9 @@ export interface GitOpsModuleInputBase {
   gitopsConfig: GitOpsConfig;
   ignoreDiff?: string;
   caCert?: string;
+  helmRepoUrl?: string;
+  helmChart?: string;
+  helmChartVersion?: string;
 }
 export interface GitOpsModuleInputDefaults {
   isNamespace: boolean;
