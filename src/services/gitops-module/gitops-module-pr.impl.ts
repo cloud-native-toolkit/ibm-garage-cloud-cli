@@ -34,7 +34,7 @@ import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
 import {isString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
-import {readFile, writeFile} from 'fs-extra';
+import {mkdirp, readFile, writeFile} from 'fs-extra';
 
 const argocdResolver = (applicationPath: string): MergeResolver => {
   return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
@@ -307,7 +307,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         url: `https://${config.repo}`,
         branch: currentBranch,
         pullNumber: pullRequest.pullNumber,
-        isHelm: this.isHelmChart(input.contentDir)
+        isHelm: !!input.helmRepoUrl || this.isHelmChart(input.contentDir)
       };
 
       this.logger.debug('Application payload result', {result});
@@ -628,6 +628,8 @@ const setupHelmChartDir = async (repository: string, name: string, version: stri
       }
     ]
   }
+
+  await mkdirp(destination)
 
   await writeFile(pathJoin(destination, 'Chart.yaml'), YAML.dump(chartConfig))
 
