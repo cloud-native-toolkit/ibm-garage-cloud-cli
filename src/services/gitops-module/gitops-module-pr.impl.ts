@@ -236,7 +236,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
   }
 
-  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber?: number, isHelm?: boolean}> {
+  async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber?: number, isHelm?: boolean, valueFiles?: string[]}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
@@ -267,10 +267,10 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       this.logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`);
       await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
 
+      let valueFiles: string[] = input.valueFiles
       if (input.helmRepoUrl && input.helmChart && input.helmChartVersion) {
         this.logger.debug(`Setting up chart ${input.helmChart} from ${input.helmRepoUrl} to ${repoDir}/${payloadPath}`);
-        const copyResult = await setupHelmChartDir(input.helmRepoUrl, input.helmChart, input.helmChartVersion, input.valueFiles, `${repoDir}/${payloadPath}`);
-        this.logger.debug('Result from chart setup', copyResult);
+        valueFiles = await setupHelmChartDir(input.helmRepoUrl, input.helmChart, input.helmChartVersion, input.valueFiles, `${repoDir}/${payloadPath}`);
       } else {
         this.logger.debug(`Copying from ${input.contentDir} to ${repoDir}/${payloadPath}`);
         const copyResult = await copy(input.contentDir, `${repoDir}/${payloadPath}`);
@@ -285,7 +285,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
           path: payloadPath,
           url: `https://${config.repo}`,
           branch: currentBranch,
-          isHelm: !!input.helmRepoUrl || this.isHelmChart(input.contentDir)
+          isHelm: !!input.helmRepoUrl || this.isHelmChart(input.contentDir),
+          valueFiles
         }
       }
 
@@ -328,7 +329,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     return fs.existsSync(chartFile)
   }
 
-  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean}, ignoreDifferences: object[] | undefined): Promise<{path: string, url: string, branch: string, pullNumber?: number, applicationFile: string}> {
+  async setupArgo(gitApi: GitApi, input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string, isHelm?: boolean, valueFiles?: string[]}, ignoreDifferences: object[] | undefined): Promise<{path: string, url: string, branch: string, pullNumber?: number, applicationFile: string}> {
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -363,8 +364,6 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       const applicationName = buildApplicationName(input.name, input.namespace, nameSuffix, input.isNamespace);
       const applicationFile = `${input.type}/${applicationName}.yaml`;
 
-      const valueFiles = processValueFiles(input.valueFiles)
-
       const argoApplication: ArgoApplication = new ArgoApplication({
         name: applicationName,
         namespace: input.namespace,
@@ -372,7 +371,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         sourcePath: payloadRepo.path,
         sourceRepoUrl: payloadRepo.url,
         sourceBranch: payloadRepo.branch,
-        valueFiles: input.valueFiles,
+        valueFiles: payloadRepo.valueFiles,
         releaseName: input.name,
         isHelm: payloadRepo.isHelm,
         ignoreDifferences,
@@ -611,7 +610,7 @@ const parseIgnoreDiff = (ignoreDiff?: string): object[] | undefined => {
   }
 }
 
-const setupHelmChartDir = async (repository: string, name: string, version: string, valueFiles: string[], destination: string): Promise<string> => {
+const setupHelmChartDir = async (repository: string, name: string, version: string, valueFiles: string[], destination: string): Promise<string[]> => {
   // create Chart.yaml in destination
   const chartConfig = {
     apiVersion: 'v2',
@@ -633,8 +632,9 @@ const setupHelmChartDir = async (repository: string, name: string, version: stri
 
   await writeFile(pathJoin(destination, 'Chart.yaml'), YAML.dump(chartConfig))
 
+  const updatedValueFiles: string[] = []
   for (let i = 0; i < (valueFiles || []).length; i++) {
-    const file = valueFiles[0]
+    const file = valueFiles[i]
 
     const contents: Buffer = await readFile(file)
     const valuesContent = {}
@@ -643,17 +643,11 @@ const setupHelmChartDir = async (repository: string, name: string, version: stri
     const filename = basename(file)
 
     await writeFile(pathJoin(destination, filename), YAML.dump(valuesContent))
+
+    updatedValueFiles.push(filename)
   }
 
   // TODO download the helm tar.gz file into the charts/ folder
 
-  return destination
-}
-
-const processValueFiles = (valueFiles?: string[]): string[] | undefined => {
-  if (!valueFiles) {
-    return
-  }
-
-  return (valueFiles || []).map(valueFile => valueFile.includes('/') ? basename(valueFile) : valueFile)
+  return updatedValueFiles
 }
