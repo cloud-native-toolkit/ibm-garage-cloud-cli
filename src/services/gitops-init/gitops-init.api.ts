@@ -24,4 +24,5 @@ export class ExistingGitRepo extends Error {
 
 export abstract class GitopsInitApi {
   abstract create(options: GitopsInitOptions): Promise<{url: string, created: boolean, initialized: boolean}>;
+  abstract delete(options: GitopsInitOptions): Promise<{url: string, deleted: boolean}>;
 }
