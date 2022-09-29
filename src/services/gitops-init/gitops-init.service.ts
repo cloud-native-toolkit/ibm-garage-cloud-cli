@@ -12,7 +12,7 @@ import {ExistingGitRepo, GitopsInitApi, GitopsInitOptions} from './gitops-init.a
 import {Logger} from '../../util/logger';
 
 export class GitopsInitService implements GitopsInitApi {
-  async create(options: GitopsInitOptions): Promise<{url: string, created: boolean, initialized: boolean}> {
+  async create(options: GitopsInitOptions): Promise<{url: string, repo: string, created: boolean, initialized: boolean}> {
 
     const {gitClient, created} = await createOrFindRepo(options)
 
@@ -20,8 +20,24 @@ export class GitopsInitService implements GitopsInitApi {
 
     return {
       url: gitClient.getConfig().url,
+      repo: gitClient.getConfig().url.replace(/^https?:\/\//, '').replace(/[.]git$/, ''),
       created,
       initialized,
+    }
+  }
+
+  async delete(options: GitopsInitOptions): Promise<{url: string, repo: string, deleted: boolean}> {
+
+    const gitClient: GitApi = await apiFromPartialConfig(
+      options,
+      await buildGitCredentials(options))
+
+    await gitClient.deleteRepo()
+
+    return {
+      url: gitClient.getConfig().url,
+      repo: gitClient.getConfig().url.replace(/^https?:\/\//, '').replace(/[.]git$/, ''),
+      deleted: true,
     }
   }
 }

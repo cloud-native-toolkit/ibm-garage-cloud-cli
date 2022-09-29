@@ -69,6 +69,12 @@ export const builder = (yargs: Argv<any>) => {
         demandOption: false,
         default: false,
       },
+      'delete': {
+        description: 'Flag indicating that the repo should be deleted',
+        type: 'boolean',
+        demandOption: false,
+        default: false,
+      },
       'caCertFile': {
         type: 'string',
         description: 'Name of the file containing the ca certificate for SSL connections. The contents of the file can also be provided using the CA_CERT environment variable.',
@@ -111,8 +117,31 @@ export const builder = (yargs: Argv<any>) => {
       return {}
     })
 };
-exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, output: string}>) => {
+exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, output: string, delete: boolean}>) => {
   const service: GitopsInitApi = Container.get(GitopsInitApi)
+
+  if (argv.delete) {
+    if (argv.output !== 'json') {
+      console.log(`Deleting repository: ${argv.host}/${argv.org}/${argv.repo}`)
+    }
+
+    try {
+      const result: { url: string, deleted: boolean } = await service.delete(argv)
+
+      if (argv.output === 'json') {
+        console.log(JSON.stringify(result, null, 2))
+      } else if (result.deleted) {
+        console.log(`  Git repository deleted: ${result.url}`)
+      } else {
+        console.log(`  Git repository was not deleted: ${result.url}`)
+      }
+
+      process.exit(0)
+    } catch (err) {
+      console.log(err.message)
+      process.exit(1)
+    }
+  }
 
   if (argv.output !== 'json') {
     console.log(`Creating repository: ${argv.host}/${argv.org}/${argv.repo}`)
