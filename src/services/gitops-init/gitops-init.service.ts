@@ -10,19 +10,22 @@ import {mkdirp, pathExists} from 'fs-extra';
 
 import {ExistingGitRepo, GitopsInitApi, GitopsInitOptions} from './gitops-init.api';
 import {Logger} from '../../util/logger';
+import {GitOpsConfig} from '../gitops-module';
 
 export class GitopsInitService implements GitopsInitApi {
-  async create(options: GitopsInitOptions): Promise<{url: string, repo: string, created: boolean, initialized: boolean}> {
+  async create(options: GitopsInitOptions): Promise<{url: string, repo: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string}> {
 
     const {gitClient, created} = await createOrFindRepo(options)
 
-    const {initialized} = await initializeGitopsRepo(gitClient, options)
+    const {initialized, gitopsConfig, kubesealCert} = await initializeGitopsRepo(gitClient, options)
 
     return {
       url: gitClient.getConfig().url,
       repo: gitClient.getConfig().url.replace(/^https?:\/\//, '').replace(/[.]git$/, ''),
       created,
       initialized,
+      gitopsConfig,
+      kubesealCert,
     }
   }
 
@@ -88,7 +91,7 @@ const buildGitCredentials = async (options: GitopsInitOptions): Promise<Credenti
   }
 }
 
-const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, branch: string, serverName: string, argocdNamespace: string, sealedSecretsCert?: {cert: string, certFile?: string}}): Promise<{initialized: boolean}> => {
+const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, branch: string, serverName: string, argocdNamespace: string, sealedSecretsCert?: {cert: string, certFile?: string}}): Promise<{initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
   const logger: Logger = Container.get(Logger)
 
   const repoDir: string = join(input.tmpDir, makeId(12))
@@ -96,7 +99,9 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
   const git: SimpleGitWithApi = await gitClient.clone(repoDir, {})
 
   if (await isInitializedRepo(repoDir)) {
-    return {initialized: false}
+    const config: {gitopsConfig: GitOpsConfig, kubesealCert?: string} = await getInitializedConfig(repoDir)
+
+    return Object.assign({initialized: false}, config)
   }
 
   const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
@@ -114,12 +119,12 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
   await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
 
   const config = Object.assign({}, input, {repoUrl: gitClient.getConfig().url})
-  await populateGitopsRepo(repoDir, config)
+  const initializeResult: {gitopsConfig: GitOpsConfig, kubesealCert?: string} = await populateGitopsRepo(repoDir, config)
 
   const message = 'Initializes gitops repo structure'
   const pushResult = await addCommitPushBranch(git, message, devBranch)
   if (!pushResult) {
-    return {initialized: false}
+    throw new Error('Error pushing changes to gitops repo')
   }
 
   const pullRequest: PullRequest = await git.gitApi.createPullRequest({
@@ -134,14 +139,25 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
     waitForBlocked: '1h',
   })
 
-  return {initialized: true}
+  return Object.assign({initialized: true}, initializeResult)
 }
 
 const isInitializedRepo = async (repoDir: string): Promise<boolean> => {
   return pathExists(join(repoDir, 'config.yaml'));
 }
 
-const populateGitopsRepo = async (repoDir: string, input: {serverName: string, repoUrl: string, branch: string, argocdNamespace: string, sealedSecretsCert?: {cert: string, certFile?: string}}): Promise<string> => {
+const getInitializedConfig = async (repoDir: string): Promise<{gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
+  const gitopsConfig: GitOpsConfig = await promises.readFile(join(repoDir, 'config.yaml')).then(buf => JSON.parse(buf.toString()) as GitOpsConfig)
+
+  let kubesealCert: string | undefined
+  if (await pathExists(join(repoDir, 'kubeseal_cert.pem'))) {
+    kubesealCert = await promises.readFile(join(repoDir, 'kubeseal_cert.pem')).then(buf => buf.toString())
+  }
+
+  return {gitopsConfig, kubesealCert}
+}
+
+const populateGitopsRepo = async (repoDir: string, input: {serverName: string, repoUrl: string, branch: string, argocdNamespace: string, sealedSecretsCert?: {cert: string, certFile?: string}}): Promise<{gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
 
   // write bootstrap chart and values
   const bootstrapPath = join(repoDir, 'argocd', '0-bootstrap', 'cluster', input.serverName)
@@ -181,17 +197,23 @@ const populateGitopsRepo = async (repoDir: string, input: {serverName: string, r
 
   await promises.writeFile(join(repoDir, 'README.md'), readmeFile)
 
-  await promises.writeFile(join(repoDir, 'config.yaml'), dump(buildConfigYaml(bootstrapValues)))
+  const gitopsConfig: GitOpsConfig = buildConfigYaml(bootstrapValues)
+  await promises.writeFile(join(repoDir, 'config.yaml'), dump(gitopsConfig))
 
+  let kubesealCert: string | undefined
   if (input.sealedSecretsCert) {
     if (input.sealedSecretsCert.cert) {
       await promises.writeFile(join(repoDir, 'kubeseal_cert.pem'), input.sealedSecretsCert.cert)
+
+      kubesealCert = input.sealedSecretsCert.cert
     } else if (input.sealedSecretsCert.certFile) {
       await promises.copyFile(input.sealedSecretsCert.certFile, join(repoDir, 'kubeseal_cert.pem'))
+
+      kubesealCert = await promises.readFile(input.sealedSecretsCert.certFile).then(buf => buf.toString())
     }
   }
 
-  return ''
+  return {gitopsConfig, kubesealCert}
 }
 
 const makeId = (length: number): string => {
@@ -358,7 +380,7 @@ const flatten = <T>(result: Array<T>, current: Array<T>): Array<T> => {
   return result
 }
 
-const buildConfigYaml = (valuesConfig: BootstrapConfig): any => {
+const buildConfigYaml = (valuesConfig: BootstrapConfig): GitOpsConfig => {
   const repo = valuesConfig.global.repoUrl.replace(/^https?:\/\//, '').replace(/[.]git$/, '')
   const url = valuesConfig.global.repoUrl
 
