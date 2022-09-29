@@ -4,6 +4,7 @@ import {promises} from 'fs';
 import {GitopsInitApi, GitopsInitOptions} from '../services/gitops-init';
 import {Container} from 'typescript-ioc';
 import {BootstrapConfig, GitOpsConfig} from '../services/gitops-module';
+import {logFactory, Logger, verboseLoggerFactory} from '../util/logger';
 
 export const command = 'gitops-init [repo]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';
@@ -100,6 +101,12 @@ export const builder = (yargs: Argv<any>) => {
         demandOption: false,
         default: '.tmp/gitops-init'
       },
+      'debug': {
+        type: 'boolean',
+        description: 'Flag that indicates debug logging should be enabled.',
+        demandOption: false,
+        default: false,
+      },
       'argocdNamespace': {
         type: 'string',
         description: 'The namespace where ArgoCD is running in the cluster.',
@@ -125,47 +132,53 @@ export const builder = (yargs: Argv<any>) => {
     })
 };
 exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, output: string, delete: boolean}>) => {
+  process.env.VERBOSE_LOGGING = argv.debug ? 'true' : 'false';
+
+  Container.bind(Logger).factory(verboseLoggerFactory(argv.debug));
+
+  const logger: Logger = Container.get(Logger)
+
   const service: GitopsInitApi = Container.get(GitopsInitApi)
 
   if (argv.delete) {
-    if (argv.output !== 'json') {
-      console.log(`Deleting repository: ${argv.host}/${argv.org}/${argv.repo}`)
-    }
-
     try {
       const result: { url: string, deleted: boolean } = await service.delete(argv)
 
       if (argv.output === 'json') {
-        console.log(JSON.stringify(result, null, 2))
+        logger.log(JSON.stringify(result, null, 2))
       } else if (result.deleted) {
-        console.log(`  Git repository deleted: ${result.url}`)
+        logger.log(`  Git repository deleted: ${result.url}`)
       } else {
-        console.log(`  Git repository was not deleted: ${result.url}`)
+        logger.log(`  Git repository was not deleted: ${result.url}`)
       }
 
       process.exit(0)
     } catch (err) {
-      console.log(err.message)
+      if (argv.debug) {
+        logger.error(err.message, err)
+      } else {
+        logger.error(err.message)
+      }
       process.exit(1)
     }
-  }
-
-  if (argv.output !== 'json') {
-    console.log(`Creating repository: ${argv.host}/${argv.org}/${argv.repo}`)
   }
 
   try {
     const result: {url: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string} = await service.create(argv)
 
     if (argv.output === 'json') {
-      console.log(JSON.stringify(result, null, 2))
+      logger.log(JSON.stringify(result, null, 2))
     } else if (result.created) {
-      console.log(`  Git repository created: ${result.url}`)
+      logger.log(`  Git repository created: ${result.url}`)
     } else {
-      console.log(`  Git repository already exists: ${result.url}`)
+      logger.log(`  Git repository already exists: ${result.url}`)
     }
   } catch (err) {
-    console.log(err.message)
+    if (argv.debug) {
+      logger.error(err.message, err)
+    } else {
+      logger.error(err.message)
+    }
     process.exit(1)
   }
 };

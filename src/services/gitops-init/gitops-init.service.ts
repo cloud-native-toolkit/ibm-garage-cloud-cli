@@ -3,7 +3,7 @@ import {Credentials} from '@cloudnativetoolkit/git-client/dist/lib/util';
 import {SimpleGitWithApi} from '@cloudnativetoolkit/git-client/src/lib/git.api';
 import {promises} from 'fs';
 import {join} from 'path';
-import {dump} from 'js-yaml';
+import {dump, load} from 'js-yaml';
 import {SimpleGit} from 'simple-git';
 import {Container} from 'typescript-ioc';
 import {mkdirp, pathExists} from 'fs-extra';
@@ -15,8 +15,12 @@ import {GitOpsConfig} from '../gitops-module';
 export class GitopsInitService implements GitopsInitApi {
   async create(options: GitopsInitOptions): Promise<{url: string, repo: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string}> {
 
+    const logger: Logger = Container.get(Logger)
+
+    logger.debug(`Creating repository: ${options.host}/${options.org}/${options.repo}`)
     const {gitClient, created} = await createOrFindRepo(options)
 
+    logger.debug(`Repository created (${created}): ${gitClient.getConfig().url}`)
     const {initialized, gitopsConfig, kubesealCert} = await initializeGitopsRepo(gitClient, options)
 
     return {
@@ -30,6 +34,10 @@ export class GitopsInitService implements GitopsInitApi {
   }
 
   async delete(options: GitopsInitOptions): Promise<{url: string, repo: string, deleted: boolean}> {
+
+    const logger: Logger = Container.get(Logger)
+
+    logger.debug(`Deleting repository: ${options.host}/${options.org}/${options.repo}`)
 
     const gitClient: GitApi = await apiFromPartialConfig(
       options,
@@ -99,8 +107,10 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
   const git: SimpleGitWithApi = await gitClient.clone(repoDir, {})
 
   if (await isInitializedRepo(repoDir)) {
+    logger.debug(`Gitops repository already initialized: ${gitClient.getConfig().url}`)
     const config: {gitopsConfig: GitOpsConfig, kubesealCert?: string} = await getInitializedConfig(repoDir)
 
+    logger.debug(`Found existing gitops repository config: ${gitClient.getConfig().url}`, config)
     return Object.assign({initialized: false}, config)
   }
 
@@ -147,9 +157,9 @@ const isInitializedRepo = async (repoDir: string): Promise<boolean> => {
 }
 
 const getInitializedConfig = async (repoDir: string): Promise<{gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
-  const gitopsConfig: GitOpsConfig = await promises.readFile(join(repoDir, 'config.yaml')).then(buf => JSON.parse(buf.toString()) as GitOpsConfig)
+  const gitopsConfig: GitOpsConfig = await promises.readFile(join(repoDir, 'config.yaml')).then(buf => load(buf.toString()) as GitOpsConfig)
 
-  let kubesealCert: string | undefined
+  let kubesealCert: string = ''
   if (await pathExists(join(repoDir, 'kubeseal_cert.pem'))) {
     kubesealCert = await promises.readFile(join(repoDir, 'kubeseal_cert.pem')).then(buf => buf.toString())
   }
