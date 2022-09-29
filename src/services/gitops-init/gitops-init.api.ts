@@ -1,3 +1,4 @@
+import {BootstrapConfig, GitOpsConfig} from '../gitops-module';
 
 export interface GitopsInitOptions {
   host: string;
@@ -23,6 +24,6 @@ export class ExistingGitRepo extends Error {
 }
 
 export abstract class GitopsInitApi {
-  abstract create(options: GitopsInitOptions): Promise<{url: string, created: boolean, initialized: boolean}>;
+  abstract create(options: GitopsInitOptions): Promise<{url: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string}>;
   abstract delete(options: GitopsInitOptions): Promise<{url: string, deleted: boolean}>;
 }

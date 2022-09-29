@@ -3,6 +3,7 @@ import {promises} from 'fs';
 
 import {GitopsInitApi, GitopsInitOptions} from '../services/gitops-init';
 import {Container} from 'typescript-ioc';
+import {BootstrapConfig, GitOpsConfig} from '../services/gitops-module';
 
 export const command = 'gitops-init [repo]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';
@@ -99,6 +100,12 @@ export const builder = (yargs: Argv<any>) => {
         demandOption: false,
         default: '.tmp/gitops-init'
       },
+      'argocdNamespace': {
+        type: 'string',
+        description: 'The namespace where ArgoCD is running in the cluster.',
+        demandOption: false,
+        default: 'openshift-gitops',
+      },
     })
     .middleware(loadFromEnv('host', 'GIT_HOST'), true)
     .middleware(loadFromEnv('org', 'GIT_ORG'), true)
@@ -148,7 +155,7 @@ exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, ou
   }
 
   try {
-    const result: {url: string, created: boolean, initialized: boolean} = await service.create(argv)
+    const result: {url: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string} = await service.create(argv)
 
     if (argv.output === 'json') {
       console.log(JSON.stringify(result, null, 2))
