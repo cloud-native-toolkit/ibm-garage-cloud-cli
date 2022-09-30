@@ -104,7 +104,7 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
 
   const repoDir: string = join(input.tmpDir, makeId(12))
 
-  const git: SimpleGitWithApi = await gitClient.clone(repoDir, {})
+  const git: SimpleGitWithApi = await gitClient.clone(repoDir, {config: {'user.email': 'cloudnativetoolkit@gmail.com', 'user.name': 'Cloud-Native Toolkit'}})
 
   if (await isInitializedRepo(repoDir)) {
     logger.debug(`Gitops repository already initialized: ${gitClient.getConfig().url}`)
