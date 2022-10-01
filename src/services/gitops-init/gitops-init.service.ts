@@ -6,7 +6,7 @@ import {join} from 'path';
 import {dump, load} from 'js-yaml';
 import {SimpleGit} from 'simple-git';
 import {Container} from 'typescript-ioc';
-import {mkdirp, pathExists} from 'fs-extra';
+import {mkdirp, pathExists, remove} from 'fs-extra';
 
 import {ExistingGitRepo, GitopsInitApi, GitopsInitOptions} from './gitops-init.api';
 import {Logger} from '../../util/logger';
@@ -117,50 +117,54 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
 
   const git: SimpleGitWithApi = await gitClient.clone(repoDir, {config: {'user.email': 'cloudnativetoolkit@gmail.com', 'user.name': 'Cloud-Native Toolkit'}})
 
-  if (await isInitializedRepo(repoDir)) {
-    logger.debug(`Gitops repository already initialized: ${gitClient.getConfig().url}`)
-    const config: {gitopsConfig: GitOpsConfig, kubesealCert?: string} = await getInitializedConfig(repoDir)
+  try {
+    if (await isInitializedRepo(repoDir)) {
+      logger.debug(`Gitops repository already initialized: ${gitClient.getConfig().url}`)
+      const config: { gitopsConfig: GitOpsConfig, kubesealCert?: string } = await getInitializedConfig(repoDir)
 
-    logger.debug(`Found existing gitops repository config: ${gitClient.getConfig().url}`, config)
-    return Object.assign({initialized: false}, config)
-  }
-
-  const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
-    if (inputBranch) {
-      return inputBranch
+      logger.debug(`Found existing gitops repository config: ${gitClient.getConfig().url}`, config)
+      return Object.assign({initialized: false}, config)
     }
 
-    return git.branch().then(result => result.current)
+    const getCurrentBranch = async (inputBranch?: string): Promise<string> => {
+      if (inputBranch) {
+        return inputBranch
+      }
+
+      return git.branch().then(result => result.current)
+    }
+
+    const currentBranch = await getCurrentBranch(input.branch)
+    const devBranch = 'initialize-gitops'
+
+    logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`)
+    await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
+
+    const config = Object.assign({}, input, {repoUrl: gitClient.getConfig().url})
+    const initializeResult: { gitopsConfig: GitOpsConfig, kubesealCert?: string } = await populateGitopsRepo(repoDir, config)
+
+    const message = 'Initializes gitops repo structure'
+    const pushResult = await addCommitPushBranch(git, message, devBranch)
+    if (!pushResult) {
+      throw new Error('Error pushing changes to gitops repo')
+    }
+
+    const pullRequest: PullRequest = await git.gitApi.createPullRequest({
+      title: message,
+      sourceBranch: devBranch,
+      targetBranch: currentBranch,
+    })
+
+    await git.gitApi.updateAndMergePullRequest({
+      pullNumber: pullRequest.pullNumber,
+      method: 'squash',
+      waitForBlocked: '1h',
+    })
+
+    return Object.assign({initialized: true}, initializeResult)
+  } finally {
+    await remove(repoDir)
   }
-
-  const currentBranch = await getCurrentBranch(input.branch)
-  const devBranch = 'initialize-gitops'
-
-  logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`)
-  await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
-
-  const config = Object.assign({}, input, {repoUrl: gitClient.getConfig().url})
-  const initializeResult: {gitopsConfig: GitOpsConfig, kubesealCert?: string} = await populateGitopsRepo(repoDir, config)
-
-  const message = 'Initializes gitops repo structure'
-  const pushResult = await addCommitPushBranch(git, message, devBranch)
-  if (!pushResult) {
-    throw new Error('Error pushing changes to gitops repo')
-  }
-
-  const pullRequest: PullRequest = await git.gitApi.createPullRequest({
-    title: message,
-    sourceBranch: devBranch,
-    targetBranch: currentBranch,
-  })
-
-  await git.gitApi.updateAndMergePullRequest({
-    pullNumber: pullRequest.pullNumber,
-    method: 'squash',
-    waitForBlocked: '1h',
-  })
-
-  return Object.assign({initialized: true}, initializeResult)
 }
 
 const isInitializedRepo = async (repoDir: string): Promise<boolean> => {
