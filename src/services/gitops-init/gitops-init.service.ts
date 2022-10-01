@@ -43,12 +43,23 @@ export class GitopsInitService implements GitopsInitApi {
       options,
       await buildGitCredentials(options))
 
-    await gitClient.deleteRepo()
+    const repoModuleId: string = await gitClient.getFileContents({path: '.owner_module'})
+      .then(buf => buf.toString())
+      .catch(() => '')
+
+    let deleted = false
+    if ((options.moduleId || '') === repoModuleId) {
+      await gitClient.deleteRepo()
+
+      deleted = true
+    } else {
+      logger.debug('ModuleId does not match .owner_module. Not deleting.')
+    }
 
     return {
       url: gitClient.getConfig().url,
       repo: gitClient.getConfig().url.replace(/^https?:\/\//, '').replace(/[.]git$/, ''),
-      deleted: true,
+      deleted,
     }
   }
 }
@@ -167,7 +178,7 @@ const getInitializedConfig = async (repoDir: string): Promise<{gitopsConfig: Git
   return {gitopsConfig, kubesealCert}
 }
 
-const populateGitopsRepo = async (repoDir: string, input: {serverName: string, repoUrl: string, branch: string, argocdNamespace: string, sealedSecretsCert?: {cert: string, certFile?: string}}): Promise<{gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
+const populateGitopsRepo = async (repoDir: string, input: {moduleId?: string, serverName: string, repoUrl: string, branch: string, argocdNamespace: string, sealedSecretsCert?: {cert: string, certFile?: string}}): Promise<{gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
 
   // write bootstrap chart and values
   const bootstrapPath = join(repoDir, 'argocd', '0-bootstrap', 'cluster', input.serverName)
@@ -203,6 +214,10 @@ const populateGitopsRepo = async (repoDir: string, input: {serverName: string, r
     await mkdirp(targetPath)
 
     await promises.writeFile(join(targetPath, '.gitkeep'), '')
+  }
+
+  if (input.moduleId) {
+    await promises.writeFile(join(repoDir, '.owner_module'), input.moduleId)
   }
 
   await promises.writeFile(join(repoDir, 'README.md'), readmeFile)

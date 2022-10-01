@@ -115,6 +115,11 @@ export const builder = (yargs: Argv<any>) => {
         demandOption: false,
         default: 'openshift-gitops',
       },
+      'moduleId': {
+        type: 'string',
+        description: 'The identifier used to mark the instance that provisioned the gitops repository.',
+        demandOption: false,
+      },
     })
     .middleware(loadFromEnv('host', 'GIT_HOST'), true)
     .middleware(loadFromEnv('org', 'GIT_ORG'), true)
