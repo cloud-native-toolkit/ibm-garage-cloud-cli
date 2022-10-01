@@ -1,5 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 import {promises} from 'fs';
+import {dirname} from 'path';
+import {mkdirp} from 'fs-extra';
 
 import {GitopsInitApi, GitopsInitOptions} from '../services/gitops-init';
 import {Container} from 'typescript-ioc';
@@ -85,7 +87,7 @@ export const builder = (yargs: Argv<any>) => {
       'output': {
         alias: ['o'],
         type: 'string',
-        description: 'The format of output from the command. (text, json)',
+        description: 'The format of output from the command. (text, json, jsonfile)',
         demandOption: false,
         default: 'text'
       },
@@ -140,12 +142,24 @@ exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, ou
 
   const service: GitopsInitApi = Container.get(GitopsInitApi)
 
+  const jsonfileRegex = /^jsonfile=?(.*)/
   if (argv.delete) {
     try {
       const result: { url: string, deleted: boolean } = await service.delete(argv)
 
       if (argv.output === 'json') {
         logger.log(JSON.stringify(result, null, 2))
+      } else if (jsonfileRegex.test(argv.output)) {
+        const outputContent: string = JSON.stringify(result, null, 2)
+
+        const match = jsonfileRegex.exec(argv.output)
+        const filename = (match && match[1] ? match[1] : './output.json')
+        const filepath = dirname(filename)
+
+        console.log(`  Writing gitops config to ${filename}`)
+
+        await mkdirp(filepath)
+        await promises.writeFile(filename, outputContent)
       } else if (result.deleted) {
         logger.log(`  Git repository deleted: ${result.url}`)
       } else {
@@ -168,6 +182,17 @@ exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, ou
 
     if (argv.output === 'json') {
       logger.log(JSON.stringify(result, null, 2))
+    } else if (jsonfileRegex.test(argv.output)) {
+      const outputContent: string = JSON.stringify(result, null, 2)
+
+      const match = jsonfileRegex.exec(argv.output)
+      const filename = (match && match[1] ? match[1] : './output.json')
+      const filepath = dirname(filename)
+
+      console.log(`  Writing gitops config to ${filename}`)
+
+      await mkdirp(filepath)
+      await promises.writeFile(filename, outputContent)
     } else if (result.created) {
       logger.log(`  Git repository created: ${result.url}`)
     } else {
