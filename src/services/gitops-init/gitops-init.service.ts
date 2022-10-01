@@ -94,6 +94,7 @@ const buildGitCredentials = async (options: GitopsInitOptions): Promise<Credenti
     if (!certFile) {
       certFile = join(options.tmpDir, 'git-server.crt')
 
+      await mkdirp(options.tmpDir)
       await promises.writeFile(certFile, options.caCert.cert)
     }
 
