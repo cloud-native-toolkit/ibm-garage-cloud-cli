@@ -1,4 +1,4 @@
-import {BootstrapConfig, GitOpsConfig} from '../gitops-module';
+import {GitOpsConfig} from '../gitops-module';
 
 export interface GitopsInitOptions {
   host: string;
@@ -15,6 +15,7 @@ export interface GitopsInitOptions {
   token: string;
   caCert?: {cert: string, certFile?: string};
   tmpDir: string;
+  moduleId?: string;
 }
 
 export class ExistingGitRepo extends Error {
