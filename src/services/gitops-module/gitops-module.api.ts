@@ -47,6 +47,7 @@ export type GitOpsModuleOptions = GitOpsModuleInputBase & Partial<GitOpsModuleIn
   valueFiles?: string;
   delete?: boolean;
   waitForBlocked?: string;
+  branch?: string;
 };
 export type GitOpsModuleInput = GitOpsModuleInputBase & GitOpsModuleInputDefaults & {
   valueFiles: string[];
