@@ -75,6 +75,12 @@ export const builder = (yargs: Argv<any>) => {
         conflicts: 'token',
         demandOption: false,
       },
+      'username': {
+        describe: 'Git username to access gitops repo',
+        type: 'string',
+        conflicts: 'gitopsCredentialsFile',
+        demandOption: false,
+      },
       'token': {
         describe: 'Git personal access token to access gitops repo',
         type: 'string',

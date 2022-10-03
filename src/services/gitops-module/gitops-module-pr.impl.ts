@@ -120,7 +120,11 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
   async populate(options: GitOpsModuleOptions): Promise<GitOpsModuleResult> {
 
-    this.logger.log(`Populating gitops repo for component ${options.name} in namespace ${options.namespace}`);
+    if (options.isNamespace) {
+      this.logger.log(`Populating gitops repo for namespace ${options.name}`);
+    } else {
+      this.logger.log(`Populating gitops repo for component ${options.name} in namespace ${options.namespace}`);
+    }
 
     const input: GitOpsModuleInput = await this.defaultInputs(options);
 
@@ -201,7 +205,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     return result;
   }
 
-  async loadGitOpsConfig({bootstrapRepoUrl, gitopsConfigFile, token, branch, gitopsCredentials}: {bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, token?: string, gitopsCredentials: GitOpsCredentials}): Promise<GitOpsConfig> {
+  async loadGitOpsConfig({bootstrapRepoUrl, gitopsConfigFile, caCert, branch, gitopsCredentials}: {bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, caCert?: string | {cert: string, certFile: string}, gitopsCredentials: GitOpsCredentials}): Promise<GitOpsConfig> {
     if (!gitopsConfigFile && !bootstrapRepoUrl && !process.env.GITOPS_CONFIG) {
       throw new Error('Missing gitops config file name, bootstrap repo location, or GITOPS_CONFIG env variable');
     }
@@ -213,7 +217,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     } else {
       const credential: GitOpsCredential = this.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
 
-      return await parseGitFile(bootstrapRepoUrl, 'config.yaml', {username: credential.username, password: credential.token}, branch) as GitOpsConfig;
+      return await parseGitFile(bootstrapRepoUrl, 'config.yaml', {username: credential.username, password: credential.token, caCert}, branch) as GitOpsConfig;
     }
   }
 
@@ -545,7 +549,7 @@ async function parseFile(filename: string): Promise<object> {
   return parser(await fs.readFile(filename));
 }
 
-async function parseGitFile(gitUrl: string, filename: string, credentials: {username: string, password: string}, branch?: string): Promise<object> {
+async function parseGitFile(gitUrl: string, filename: string, credentials: {username: string, password: string, caCert?: string | {cert: string, certFile: string}}, branch?: string): Promise<object> {
 
   const extension = filename.replace(/.*[.](.*)$/, '$1');
 
@@ -554,9 +558,14 @@ async function parseGitFile(gitUrl: string, filename: string, credentials: {user
     throw new Error('Unknown extension for parsing: ' + extension);
   }
 
-  const gitApi: GitApi = await apiFromUrl(gitUrl, credentials);
+  try {
+    const gitApi: GitApi = await apiFromUrl(gitUrl, credentials, branch);
 
-  return parser(await gitApi.getFileContents({path: filename}));
+    return parser(await gitApi.getFileContents({path: filename}));
+  } catch (err) {
+    console.log('Error getting file from git: ', {filename, gitUrl})
+    throw err
+  }
 }
 
 async function copy(sourceDir: string, destDir: string): Promise<{stdout: string | Buffer, stderr: string | Buffer}> {
