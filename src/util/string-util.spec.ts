@@ -1,4 +1,6 @@
-import {splitLines, stringToStringArray} from './string-util';
+import * as YAML from 'js-yaml';
+
+import {parseString, splitLines, stringToStringArray} from './string-util';
 
 describe('string-util', () => {
   test('canary verifies test infrastructure', () => {
@@ -79,5 +81,69 @@ describe('string-util', () => {
         expect(stringToStringArray(value)).toBe(value);
       });
     });
+  });
+
+  describe('given parseString()', () => {
+    describe('when provided JSON string with object', () => {
+      const expectedResult = {
+        test: "value",
+        values: ["a", "b", "c"]
+      }
+      let json: string;
+      beforeEach(() => {
+        json = JSON.stringify(expectedResult)
+      })
+
+      test('then should parse as JSON', async () => {
+        expect(await parseString(json)).toEqual(expectedResult)
+      });
+    });
+    describe('when provided JSON string with array', () => {
+      const expectedResults = [{
+        test: "value",
+        values: ["a", "b", "c"]
+      }, {
+        second: "value"
+      }]
+      let json: string;
+      beforeEach(() => {
+        json = JSON.stringify(expectedResults)
+      })
+
+      test('then should parse as JSON', async () => {
+        expect(await parseString(json)).toEqual(expectedResults)
+      });
+    });
+    describe('when provided YAML string with object', () => {
+      const expectedResult = {
+        test: "value",
+        values: ["a", "b", "c"]
+      }
+      let yaml: string;
+      beforeEach(() => {
+        yaml = YAML.dump(expectedResult)
+      })
+
+      test('then should parse as YAML', async () => {
+        expect(await parseString(yaml)).toEqual(expectedResult)
+      });
+    });
+    describe('when provided YAML string with array', () => {
+      const expectedResults = [{
+        test: "value",
+        values: ["a", "b", "c"]
+      }, {
+        second: "value"
+      }]
+      let yaml: string;
+      beforeEach(() => {
+        yaml = YAML.dump(expectedResults)
+      })
+
+      test('then should parse as YAML', async () => {
+        expect(await parseString(yaml)).toEqual(expectedResults)
+      });
+    });
+
   });
 });

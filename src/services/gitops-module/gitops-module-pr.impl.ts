@@ -12,17 +12,18 @@ import {
 } from '@cloudnativetoolkit/git-client';
 import {Container} from 'typescript-ioc';
 import { http, https } from 'follow-redirects';
+import _ from 'lodash'
 
 import {
   ArgoConfig,
-  GitOpsConfig,
+  GitOpsConfig, GitopsConfigEntry,
   GitOpsCredential,
   GitOpsCredentials,
   GitOpsLayer,
   GitOpsModuleApi,
   GitOpsModuleInput,
   GitOpsModuleOptions,
-  GitOpsModuleResult,
+  GitOpsModuleResult, isGitopsConfig, isGitopsConfigEntry,
   LayerConfig,
   PayloadConfig
 } from './gitops-module.api';
@@ -32,7 +33,7 @@ import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
-import {isString} from '../../util/string-util';
+import {isString, parseFile, parsers, parseString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
 import {mkdirp, readFile, writeFile} from 'fs-extra';
 
@@ -210,15 +211,18 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       throw new Error('Missing gitops config file name, bootstrap repo location, or GITOPS_CONFIG env variable');
     }
 
+    let gitopsConfig: GitOpsConfig | GitopsConfigEntry[];
     if (gitopsConfigFile) {
-      return await parseFile(gitopsConfigFile) as GitOpsConfig;
+      gitopsConfig = await parseFile(gitopsConfigFile);
     } else if (process.env.GITOPS_CONFIG) {
-      return YAML.load(process.env.GITOPS_CONFIG) as GitOpsConfig;
+      gitopsConfig = await parseString<GitOpsConfig | GitopsConfigEntry[]>(process.env.GITOPS_CONFIG);
     } else {
       const credential: GitOpsCredential = this.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
 
-      return await parseGitFile(bootstrapRepoUrl, 'config.yaml', {username: credential.username, password: credential.token, caCert}, branch) as GitOpsConfig;
+      gitopsConfig = await parseGitFile(bootstrapRepoUrl, 'config.yaml', {username: credential.username, password: credential.token, caCert}, branch) as GitOpsConfig;
     }
+
+    return gitopsConfigEntriesToGitopsConfig(gitopsConfig);
   }
 
   async loadGitOpsCredentials({gitopsCredentialsFile, username = 'username', token}: {gitopsCredentialsFile?: string, username?: string, token?: string}): Promise<GitOpsCredentials> {
@@ -227,9 +231,9 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
 
     if (gitopsCredentialsFile) {
-      return await parseFile(gitopsCredentialsFile) as GitOpsCredentials;
+      return await parseFile(gitopsCredentialsFile);
     } else if (process.env.GIT_CREDENTIALS) {
-      return YAML.load(process.env.GIT_CREDENTIALS) as GitOpsCredentials;
+      return await parseString(process.env.GIT_CREDENTIALS);
     } else {
       return [{
         repo: '*',
@@ -242,7 +246,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
   async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber?: number, isHelm?: boolean, valueFiles?: string[]}> {
 
-    const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
+    const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').slice(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
     const payloadPath = input.isNamespace
       ? `${config.path}/namespace/${input.name}/namespace`
@@ -531,25 +535,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
   }
 }
 
-const parsers = {
-  'yaml': (content: string | Buffer) => YAML.load(content.toString()),
-  'yml': (content: string | Buffer) => YAML.load(content.toString()),
-  'json': (content: string | Buffer) => JSON.parse(content.toString()),
-};
-
-async function parseFile(filename: string): Promise<object> {
-
-  const extension = filename.replace(/.*[.](.*)$/, '$1');
-
-  const parser = parsers[extension];
-  if (!parser) {
-    throw new Error('Unknown extension for parsing: ' + extension);
-  }
-
-  return parser(await fs.readFile(filename));
-}
-
-async function parseGitFile(gitUrl: string, filename: string, credentials: {username: string, password: string, caCert?: string | {cert: string, certFile: string}}, branch?: string): Promise<object> {
+async function parseGitFile<T>(gitUrl: string, filename: string, credentials: {username: string, password: string, caCert?: string | {cert: string, certFile: string}}, branch?: string): Promise<T> {
 
   const extension = filename.replace(/.*[.](.*)$/, '$1');
 
@@ -566,6 +552,33 @@ async function parseGitFile(gitUrl: string, filename: string, credentials: {user
     console.log('Error getting file from git: ', {filename, gitUrl})
     throw err
   }
+}
+
+const gitopsConfigEntriesToGitopsConfig = (entries: GitOpsConfig | GitopsConfigEntry[]): GitOpsConfig => {
+  if (isGitopsConfig(entries)) {
+    return entries
+  }
+
+  if (!Array.isArray(entries) || entries.length === 0 || !isGitopsConfigEntry(entries[0])) {
+    throw new Error('Provided value is not a GitopsConfigEntry array')
+  }
+
+  const result = entries
+    .map(e => {
+      const typeName = e.type === 'argocd' ? 'argocd-config' : 'payload'
+      const layer = {}
+      layer[typeName] = e
+
+      const value = {}
+      value[e.layer] = layer
+
+      return value
+    })
+    .reduce((config: GitOpsConfig, value: any) => {
+      return _.merge(config, value)
+    }, {} as GitOpsConfig)
+
+  return result as any
 }
 
 async function copy(sourceDir: string, destDir: string): Promise<{stdout: string | Buffer, stderr: string | Buffer}> {
