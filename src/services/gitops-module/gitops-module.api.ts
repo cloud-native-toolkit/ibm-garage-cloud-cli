@@ -24,6 +24,35 @@ export interface GitOpsConfig {
   applications: LayerConfig;
 }
 
+export const isGitopsConfig = (value: any): value is GitOpsConfig => {
+  return !!value && !!(value as GitOpsConfig).bootstrap && !!(value as GitOpsConfig).infrastructure
+}
+
+export enum ConfigLayer {
+  bootstrap = 'bootstrap',
+  infrastructure = 'infrastructure',
+  services = 'services',
+  applications = 'applications'
+}
+
+export enum ConfigType {
+  argocd = 'argocd',
+  payload = 'payload'
+}
+
+export interface GitopsConfigEntry {
+  repo: string;
+  url: string;
+  path: string;
+  project?: string;
+  layer: ConfigLayer;
+  type: ConfigType;
+}
+
+export const isGitopsConfigEntry = (value: any): value is GitopsConfigEntry => {
+  return !!value && !!(value as GitopsConfigEntry).layer && !!(value as GitopsConfigEntry).layer
+}
+
 export interface GitOpsCredential {
   repo: string;
   url: string;
