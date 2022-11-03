@@ -25,7 +25,7 @@ export interface GitOpsConfig {
 }
 
 export const isGitopsConfig = (value: any): value is GitOpsConfig => {
-  return !!value && !!(value as GitOpsConfig).bootstrap && !!(value as GitOpsConfig).infrastructure
+  return !!value && !!(value as GitOpsConfig).infrastructure && !!(value as GitOpsConfig).services
 }
 
 export enum ConfigLayer {
