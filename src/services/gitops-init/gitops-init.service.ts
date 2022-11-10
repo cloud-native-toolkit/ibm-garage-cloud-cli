@@ -288,9 +288,9 @@ const buildBoostrapValuesYaml = ({repoUrl, branch, argocdNamespace, serverName}:
     repoUrl,
     targetRevision: branch,
     targetNamespace: argocdNamespace,
-    destinations: {
-      targetNamespace: '*'
-    },
+    destinations: [
+      { targetNamespace: '*' }
+    ],
     pathSuffix: `cluster/${serverName}`,
     prefix: ''
   },
@@ -378,11 +378,15 @@ interface LayerConfig {
   applicationTargets: ApplicationTarget[];
 }
 
+interface TargetNamespace {
+  targetNamespace: string;
+}
+
 interface BootstrapGlobalConfig {
   repoUrl: string;
   targetRevision: string;
   targetNamespace: string;
-  destinations: {targetNamespace: string};
+  destinations: TargetNamespace[];
   pathSuffix: string;
   prefix: string;
 }
