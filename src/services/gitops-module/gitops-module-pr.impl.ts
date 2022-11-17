@@ -1,29 +1,26 @@
 import * as fs from 'fs-extra';
+import {mkdirp, readFile, writeFile} from 'fs-extra';
 import {SimpleGit} from 'simple-git';
 import * as YAML from 'js-yaml';
-import {join as pathJoin, basename} from 'path';
-import {
-  apiFromUrl,
-  GitApi,
-  MergeResolver,
-  PullRequest,
-  SimpleGitWithApi,
-  unionMergeResolver
-} from '@cloudnativetoolkit/git-client';
+import {basename, join as pathJoin} from 'path';
+import {apiFromUrl, GitApi, MergeResolver, PullRequest, SimpleGitWithApi} from '@cloudnativetoolkit/git-client';
 import {Container} from 'typescript-ioc';
-import { http, https } from 'follow-redirects';
+import {http, https} from 'follow-redirects';
 import _ from 'lodash'
 
 import {
   ArgoConfig,
-  GitOpsConfig, GitopsConfigEntry,
+  GitOpsConfig,
+  GitopsConfigEntry,
   GitOpsCredential,
   GitOpsCredentials,
   GitOpsLayer,
   GitOpsModuleApi,
   GitOpsModuleInput,
   GitOpsModuleOptions,
-  GitOpsModuleResult, isGitopsConfig, isGitopsConfigEntry,
+  GitOpsModuleResult,
+  isGitopsConfig,
+  isGitopsConfigEntry,
   LayerConfig,
   PayloadConfig
 } from './gitops-module.api';
@@ -35,7 +32,6 @@ import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
 import {isString, parseFile, parsers, parseString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
-import {mkdirp, readFile, writeFile} from 'fs-extra';
 
 const argocdResolver = (applicationPath: string): MergeResolver => {
   return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
@@ -316,7 +312,8 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         url: `https://${config.repo}`,
         branch: currentBranch,
         pullNumber: pullRequest.pullNumber,
-        isHelm: !!input.helmRepoUrl || this.isHelmChart(input.contentDir)
+        isHelm: !!input.helmRepoUrl || this.isHelmChart(input.contentDir),
+        valueFiles
       };
 
       this.logger.debug('Application payload result', {result});
