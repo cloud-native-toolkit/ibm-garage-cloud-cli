@@ -6,3 +6,5 @@ export * from './create-webhook.api';
 export * from './create-webhook-options.model';
 
 Container.bind(CreateWebhook).to(CreateWebhookImpl);
+
+export const buildCreateWebhook = (): CreateWebhook => Container.get(CreateWebhook);

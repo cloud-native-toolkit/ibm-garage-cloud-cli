@@ -1,7 +1,7 @@
 import {Arguments} from 'yargs';
 import {Container} from 'typescript-ioc';
 
-import {GitOpsModuleApi, GitOpsModuleOptions} from '../../services/gitops-module';
+import {GitOpsModuleApi, GitOpsModuleOptions} from '../../services';
 import {Logger, verboseLoggerFactory} from '../../util/logger';
 import {ClaimedMutex, IMutex, Mutex, NoopMutex} from '../../util/mutex';
 import {GitopsModulePRImpl} from '../../services/gitops-module/gitops-module-pr.impl';

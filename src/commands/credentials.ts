@@ -4,7 +4,7 @@ import ora from 'ora';
 import * as YAML from 'js-yaml';
 
 import {CommandLineOptions} from '../model';
-import {Credentials} from '../services/credentials';
+import {Credentials} from '../services';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {checkKubeconfig} from '../util/kubernetes';
 

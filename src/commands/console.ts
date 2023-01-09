@@ -3,9 +3,9 @@ import * as open from 'open';
 import {Arguments, Argv} from 'yargs';
 
 import {CommandLineOptions} from '../model';
+import {GetConsoleUrlApi} from '../services';
 import {DefaultOptionBuilder} from '../util/yargs-support';
 import {checkKubeconfig} from '../util/kubernetes';
-import {GetConsoleUrlApi} from '../services/console';
 
 interface SelectedIngress {
   selection: string;

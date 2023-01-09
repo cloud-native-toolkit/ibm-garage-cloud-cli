@@ -6,3 +6,5 @@ export * from './generate-token';
 export * from './generate-token-options.model';
 
 Container.bind(GenerateToken).to(GenerateTokenImpl);
+
+export const buildGenerateToken = (): GenerateToken => Container.get(GenerateToken);

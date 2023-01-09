@@ -6,3 +6,5 @@ export * from './get-vlan.api';
 export * from './get-vlan-options.model';
 
 Container.bind(GetVlan).to(GetVlanImpl);
+
+export const buildGetVlan = (): GetVlan => Container.get(GetVlan);

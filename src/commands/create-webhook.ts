@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
 
-import {CreateWebhook, CreateWebhookOptions} from '../services/create-webhook';
+import {CreateWebhook, CreateWebhookOptions} from '../services';
 import {buildOptionWithEnvDefault} from '../util/yargs-support';
 
 export const command = 'create-webhook';

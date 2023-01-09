@@ -3,7 +3,6 @@ import {Arguments, Argv} from 'yargs';
 import * as chalk from 'chalk';
 
 import {CommandLineOptions} from '../model';
-import {DefaultOptionBuilder} from '../util/yargs-support';
 import {
   isPipelineError,
   PipelineErrorType,
@@ -11,8 +10,9 @@ import {
   RegisterPipeline,
   RegisterPipelineOptions,
   RegisterTektonPipeline
-} from '../services/register-pipeline';
+} from '../services';
 import {checkKubeconfig} from '../util/kubernetes';
+import {DefaultOptionBuilder} from '../util/yargs-support';
 import {ErrorSeverity, isCommandError} from '../util/errors';
 import {QuestionBuilder} from '../util/question-builder';
 import {isClusterConfigNotFound} from '../util/cluster-type';

@@ -5,3 +5,5 @@ import {CredentialsImpl} from './credentials';
 export * from './credentials.api';
 
 Container.bind(Credentials).to(CredentialsImpl);
+
+export const buildCredentials = (): Credentials => Container.get(Credentials);

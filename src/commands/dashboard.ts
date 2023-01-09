@@ -2,7 +2,7 @@ import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
 import ora = require('ora');
 import * as open from 'open';
-import {GetDashboardUrl} from '../services/dashboard';
+import {GetDashboardUrl} from '../services';
 
 export const command = 'dashboard';
 export const desc = 'Open the Developer Dashboard in the default browser';

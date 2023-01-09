@@ -2,8 +2,7 @@ import {Container} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
 import * as chalk from 'chalk';
 
-import {CreateGitSecret, CreateGitSecretOptions} from '../services/git-secret';
-import {Namespace} from '../services/namespace';
+import {CreateGitSecret, CreateGitSecretOptions, Namespace} from '../services';
 
 export const command = 'git-secret [name]';
 export const desc = 'Create a kubernetes secret that contains the url, username, and personal access token for a git repo';
