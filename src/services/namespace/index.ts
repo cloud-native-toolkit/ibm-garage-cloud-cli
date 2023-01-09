@@ -6,3 +6,5 @@ export * from './namespace.api';
 export * from './namespace-options.model';
 
 Container.bind(Namespace).to(NamespaceImpl);
+
+export const buildNamespace = (): Namespace => Container.get(Namespace);

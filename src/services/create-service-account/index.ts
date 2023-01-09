@@ -5,3 +5,5 @@ import {CreateServiceAccountImpl} from './create-service-account';
 export * from './create-service-account.api';
 
 Container.bind(CreateServiceAccount).to(CreateServiceAccountImpl);
+
+export const buildCreateServiceAccount = (): CreateServiceAccount => Container.get(CreateServiceAccount);

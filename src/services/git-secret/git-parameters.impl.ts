@@ -1,25 +1,16 @@
+import * as chalk from 'chalk';
 import {Container} from 'typescript-ioc';
-import {GetGitParameters} from './git-parameters.api';
+import {apiFromUrl, GitApi, parseGitUrl} from '@cloudnativetoolkit/git-client';
+
+import {GetGitParameters, NoGitRepo} from './git-parameters.api';
 import {GitParametersOptions} from './git-parameters-options.model';
 import {GitParams} from './git-params.model';
 import {execPromise, ExecResult} from '../../util/child-process';
 import {QuestionBuilder} from '../../util/question-builder';
-import {apiFromUrl, GitApi, parseGitUrl} from '@cloudnativetoolkit/git-client';
-import * as chalk from 'chalk';
 
 interface GitQuestion {
   username: string;
   password: string;
-}
-
-export class NoGitRepo extends Error {
-  constructor(message: string, public readonly directory) {
-    super(message);
-  }
-}
-
-export const isNoGitRepoError = (error: Error): error is NoGitRepo => {
-  return !!error && !!(error as NoGitRepo).directory;
 }
 
 export class GetGitParametersImpl implements GetGitParameters {

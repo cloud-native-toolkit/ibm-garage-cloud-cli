@@ -5,3 +5,5 @@ import {GetConsoleUrlService} from './console.service';
 export * from './console.api';
 
 Container.bind(GetConsoleUrlApi).to(GetConsoleUrlService);
+
+export const buildGetConsoleUrlApi = (): GetConsoleUrlApi => Container.get(GetConsoleUrlApi);

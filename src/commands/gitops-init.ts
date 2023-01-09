@@ -2,11 +2,10 @@ import {Arguments, Argv} from 'yargs';
 import {promises} from 'fs';
 import {dirname} from 'path';
 import {mkdirp} from 'fs-extra';
-
-import {GitopsInitApi, GitopsInitOptions} from '../services/gitops-init';
 import {Container} from 'typescript-ioc';
-import {BootstrapConfig, GitOpsConfig} from '../services/gitops-module';
-import {logFactory, Logger, verboseLoggerFactory} from '../util/logger';
+
+import {GitOpsConfig, GitopsInitApi, GitopsInitOptions} from '../services';
+import {Logger, verboseLoggerFactory} from '../util/logger';
 
 export const command = 'gitops-init [repo]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';

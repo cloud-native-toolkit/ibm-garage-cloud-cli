@@ -3,7 +3,7 @@ import {Container, Scope} from 'typescript-ioc';
 import * as ora from 'ora';
 import * as chalk from 'chalk';
 
-import {Namespace, NamespaceOptionsModel} from '../services/namespace';
+import {Namespace, NamespaceOptionsModel} from '../services';
 import {logFactory, Logger} from '../util/logger';
 
 export const command = 'pull-secret [namespace]';

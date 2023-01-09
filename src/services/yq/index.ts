@@ -6,3 +6,5 @@ export * from './yq-write.api';
 export * from './yq-write.options';
 
 Container.bind(YqWrite).to(YqWriteImpl);
+
+export const getYqWrite = (): YqWrite => Container.get(YqWrite);

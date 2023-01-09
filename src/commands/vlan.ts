@@ -1,7 +1,7 @@
 import {Container, Scope} from 'typescript-ioc';
 import {Arguments, Argv} from 'yargs';
 
-import {GetVlan, GetVlanOptions, isNoVlansAvailable, VlanResult} from '../services/vlan';
+import {GetVlan, GetVlanOptions, isNoVlansAvailable, VlanResult} from '../services';
 import {FsPromises} from '../util/file-util';
 import {logFactory, Logger} from '../util/logger';
 

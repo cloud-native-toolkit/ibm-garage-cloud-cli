@@ -1,6 +1,6 @@
 import {Arguments, Argv} from 'yargs';
 
-import {GitOpsModuleOptions} from '../services/gitops-module';
+import {GitOpsModuleOptions} from '../services';
 import {defaultAutoMerge, commonHandler, defaultRateLimit} from './support/gitops-module-common';
 
 export const command = 'gitops-namespace [name]';

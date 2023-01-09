@@ -2,7 +2,7 @@ import {Arguments, Argv} from 'yargs';
 import {Container, Scope} from 'typescript-ioc';
 import * as chalk from 'chalk';
 
-import {Namespace, NamespaceOptionsModel} from '../services/namespace';
+import {Namespace, NamespaceOptionsModel} from '../services';
 import {logFactory, Logger} from '../util/logger';
 import {cloudshellThrottleConfig, ThrottleConfig} from '../util/throttle';
 

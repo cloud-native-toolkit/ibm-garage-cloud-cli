@@ -5,3 +5,5 @@ import {GitopsInitService} from './gitops-init.service';
 export * from './gitops-init.api'
 
 Container.bind(GitopsInitApi).to(GitopsInitService)
+
+export const buildGitopsInitApi = (): GitopsInitApi => Container.get(GitopsInitApi);

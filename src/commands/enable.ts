@@ -3,7 +3,7 @@ import {Container} from 'typescript-ioc';
 import * as chalk from 'chalk';
 
 import {CommandLineOptions} from '../model';
-import {EnablePipeline, EnablePipelineModel, EnablePipelineResult} from '../services/enable';
+import {EnablePipeline, EnablePipelineModel, EnablePipelineResult} from '../services';
 
 export const command = 'enable';
 export const desc = 'Enable the current repository with pipeline logic';

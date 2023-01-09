@@ -6,3 +6,5 @@ export * from './enable.api';
 export * from './enable.model';
 
 Container.bind(EnablePipeline).to(EnablePipelineImpl);
+
+export const buildEnablePipeline = (): EnablePipeline => Container.get(EnablePipeline);

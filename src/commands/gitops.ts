@@ -1,7 +1,7 @@
 import {Arguments, Argv} from 'yargs';
 
 import {handler as gitSecretHandler} from './git-secret';
-import {CreateGitSecretOptions} from '../services/git-secret';
+import {CreateGitSecretOptions} from '../services';
 
 export const command = 'gitops [gitUrl]';
 export const desc = 'Registers the git repository in the kubernetes cluster as the gitops repository for the given namespace';

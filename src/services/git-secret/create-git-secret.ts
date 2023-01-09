@@ -5,3 +5,5 @@ import {CreateGitSecretImpl} from './create-git-secret.impl';
 export * from './create-git-secret.api';
 
 Container.bind(CreateGitSecret).to(CreateGitSecretImpl);
+
+export const buildCreateGitSecret = (): CreateGitSecret => Container.get(CreateGitSecret);

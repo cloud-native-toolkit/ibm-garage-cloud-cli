@@ -7,3 +7,5 @@ export * from './git-parameters-options.model';
 export * from './git-params.model';
 
 Container.bind(GetGitParameters).to(GetGitParametersImpl);
+
+export const buildGetGitParameters = (): GetGitParameters => Container.get(GetGitParameters);

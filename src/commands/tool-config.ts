@@ -1,7 +1,8 @@
 import {Arguments, Argv} from 'yargs';
+import {Container} from 'typescript-ioc';
+
 import {ToolConfigOptions} from '../services/tool-config/tool-config-options.model';
 import {ToolsConfig} from '../services/tool-config/tool-config';
-import {Container} from 'typescript-ioc';
 
 export const command = 'tool-config [name]';
 export const desc = 'Create the config map and secret for a tool configured in the environment';

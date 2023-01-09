@@ -5,3 +5,5 @@ import {GetDashboardUrlImpl} from './get-dashboard-url';
 export * from './get-dashboard-url.api';
 
 Container.bind(GetDashboardUrl).to(GetDashboardUrlImpl);
+
+export const buildGetDashboardUrl = (): GetDashboardUrl => Container.get(GetDashboardUrl);
