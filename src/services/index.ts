@@ -10,7 +10,6 @@ export * from './endpoints';
 export * from './git-secret';
 export * from './gitops-init';
 export * from './gitops-module';
-export * from './jenkins-auth';
 export * from './login';
 export * from './namespace';
 export * from './register-pipeline';
