@@ -7,7 +7,6 @@ export * from './dashboard';
 export * from './deploy-image';
 export * from './enable';
 export * from './endpoints';
-export * from './generate-token';
 export * from './git-secret';
 export * from './gitops-init';
 export * from './gitops-module';
