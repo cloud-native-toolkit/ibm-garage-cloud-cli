@@ -1,8 +1,8 @@
 import {Arguments, Argv} from 'yargs';
 import {Container} from 'typescript-ioc';
 import * as YAML from 'js-yaml';
+import {YqWrite, YqWriteOptions} from "../../services/yq";
 
-import {YqWrite, YqWriteOptions} from '../../services';
 
 export const command = 'w <file> <field> <value>';
 export const desc = 'Read a file <file> and update <field> with <value>'
