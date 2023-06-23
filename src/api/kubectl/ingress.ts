@@ -29,7 +29,7 @@ const factory: ObjectFactory = (context: BuildContext) => {
   return new KubeIngress({
     client: context.resolve(AsyncKubeClient),
     group: 'extension',
-    version: 'v1beta1',
+    version: 'v1',
     name: 'ingress',
     kind: 'Ingress',
   });

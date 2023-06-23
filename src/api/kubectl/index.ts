@@ -20,3 +20,7 @@ export * from './tekton-task';
 export * from './tekton-trigger-binding';
 export * from './tekton-trigger-event-listener';
 export * from './tekton-trigger-template';
+export * from './package-manifest';
+export * from './node';
+export * from './cluster-version';
+export * from './ingress-config';

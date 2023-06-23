@@ -102,12 +102,16 @@ export interface Props {
   kind: string;
   name: string;
   client: AsyncKubeClient;
-  crd?: boolean;
+  crd?: boolean | CustomResourceDefinition;
 }
 
-interface CustomResourceDefinition extends KubeResource {
+export interface CustomResourceDefinition extends KubeResource {
   spec: object;
   status?: object;
+}
+
+const isCustomResourceDefinition = (val: any): val is CustomResourceDefinition => {
+  return !!val && !!(val as CustomResourceDefinition).spec && val.kind === 'CustomResourceDefinition'
 }
 
 async function getCrd(client: KubeClient, name: string): Promise<KubeBody<CustomResourceDefinition>> {
@@ -122,11 +126,11 @@ async function getCrd(client: KubeClient, name: string): Promise<KubeBody<Custom
   }
 }
 
-async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): Promise<boolean> {
+async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string, incomingCrd?: boolean | CustomResourceDefinition): Promise<boolean> {
   try {
     const client: KubeClient = await wrappedClient.get();
 
-    const crd: KubeBody<CustomResourceDefinition> = await getCrd(client, name);
+    const crd: KubeBody<CustomResourceDefinition> = isCustomResourceDefinition(incomingCrd) ? {body: incomingCrd} : await getCrd(client, name);
 
     if (!crd || !crd.body) {
       console.log(`crd not found: ${name}`);
@@ -143,7 +147,6 @@ async function registerCrdSchema(wrappedClient: AsyncKubeClient, name: string): 
 
     return true;
   } catch (err) {
-    console.error('Error registering crd: ' + name);
     return false;
   }
 }
@@ -169,7 +172,7 @@ export class AbstractKubernetesClusterResource<T extends KubeResource> implement
     }
 
     if (props.crd) {
-      this.crdPromise = registerCrdSchema(this.client, `${this.name}.${this.group}`);
+      this.crdPromise = registerCrdSchema(this.client, `${this.name}.${this.group}`, props.crd);
     } else {
       this.crdPromise = Promise.resolve(true);
     }
@@ -359,7 +362,7 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     }
 
     if (props.crd) {
-      this.crdPromise = registerCrdSchema(this.client, `${this.name}.${this.group}`);
+      this.crdPromise = registerCrdSchema(this.client, `${this.name}.${this.group}`, props.crd);
     } else {
       this.crdPromise = Promise.resolve(true);
     }
@@ -367,11 +370,9 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
 
   async list(options: ListOptions<T> = {}): Promise<Array<T>> {
 
-    const namespace = options.namespace || 'default';
-
     const getOptions: Query<T> = this.buildQuery(options);
 
-    const kubeResource: any = await this.resourceNode(this.group, this.version, this.name, namespace);
+    const kubeResource: any = await this.resourceNode(this.group, this.version, this.name, options.namespace);
 
     if (kubeResource) {
       const result: KubeBody<KubeResourceList<T>> = await throttle<Query<T>[], KubeBody<KubeResourceList<T>>>(kubeResource.get.bind(kubeResource))(getOptions);
@@ -534,7 +535,7 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
     return Object.assign({}, obj, {metadata});
   }
 
-  async resourceNode(group: string | undefined, version: string, kind: string, namespace: string) {
+  async resourceNode(group: string | undefined, version: string, kind: string, namespace?: string) {
 
     await this.crdPromise;
 
@@ -546,8 +547,10 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
 
     const versionNode = _.get(client, versionPath);
 
-    if (versionNode) {
+    if (versionNode && namespace) {
       return _.get(versionNode.namespace(namespace), kind);
+    } else if (versionNode) {
+      return _.get(versionNode, kind);
     }
   }
 

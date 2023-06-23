@@ -1,7 +1,8 @@
 import {Arguments, Argv} from 'yargs';
 
-import {GitOpsLayer, GitOpsModuleOptions} from '../services';
+import {GitOpsModuleOptions} from '../services';
 import {defaultAutoMerge, commonHandler, defaultRateLimit} from './support/gitops-module-common';
+import {GitOpsLayer} from "../model";
 
 export const command = 'gitops-module [name]';
 export const desc = 'Populates the gitops repo with the provided module contents and configures the ArgoCD application';
@@ -151,18 +152,18 @@ export const builder = (yargs: Argv<any>) => {
         describe: 'The amount of time to wait for blocked pull requests. The format is "1h30m10s" or any combination.',
         type: 'string',
         default: '1h',
-        require: false
+        demandOption: false
       },
       'tmpDir': {
         describe: 'The temp directory where the gitops repo should be checked out',
         type: 'string',
         default: '/tmp/gitops-module',
-        require: false,
+        demandOption: false,
       },
       'debug': {
         describe: 'Turn on debug logging',
         type: 'boolean',
-        require: false,
+        demandOption: false,
       }
     })
 };

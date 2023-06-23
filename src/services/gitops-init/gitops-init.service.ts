@@ -10,7 +10,7 @@ import {mkdirp, pathExists, remove} from 'fs-extra';
 
 import {ExistingGitRepo, GitopsInitApi, GitopsInitOptions} from './gitops-init.api';
 import {Logger} from '../../util/logger';
-import {GitOpsConfig} from '../gitops-module';
+import {GitOpsConfig} from "../../model";
 
 export class GitopsInitService implements GitopsInitApi {
   async create(options: GitopsInitOptions): Promise<{url: string, repo: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string}> {
