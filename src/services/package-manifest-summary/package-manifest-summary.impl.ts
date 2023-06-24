@@ -16,7 +16,7 @@ export class PackageManifestSummaryImpl implements PackageManifestSummaryApi {
 
     async summarizePackageManifests(): Promise<PackageManifestSummaryResult> {
 
-        const manifests: PackageManifest[] = await this.manifestService.list()
+        const manifests: PackageManifest[] = await this.manifestService.listAll()
 
         const packages: PackageManifestSummary[] = manifests
             .map((manifest: PackageManifest) => ({

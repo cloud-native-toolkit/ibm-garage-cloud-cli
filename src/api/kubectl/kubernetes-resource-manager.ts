@@ -370,6 +370,17 @@ export class AbstractKubernetesNamespacedResource<T extends KubeResource> implem
 
   async list(options: ListOptions<T> = {}): Promise<Array<T>> {
 
+    const optionsWithDefaultNamespace: ListOptions<T> = Object.assign(
+        {},
+        options,
+        {namespace: options.namespace || 'default'}
+    )
+
+    return this.listAll(optionsWithDefaultNamespace)
+  }
+
+  async listAll(options: ListOptions<T> = {}): Promise<Array<T>> {
+
     const getOptions: Query<T> = this.buildQuery(options);
 
     const kubeResource: any = await this.resourceNode(this.group, this.version, this.name, options.namespace);
