@@ -3,22 +3,16 @@ import simpleGit, {SimpleGit} from 'simple-git';
 import * as YAML from 'js-yaml';
 import {Container} from 'typescript-ioc';
 
-import {
-  ArgoConfig, GitOpsConfig, GitOpsCredential,
-  GitOpsCredentials,
-  GitOpsLayer,
-  GitOpsModuleApi,
-  GitOpsModuleInput,
-  GitOpsModuleOptions,
-  GitOpsModuleResult, LayerConfig, PayloadConfig
-} from './gitops-module.api';
+
 import {ArgoApplication} from './argocd-application.model';
 import {IKustomization, Kustomization} from './kustomization.model';
-import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {apiFromUrl, GitApi} from '@cloudnativetoolkit/git-client';
 import {ChildProcess} from '../../util/child-process';
 import {File} from '../../util/file-util';
+import {gitopsUtil} from "../../util/gitops-util";
+import {GitOpsModuleApi, GitOpsModuleInput, GitOpsModuleOptions, GitOpsModuleResult} from "./gitops-module.api";
+import {ArgoConfig, BaseGitConfig, GitOpsCredentials, GitOpsLayer, LayerConfig, PayloadConfig} from "../../model";
 
 export class GitopsModuleImpl implements GitOpsModuleApi {
   logger: Logger = Container.get(Logger);
@@ -48,15 +42,14 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
   }
 
   async defaultInputs(options: GitOpsModuleOptions): Promise<GitOpsModuleInput> {
-    const gitopsCredentials: GitOpsCredentials = await this.loadGitOpsCredentials(options);
-    const gitopsConfig: GitOpsConfig = await this.loadGitOpsConfig(Object.assign({}, options, {gitopsCredentials}));
+    const gitConfig: BaseGitConfig = await gitopsUtil.defaultGitOpsInputs(options);
 
     const result: GitOpsModuleInput = Object.assign(
       {},
       options,
       {
-        gitopsConfig,
-        gitopsCredentials,
+        gitopsConfig: gitConfig.gitopsConfig,
+        gitopsCredentials: gitConfig.gitopsCredentials,
         applicationPath: options.applicationPath || options.name,
         branch: options.branch || '',
         layer: options.layer || GitOpsLayer.applications,
@@ -80,43 +73,8 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     return result;
   }
 
-  async loadGitOpsConfig({bootstrapRepoUrl, gitopsConfigFile, token, branch, gitopsCredentials}: {bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, token?: string, gitopsCredentials: GitOpsCredentials}): Promise<GitOpsConfig> {
-    if (!gitopsConfigFile && !bootstrapRepoUrl && !process.env.GITOPS_CONFIG) {
-      throw new Error('Missing gitops config file name, bootstrap repo location, or GITOPS_CONFIG env variable');
-    }
-
-    if (gitopsConfigFile) {
-      return await parseFile(gitopsConfigFile) as GitOpsConfig;
-    } else if (process.env.GITOPS_CONFIG) {
-      return YAML.load(process.env.GITOPS_CONFIG) as GitOpsConfig;
-    } else {
-      const credential: GitOpsCredential = this.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
-
-      return await parseGitFile(bootstrapRepoUrl, 'config.yaml', {username: credential.username, password: credential.token}, branch) as GitOpsConfig;
-    }
-  }
-
-  async loadGitOpsCredentials({gitopsCredentialsFile, username = 'username', token}: {gitopsCredentialsFile?: string, username?: string, token?: string}): Promise<GitOpsCredentials> {
-    if (!gitopsCredentialsFile && !token && !process.env.GIT_CREDENTIALS) {
-      throw new Error('Missing gitops credentials file and token');
-    }
-
-    if (gitopsCredentialsFile) {
-      return await parseFile(gitopsCredentialsFile) as GitOpsCredentials;
-    } else if (process.env.GIT_CREDENTIALS) {
-      return YAML.load(process.env.GIT_CREDENTIALS) as GitOpsCredentials;
-    } else {
-      return [{
-        repo: '*',
-        username,
-        url: '*',
-        token,
-      }];
-    }
-  }
-
   async setupPayload(input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string}> {
-    const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
+    const token: string = gitopsUtil.lookupGitToken(input.gitopsCredentials, config.repo);
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-payload-${input.namespace}-${suffix}`;
@@ -174,7 +132,7 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
   }
 
   async setupArgo(input: GitOpsModuleInput, config: ArgoConfig, payloadRepo: {path: string, url: string, branch: string}): Promise<{path: string, url: string, branch: string}> {
-    const token: string = this.lookupGitToken(input.gitopsCredentials, config.repo);
+    const token: string = gitopsUtil.lookupGitToken(input.gitopsCredentials, config.repo);
 
     const suffix = Math.random().toString(36).replace(/[^a-z0-9]+/g, '').substr(0, 5);
     const repoDir = `${input.tmpDir}/.tmprepo-argocd-${input.namespace}-${suffix}`;
@@ -285,32 +243,6 @@ export class GitopsModuleImpl implements GitOpsModuleApi {
     if (count >= retryCount) {
       throw new Error('Exceeded retry count to push changes');
     }
-  }
-
-  lookupGitCredential(credentials: GitOpsCredentials, repo: string): GitOpsCredential {
-    const filteredCredentials: GitOpsCredential[] = credentials
-      .filter(c => c.repo === repo || c.url === repo || c.repo === '*')
-      .sort((a: GitOpsCredential, b: GitOpsCredential) => {
-        return a.repo === '*' ? 1 : (b.repo === '*' ? -1 : a.repo.localeCompare(b.repo));
-      });
-
-    const credential: GitOpsCredential | undefined = first(filteredCredentials);
-
-    if (!credential) {
-      throw new Error('Git credentials not found for repo: ' + repo);
-    }
-
-    return credential;
-  }
-
-  lookupGitToken(credentials: GitOpsCredentials, repo: string): string {
-    const credential: GitOpsCredential = this.lookupGitCredential(credentials, repo);
-
-    if (credential.username) {
-      return `${credential.username}:${credential.token}`;
-    }
-
-    return credential.token;
   }
 
   async loadKustomize(kustomizeFile: File): Promise<Kustomization> {

@@ -8,30 +8,25 @@ import {Container} from 'typescript-ioc';
 import {http, https} from 'follow-redirects';
 import _ from 'lodash'
 
-import {
-  ArgoConfig,
-  GitOpsConfig,
-  GitopsConfigEntry,
-  GitOpsCredential,
-  GitOpsCredentials,
-  GitOpsLayer,
-  GitOpsModuleApi,
-  GitOpsModuleInput,
-  GitOpsModuleOptions,
-  GitOpsModuleResult,
-  isGitopsConfig,
-  isGitopsConfigEntry,
-  LayerConfig,
-  PayloadConfig
-} from './gitops-module.api';
 import {ArgoApplication} from './argocd-application.model';
 import {addKustomizeResource, removeKustomizeResource} from './kustomization.model';
-import first from '../../util/first';
 import {Logger} from '../../util/logger';
 import {ChildProcess} from '../../util/child-process';
 import {timer} from '../../util/timer';
 import {isString, parseFile, parsers, parseString} from '../../util/string-util';
 import {isError} from '../../util/error-util';
+import {gitopsUtil} from "../../util/gitops-util";
+import {GitOpsModuleApi, GitOpsModuleInput, GitOpsModuleOptions, GitOpsModuleResult} from "./gitops-module.api";
+import {
+  ArgoConfig,
+  BaseGitConfig,
+  GitOpsConfig,
+  GitOpsCredential,
+  GitOpsCredentials,
+  GitOpsLayer,
+  isGitopsConfig, isGitopsConfigEntry,
+  LayerConfig, PayloadConfig
+} from "../../model";
 
 const argocdResolver = (applicationPath: string): MergeResolver => {
   return async (git: SimpleGitWithApi, conflicts: string[]): Promise<{resolvedConflicts: string[], conflictErrors: Error[]}> => {
@@ -95,7 +90,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     const layerConfig: LayerConfig = input.gitopsConfig[input.layer];
     this.logger.debug('Deleting with layer config: ', layerConfig);
 
-    const argocdGit: GitApi = await this.loadGitApi(input, layerConfig['argocd-config']);
+    const argocdGit: GitApi = await gitopsUtil.loadGitApi(input, layerConfig['argocd-config']);
     if (options.rateLimit) {
       await timer(1000);
     }
@@ -128,7 +123,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     const layerConfig: LayerConfig = input.gitopsConfig[input.layer];
     this.logger.debug('Building with layer config: ', layerConfig);
 
-    const payloadGit: GitApi = await this.loadGitApi(input, layerConfig.payload);
+    const payloadGit: GitApi = await gitopsUtil.loadGitApi(input, layerConfig.payload);
     if (options.rateLimit) {
       await timer(1000);
     }
@@ -164,21 +159,20 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
   }
 
   async loadGitApi(input: GitOpsModuleInput, config: PayloadConfig): Promise<GitApi> {
-    const credentials: GitOpsCredential = this.lookupGitCredential(input.gitopsCredentials, config.repo)
+    const credentials: GitOpsCredential = gitopsUtil.lookupGitCredential(input.gitopsCredentials, config.repo)
 
     return apiFromUrl(config.url, {username: credentials.username, password: credentials.token, caCert: input.caCert});
   }
 
   async defaultInputs(options: GitOpsModuleOptions): Promise<GitOpsModuleInput> {
-    const gitopsCredentials: GitOpsCredentials = await this.loadGitOpsCredentials(options);
-    const gitopsConfig: GitOpsConfig = await this.loadGitOpsConfig(Object.assign({}, options, {gitopsCredentials}));
+    const config: BaseGitConfig = await gitopsUtil.defaultGitOpsInputs(options)
 
     const result: GitOpsModuleInput = Object.assign(
       {},
       options,
       {
-        gitopsConfig,
-        gitopsCredentials,
+        gitopsConfig: config.gitopsConfig,
+        gitopsCredentials: config.gitopsCredentials,
         applicationPath: options.applicationPath || options.name,
         branch: options.branch || '',
         layer: options.layer || GitOpsLayer.applications,
@@ -200,44 +194,6 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
     }
 
     return result;
-  }
-
-  async loadGitOpsConfig({bootstrapRepoUrl, gitopsConfigFile, caCert, branch, gitopsCredentials}: {bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, caCert?: string | {cert: string, certFile: string}, gitopsCredentials: GitOpsCredentials}): Promise<GitOpsConfig> {
-    if (!gitopsConfigFile && !bootstrapRepoUrl && !process.env.GITOPS_CONFIG) {
-      throw new Error('Missing gitops config file name, bootstrap repo location, or GITOPS_CONFIG env variable');
-    }
-
-    let gitopsConfig: GitOpsConfig | GitopsConfigEntry[];
-    if (gitopsConfigFile) {
-      gitopsConfig = await parseFile(gitopsConfigFile);
-    } else if (process.env.GITOPS_CONFIG) {
-      gitopsConfig = await parseString<GitOpsConfig | GitopsConfigEntry[]>(process.env.GITOPS_CONFIG);
-    } else {
-      const credential: GitOpsCredential = this.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
-
-      gitopsConfig = await parseGitFile(bootstrapRepoUrl, 'config.yaml', {username: credential.username, password: credential.token, caCert}, branch) as GitOpsConfig;
-    }
-
-    return gitopsConfigEntriesToGitopsConfig(gitopsConfig);
-  }
-
-  async loadGitOpsCredentials({gitopsCredentialsFile, username = 'username', token}: {gitopsCredentialsFile?: string, username?: string, token?: string}): Promise<GitOpsCredentials> {
-    if (!gitopsCredentialsFile && !token && !process.env.GIT_CREDENTIALS) {
-      throw new Error('Missing gitops credentials file and token');
-    }
-
-    if (gitopsCredentialsFile) {
-      return await parseFile(gitopsCredentialsFile);
-    } else if (process.env.GIT_CREDENTIALS) {
-      return await parseString(process.env.GIT_CREDENTIALS);
-    } else {
-      return [{
-        repo: '*',
-        username,
-        url: '*',
-        token,
-      }];
-    }
   }
 
   async setupPayload(gitApi: GitApi, input: GitOpsModuleInput, config: PayloadConfig): Promise<{path: string, url: string, branch: string, pullNumber?: number, isHelm?: boolean, valueFiles?: string[]}> {
@@ -281,7 +237,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
         this.logger.debug('Result from copy', copyResult);
       }
 
-      const pushResult = await this.addCommitPushBranch(git, message, devBranch);
+      const pushResult = await gitopsUtil.addCommitPushBranch(git, message, devBranch);
 
       if (!pushResult) {
         this.logger.log(`  No changes to application payload for ${config.repo} branch ${devBranch} in path ${payloadPath}`)
@@ -390,7 +346,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
       const message = `Adds argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`;
       // commit and push changes
-      const pushResult = await this.addCommitPushBranch(git, message, devBranch);
+      const pushResult = await gitopsUtil.addCommitPushBranch(git, message, devBranch);
 
       if (!pushResult) {
         this.logger.log(`  No changes to ArgoCD config for ${config.repo} in path ${overlayPath}/${applicationFile}`)
@@ -461,7 +417,7 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
 
       const message = `Removes argocd config yaml for ${input.name} in ${input.namespace} for ${input.serverName} cluster`;
       // commit and push changes
-      await this.addCommitPushBranch(git, message, devBranch);
+      await gitopsUtil.addCommitPushBranch(git, message, devBranch);
 
       this.logger.log(`  ArgoCD config removed from ${config.repo} in path ${overlayPath}/${applicationFile}`)
 
@@ -488,94 +444,6 @@ export class GitopsModulePRImpl implements GitOpsModuleApi {
       });
     }
   }
-
-  async addCommitPushBranch(git: SimpleGit, message: string, branch: string): Promise<boolean> {
-    const status: any = await git.status()
-    if (status.not_added.length === 0 && status.deleted.length === 0 && status.conflicted.length === 0 && status.staged.length === 0 && status.modified.length === 0) {
-      return false
-    }
-
-    this.logger.debug(`  ** Adding and committing changes to repo`);
-    await git.add('.');
-    await git.commit(message);
-
-    this.logger.debug(`  ** Pushing changes`);
-    await git.push('origin', branch).then(() => true).catch(() => false);
-
-    return true
-  }
-
-  lookupGitCredential(credentials: GitOpsCredentials, repo: string): GitOpsCredential {
-    const filteredCredentials: GitOpsCredential[] = credentials
-      .filter(c => c.repo === repo || c.url === repo || c.repo === '*')
-      .sort((a: GitOpsCredential, b: GitOpsCredential) => {
-        return a.repo === '*' ? 1 : (b.repo === '*' ? -1 : a.repo.localeCompare(b.repo));
-      });
-
-    const credential: GitOpsCredential | undefined = first(filteredCredentials);
-
-    if (!credential) {
-      throw new Error('Git credentials not found for repo: ' + repo);
-    }
-
-    return credential;
-  }
-
-  lookupGitToken(credentials: GitOpsCredentials, repo: string): string {
-    const credential: GitOpsCredential = this.lookupGitCredential(credentials, repo);
-
-    if (credential.username) {
-      return `${credential.username}:${credential.token}`;
-    }
-
-    return credential.token;
-  }
-}
-
-async function parseGitFile<T>(gitUrl: string, filename: string, credentials: {username: string, password: string, caCert?: string | {cert: string, certFile: string}}, branch?: string): Promise<T> {
-
-  const extension = filename.replace(/.*[.](.*)$/, '$1');
-
-  const parser = parsers[extension];
-  if (!parser) {
-    throw new Error('Unknown extension for parsing: ' + extension);
-  }
-
-  try {
-    const gitApi: GitApi = await apiFromUrl(gitUrl, credentials, branch);
-
-    return parser(await gitApi.getFileContents({path: filename}));
-  } catch (err) {
-    console.log('Error getting file from git: ', {filename, gitUrl})
-    throw err
-  }
-}
-
-const gitopsConfigEntriesToGitopsConfig = (entries: GitOpsConfig | GitopsConfigEntry[]): GitOpsConfig => {
-  if (isGitopsConfig(entries)) {
-    return entries
-  }
-
-  if (!Array.isArray(entries) || entries.length === 0 || !isGitopsConfigEntry(entries[0])) {
-    throw new Error('Provided value is not a GitopsConfigEntry array')
-  }
-
-  const result = entries
-    .map(e => {
-      const typeName = e.type === 'argocd' ? 'argocd-config' : 'payload'
-      const layer = {}
-      layer[typeName] = e
-
-      const value = {}
-      value[e.layer] = layer
-
-      return value
-    })
-    .reduce((config: GitOpsConfig, value: any) => {
-      return _.merge(config, value)
-    }, {} as GitOpsConfig)
-
-  return result as any
 }
 
 async function copy(sourceDir: string, destDir: string): Promise<{stdout: string | Buffer, stderr: string | Buffer}> {

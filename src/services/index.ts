@@ -14,3 +14,4 @@ export * from './login';
 export * from './namespace';
 export * from './register-pipeline';
 export * from './vlan';
+export * from './gitops-metadata';

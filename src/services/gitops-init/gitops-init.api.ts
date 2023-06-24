@@ -1,4 +1,4 @@
-import {GitOpsConfig} from '../gitops-module';
+import {GitOpsConfig} from "../../model";
 
 export interface GitopsInitOptions {
   host: string;

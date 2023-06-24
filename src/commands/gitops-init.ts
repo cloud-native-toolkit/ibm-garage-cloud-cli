@@ -4,8 +4,9 @@ import {dirname} from 'path';
 import {mkdirp} from 'fs-extra';
 import {Container} from 'typescript-ioc';
 
-import {GitOpsConfig, GitopsInitApi, GitopsInitOptions} from '../services';
+import {GitopsInitApi, GitopsInitOptions} from '../services';
 import {Logger, verboseLoggerFactory} from '../util/logger';
+import {GitOpsConfig} from "../model";
 
 export const command = 'gitops-init [repo]';
 export const desc = 'Populates the gitops repo with the configuration for a namespace';
@@ -94,7 +95,7 @@ export const builder = (yargs: Argv<any>) => {
         describe: 'The amount of time to wait for blocked pull requests. The format is "1h30m10s" or any combination.',
         type: 'string',
         default: '1h',
-        require: false
+        demandOption: false
       },
       'tmpDir': {
         type: 'string',
