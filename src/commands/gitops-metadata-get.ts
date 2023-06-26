@@ -13,6 +13,9 @@ import {
 import {BaseGitConfig} from "../model";
 import {Logger, verboseLoggerFactory} from "../util/logger";
 import {gitopsUtil} from "../util/gitops-util";
+import {dirname} from "path";
+import {mkdirp} from "fs-extra";
+import {promises} from "fs";
 
 export interface GitopsMetadataRetrieveOptions {
     bootstrapRepoUrl?: string
@@ -127,7 +130,7 @@ export const builder = (yargs: Argv<any>) => {
             'output': {
                 describe: 'Output type',
                 alias: ['o'],
-                choices: ['text', 'json', 'yaml'],
+                description: 'The format for result output (text, json, yaml, jsonfile)',
                 type: 'string',
                 default: 'text',
                 demandOption: false,
@@ -152,6 +155,7 @@ export const handler = async (argv: Arguments<GitopsMetadataRetrieveOptions & {d
 
         const result: GitopsMetadataRetrieveResult = await service.get(input);
 
+        const jsonfileRegex = /^jsonfile=?(.*)/
         switch (argv.output) {
             case 'text':
                 console.log(YAML.dump(result.metadata))
@@ -162,6 +166,21 @@ export const handler = async (argv: Arguments<GitopsMetadataRetrieveOptions & {d
             case 'yaml':
                 console.log(YAML.dump(result.metadata))
                 break
+            default:
+                if (jsonfileRegex.test(argv.output)) {
+                    const outputContent: string = JSON.stringify(result.metadata, null, 2)
+
+                    const match = jsonfileRegex.exec(argv.output)
+                    const filename = (match && match[1] ? match[1] : './output.json')
+                    const filepath = dirname(filename)
+
+                    console.log(`  Writing gitops config to ${filename}`)
+
+                    await mkdirp(filepath)
+                    await promises.writeFile(filename, outputContent)
+                } else {
+                    console.log(YAML.dump(result.metadata))
+                }
         }
     } catch (err) {
         if (argv.debug) {
