@@ -22,7 +22,6 @@ export const builder = (yargs: Argv<any>) => {
         alias: ['h'],
         description: 'The host name of the git server. The value can be provided as a `GIT_HOST` environment variable.',
         type: 'string',
-        demandOption: true,
       },
       'org': {
         type: 'string',
@@ -129,6 +128,16 @@ export const builder = (yargs: Argv<any>) => {
     .middleware(handleCert('caCert', 'caCertFile', 'CA_CERT'))
     .middleware(handleCert('sealedSecretsCert', 'sealedSecretsCertFile', 'KUBESEAL_CERT'))
     .middleware(argv => {
+      const regex = /^(https?)|(git)/g
+      if (regex.test(argv.repo)) {
+        const repo = argv.repo.endsWith('.git') ? argv.repo : `${argv.repo}.git`
+
+        return {
+          url: repo
+        }
+      }
+    })
+    .middleware(argv => {
       if (!argv.org) {
         return {
           org: argv.username
@@ -136,6 +145,13 @@ export const builder = (yargs: Argv<any>) => {
       }
 
       return {}
+    })
+    .check(argv => {
+      if (!argv.url && !argv.host) {
+        throw new Error('Host or url is required')
+      }
+
+      return true
     })
 };
 exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, output: string, delete: boolean}>) => {
@@ -200,8 +216,10 @@ exports.handler = async (argv: Arguments<GitopsInitOptions & {debug: boolean, ou
       await promises.writeFile(filename, outputContent)
     } else if (result.created) {
       logger.log(`  Git repository created: ${result.url}`)
+    } else if (result.initialized) {
+      logger.log(`  Git repository initialized: ${result.url}`)
     } else {
-      logger.log(`  Git repository already exists: ${result.url}`)
+      logger.log(`  Git repository already initialized: ${result.url}`)
     }
   } catch (err) {
     if (argv.debug) {

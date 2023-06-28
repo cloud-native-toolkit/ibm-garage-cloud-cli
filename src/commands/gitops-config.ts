@@ -6,7 +6,6 @@ import {mkdirp} from "fs-extra";
 import {promises} from "fs";
 
 import {loadFromEnv} from "./gitops-init";
-import {GitopsMetadataUpdateInput} from "../services";
 import {BaseGitConfig} from "../model";
 import {Logger, verboseLoggerFactory} from "../util/logger";
 import {gitopsUtil} from "../util/gitops-util";

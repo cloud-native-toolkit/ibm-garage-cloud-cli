@@ -1,6 +1,7 @@
 import {GitOpsConfig} from "../../model";
 
 export interface GitopsInitOptions {
+  url?: string;
   host: string;
   org: string;
   project?: string;

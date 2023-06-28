@@ -1,4 +1,4 @@
-import {apiFromPartialConfig, GitApi, GitRepo, PullRequest} from '@cloudnativetoolkit/git-client';
+import {apiFromPartialConfig, apiFromUrl, GitApi, GitRepo, PullRequest} from '@cloudnativetoolkit/git-client';
 import {Credentials} from '@cloudnativetoolkit/git-client/dist/lib/util';
 import {SimpleGitWithApi} from '@cloudnativetoolkit/git-client/src/lib/git.api';
 import {promises} from 'fs';
@@ -6,11 +6,13 @@ import {join} from 'path';
 import {dump, load} from 'js-yaml';
 import {SimpleGit} from 'simple-git';
 import {Container} from 'typescript-ioc';
-import {mkdirp, pathExists, remove} from 'fs-extra';
+import {mkdirp, pathExists, readFile, remove} from 'fs-extra';
+import {get} from 'lodash'
 
 import {ExistingGitRepo, GitopsInitApi, GitopsInitOptions} from './gitops-init.api';
 import {Logger} from '../../util/logger';
 import {GitOpsConfig} from "../../model";
+import {fileExists} from "../../util/file-util";
 
 export class GitopsInitService implements GitopsInitApi {
   async create(options: GitopsInitOptions): Promise<{url: string, repo: string, created: boolean, initialized: boolean, gitopsConfig: GitOpsConfig, kubesealCert?: string}> {
@@ -39,9 +41,9 @@ export class GitopsInitService implements GitopsInitApi {
 
     logger.debug(`Deleting repository: ${options.host}/${options.org}/${options.repo}`)
 
-    const gitClient: GitApi = await apiFromPartialConfig(
-      options,
-      await buildGitCredentials(options))
+    const gitClient: GitApi = options.url
+        ? await apiFromUrl(options.url, await buildGitCredentials(options), options.branch)
+        : await apiFromPartialConfig(options, await buildGitCredentials(options))
 
     const repoModuleId: string = await gitClient.getFileContents({path: '.owner_module'})
       .then(buf => buf.toString())
@@ -66,9 +68,9 @@ export class GitopsInitService implements GitopsInitApi {
 
 const createOrFindRepo = async (options: GitopsInitOptions): Promise<{gitClient: GitApi, created: boolean}> => {
 
-  const gitClient: GitApi = await apiFromPartialConfig(
-    options,
-    await buildGitCredentials(options))
+  const gitClient: GitApi = options.url
+      ? await apiFromUrl(options.url, await buildGitCredentials(options), options.branch)
+      : await apiFromPartialConfig(options, await buildGitCredentials(options))
 
   // check if repo exists
   const repoInfo: GitRepo | undefined = await gitClient.getRepoInfo().catch(() => undefined)
@@ -119,7 +121,7 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
   const git: SimpleGitWithApi = await gitClient.clone(repoDir, {config: {'user.email': 'cloudnativetoolkit@gmail.com', 'user.name': 'Cloud-Native Toolkit'}})
 
   try {
-    if (await isInitializedRepo(repoDir)) {
+    if (await isInitializedRepo(repoDir, input.serverName, input.argocdNamespace)) {
       logger.debug(`Gitops repository already initialized: ${gitClient.getConfig().url}`)
       const config: { gitopsConfig: GitOpsConfig, kubesealCert?: string } = await getInitializedConfig(repoDir)
 
@@ -136,7 +138,7 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
     }
 
     const currentBranch = await getCurrentBranch(input.branch)
-    const devBranch = 'initialize-gitops'
+    const devBranch = `initialize-gitops-${makeId(8)}`
 
     logger.debug(`Creating ${devBranch} branch off of origin/${currentBranch}`)
     await git.checkoutBranch(devBranch, `origin/${currentBranch}`)
@@ -168,8 +170,21 @@ const initializeGitopsRepo = async (gitClient: GitApi, input: {tmpDir: string, b
   }
 }
 
-const isInitializedRepo = async (repoDir: string): Promise<boolean> => {
-  return pathExists(join(repoDir, 'config.yaml'));
+const isInitializedRepo = async (repoDir: string, serverName: string, namespace: string): Promise<boolean> => {
+  const configExists: boolean = await pathExists(join(repoDir, 'config.yaml'))
+  if (!configExists) {
+    return false
+  }
+
+  const bootstrapPath: string = await getBootstrapPathForServer(repoDir, serverName)
+
+  return isArgocdNamespaceMatch(bootstrapPath, namespace)
+}
+
+const isArgocdNamespaceMatch = async (path: string, namespace: string): Promise<boolean> => {
+  return (await pathExists(join(path, 'values.yaml')) &&
+      (await yamlValueMatches(join(path, 'values.yaml'), 'global.targetNamespace', namespace)))
+
 }
 
 const getInitializedConfig = async (repoDir: string): Promise<{gitopsConfig: GitOpsConfig, kubesealCert?: string}> => {
@@ -202,12 +217,17 @@ const populateGitopsRepo = async (repoDir: string, input: {moduleId?: string, se
 
     await mkdirp(targetPath)
 
+    const kustomizationPath: string = join(targetPath, 'kustomization.yaml')
+    if (await pathExists(kustomizationPath)) {
+      continue
+    }
+
     await promises.writeFile(
-      join(targetPath, 'kustomization.yaml'),
-      dump({
-        apiVersion: 'kustomize.config.k8s.io/v1beta1',
-        kind: 'Kustomization'
-      })
+        kustomizationPath,
+        dump({
+          apiVersion: 'kustomize.config.k8s.io/v1beta1',
+          kind: 'Kustomization'
+        })
     )
   }
 
@@ -283,80 +303,82 @@ const buildBootstrapChartYaml = ({serverName}: {serverName: string}) => ({
   ]
 })
 
-const buildBoostrapValuesYaml = ({repoUrl, branch, argocdNamespace, serverName}: {repoUrl: string, branch: string, argocdNamespace: string, serverName: string}): BootstrapConfig => ({
-  global: {
-    repoUrl,
-    targetRevision: branch,
-    targetNamespace: argocdNamespace,
-    destinations: [
-      { targetNamespace: '*' }
-    ],
-    pathSuffix: `cluster/${serverName}`,
-    prefix: ''
-  },
-  infrastructure: {
-    project: '1-infrastructure',
-    clusterResourceWhitelist: [{
-      group: '*',
-      kind: 'Namespace'
-    }, {
-      group: 'storage.k8s.io',
-      kind: 'StorageClass'
-    }, {
-      group: 'security.openshift.io',
-      kind: 'SecurityContextConstraints',
-    }, {
-      group: 'security.openshift.io',
-      kind: 'SecurityContextConstraint',
-    }, {
-      group: 'rbac.authorization.k8s.io',
-      kind: 'ClusterRole',
-    }, {
-      group: 'rbac.authorization.k8s.io',
-      kind: 'ClusterRoleBinding',
-    }, {
-      group: 'apiextensions.k8s.io',
-      kind: 'CustomResourceDefinition',
-    }, {
-      group: 'console.openshift.io',
-      kind: 'ConsoleNotification',
-    }, {
-      group: 'admissionregistration.k8s.io',
-      kind: 'MutatingWebhookConfiguration',
-    }, {
-      group: 'admissionregistration.k8s.io',
-      kind: 'ValidatingWebhookConfiguration',
-    }],
-    applicationTargets: [{
-      applications: [{
-        name: '1-infrastructure',
-        path: 'argocd/1-infrastructure',
+const buildBoostrapValuesYaml = ({repoUrl, branch, argocdNamespace, serverName}: {repoUrl: string, branch: string, argocdNamespace: string, serverName: string}): BootstrapConfig => {
+  return ({
+    global: {
+      repoUrl,
+      targetRevision: branch,
+      targetNamespace: argocdNamespace,
+      destinations: [
+        { targetNamespace: '*' }
+      ],
+      pathSuffix: `cluster/${serverName}`,
+      prefix: ''
+    },
+    infrastructure: {
+      project: '1-infrastructure',
+      clusterResourceWhitelist: [{
+        group: '*',
+        kind: 'Namespace'
+      }, {
+        group: 'storage.k8s.io',
+        kind: 'StorageClass'
+      }, {
+        group: 'security.openshift.io',
+        kind: 'SecurityContextConstraints',
+      }, {
+        group: 'security.openshift.io',
+        kind: 'SecurityContextConstraint',
+      }, {
+        group: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRole',
+      }, {
+        group: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRoleBinding',
+      }, {
+        group: 'apiextensions.k8s.io',
+        kind: 'CustomResourceDefinition',
+      }, {
+        group: 'console.openshift.io',
+        kind: 'ConsoleNotification',
+      }, {
+        group: 'admissionregistration.k8s.io',
+        kind: 'MutatingWebhookConfiguration',
+      }, {
+        group: 'admissionregistration.k8s.io',
+        kind: 'ValidatingWebhookConfiguration',
+      }],
+      applicationTargets: [{
+        applications: [{
+          name: '1-infrastructure',
+          path: 'argocd/1-infrastructure',
+        }]
       }]
-    }]
-  },
-  services: {
-    project: '2-services',
-    clusterResourceWhitelist: [{
-      group: 'apiextensions.k8s.io',
-      kind: 'CustomResourceDefinition',
-    }],
-    applicationTargets: [{
-      applications: [{
-        name: '2-services',
-        path: 'argocd/2-services',
+    },
+    services: {
+      project: '2-services',
+      clusterResourceWhitelist: [{
+        group: 'apiextensions.k8s.io',
+        kind: 'CustomResourceDefinition',
+      }],
+      applicationTargets: [{
+        applications: [{
+          name: '2-services',
+          path: 'argocd/2-services',
+        }]
       }]
-    }]
-  },
-  applications: {
-    project: '3-applications',
-    applicationTargets: [{
-      applications: [{
-        name: '3-applications',
-        path: 'argocd/3-applications',
+    },
+    applications: {
+      project: '3-applications',
+      applicationTargets: [{
+        applications: [{
+          name: '3-applications',
+          path: 'argocd/3-applications',
+        }]
       }]
-    }]
-  }
-})
+    }
+  })
+}
 
 interface ClusterResourceWhitelist {
   group: string;
@@ -525,4 +547,29 @@ const addCommitPushBranch = async (git: SimpleGit, message: string, branch: stri
   await git.push('origin', branch).then(() => true).catch(() => false);
 
   return true
+}
+
+const getYamlValue = async (path: string, key: string): Promise<string> => {
+  const content: Buffer = await readFile(path)
+
+  const yaml = load(content.toString())
+
+  return get(yaml, key)
+}
+
+const yamlValueMatches = async (path: string, key: string, toMatch: string): Promise<boolean> => {
+
+  const value: string = await getYamlValue(path, key)
+
+  return value === toMatch
+}
+
+const getBootstrapPath = async (repoDir: string): Promise<string> => {
+  return getYamlValue(join(repoDir, 'config.yaml'), 'bootstrap.argocd-config.path')
+}
+
+const getBootstrapPathForServer = async (repoDir: string, serverName: string): Promise<string> => {
+  const base = await getBootstrapPath(repoDir)
+
+  return join(repoDir, base, 'cluster', serverName)
 }
