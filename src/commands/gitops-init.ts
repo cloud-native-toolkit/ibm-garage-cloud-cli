@@ -128,7 +128,7 @@ export const builder = (yargs: Argv<any>) => {
     .middleware(handleCert('caCert', 'caCertFile', 'CA_CERT'))
     .middleware(handleCert('sealedSecretsCert', 'sealedSecretsCertFile', 'KUBESEAL_CERT'))
     .middleware(argv => {
-      const regex = /^(https?)|(git)/g
+      const regex = /^(https?:\/\/)|^(git@)/g
       if (regex.test(argv.repo)) {
         const repo = argv.repo.endsWith('.git') ? argv.repo : `${argv.repo}.git`
 
