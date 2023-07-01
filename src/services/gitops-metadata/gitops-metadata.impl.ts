@@ -16,6 +16,7 @@ import {PackageManifestSummaryApi, PackageManifestSummaryResult} from "../packag
 import {BootstrapConfig, PayloadConfig} from "../../model";
 import {gitopsUtil} from "../../util/gitops-util";
 import {Logger} from "../../util/logger";
+import {pathExists} from "fs-extra";
 
 /*
 '{packages: [.items[] | {"catalogSource": .status.catalogSource, "catalogSourceNamespace": .status.catalogSourceNamespace, "packageName": .status.packageName, "defaultChannel": .status.defaultChannel, "provider": .status.provider.name, "channels": [{"name": .status.channels[].name}] }] }'
@@ -179,11 +180,17 @@ export class GitopsMetadataImpl implements GitopsMetadataApi {
             const currentBranch = await getCurrentBranch(input.branch)
 
             const overlayPath = `${config.path}/cluster/${input.serverName}`;
-            const content = await fs.readFile(`${repoDir}/${overlayPath}/metadata.yaml`);
+            const metadataPath = `${repoDir}/${overlayPath}/metadata.yaml`;
+
+            if (!(await pathExists(overlayPath))) {
+                throw new Error('Metadata not found in gitops repository!')
+            }
+
+            const content = await fs.readFile(metadataPath);
 
             return YAML.load(content.toString()) as Metadata
         } catch (error) {
-            this.logger.error('Error updating config metadata', {error});
+            this.logger.error('Error retrieving config metadata', {error});
             throw error;
         } finally {
             // clean up repo dir
