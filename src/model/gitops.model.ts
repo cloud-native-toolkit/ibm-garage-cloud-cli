@@ -19,6 +19,7 @@ export interface LayerConfig {
 
 export interface GitOpsConfig {
     bootstrap: BootstrapConfig;
+    boostrap?: BootstrapConfig;
     infrastructure: LayerConfig;
     services: LayerConfig;
     applications: LayerConfig;
