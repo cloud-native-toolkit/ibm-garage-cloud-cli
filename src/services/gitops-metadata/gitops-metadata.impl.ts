@@ -147,7 +147,10 @@ export class GitopsMetadataImpl implements GitopsMetadataApi {
 
     async get(options: GitopsMetadataRetrieveInput): Promise<GitopsMetadataRetrieveResult> {
 
-        const layerConfig: BootstrapConfig = options.gitopsConfig.bootstrap
+        const layerConfig: BootstrapConfig = options.gitopsConfig.bootstrap || options.gitopsConfig.boostrap
+        if (!layerConfig) {
+            throw new Error('Unable to find bootstrap configuration')
+        }
         const config: PayloadConfig = layerConfig["argocd-config"]
 
         const gitApi: GitApi = await gitopsUtil.loadGitApi(options, config)
