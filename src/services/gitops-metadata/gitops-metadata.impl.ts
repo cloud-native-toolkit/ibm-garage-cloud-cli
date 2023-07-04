@@ -1,5 +1,7 @@
 import {GitApi, PullRequest} from "@cloudnativetoolkit/git-client";
 import * as fs from "fs-extra";
+import {pathExists} from "fs-extra";
+import {join} from 'path';
 import {SimpleGit} from "simple-git";
 import {Container} from "typescript-ioc";
 import * as YAML from 'js-yaml';
@@ -9,14 +11,13 @@ import {
     GitopsMetadataRetrieveInput,
     GitopsMetadataRetrieveResult,
     GitopsMetadataUpdateInput,
-    GitopsMetadataUpdateResult, Metadata
+    GitopsMetadataUpdateResult, Metadata, MetadataMissing
 } from "./gitops-metadata.api";
 import {ClusterSummaryApi, ClusterSummaryResult} from "../cluster-summary";
 import {PackageManifestSummaryApi, PackageManifestSummaryResult} from "../package-manifest-summary";
 import {BootstrapConfig, PayloadConfig} from "../../model";
 import {gitopsUtil} from "../../util/gitops-util";
 import {Logger} from "../../util/logger";
-import {pathExists} from "fs-extra";
 
 /*
 '{packages: [.items[] | {"catalogSource": .status.catalogSource, "catalogSourceNamespace": .status.catalogSourceNamespace, "packageName": .status.packageName, "defaultChannel": .status.defaultChannel, "provider": .status.provider.name, "channels": [{"name": .status.channels[].name}] }] }'
@@ -182,11 +183,11 @@ export class GitopsMetadataImpl implements GitopsMetadataApi {
 
             const currentBranch = await getCurrentBranch(input.branch)
 
-            const overlayPath = `${config.path}/cluster/${input.serverName}`;
-            const metadataPath = `${repoDir}/${overlayPath}/metadata.yaml`;
+            const overlayPath = join(config.path, 'cluster', input.serverName, 'metadata.yaml');
+            const metadataPath = join(repoDir, overlayPath);
 
-            if (!(await pathExists(overlayPath))) {
-                throw new Error('Metadata not found in gitops repository!')
+            if (!(await pathExists(metadataPath))) {
+                throw new MetadataMissing(overlayPath)
             }
 
             const content = await fs.readFile(metadataPath);
