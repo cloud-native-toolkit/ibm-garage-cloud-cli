@@ -45,12 +45,14 @@ export class ClusterSummaryImpl implements ClusterSummaryApi {
 
         const type = openShiftVersion ? 'ocp4' : 'kubernetes'
 
+        const operatorNamespace = openShiftVersion ? 'openshift-operators' : 'operators'
+
         const cluster: ClusterSummary = Object.assign(
             {},
             defaultOpenShiftIngress,
             defaultIBMIngressInfo,
             nodeInfo,
-            {openShiftVersion, kubeVersion, type}
+            {openShiftVersion, kubeVersion, type, operatorNamespace}
         )
 
         return {cluster}

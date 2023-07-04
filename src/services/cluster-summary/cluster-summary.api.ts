@@ -6,6 +6,7 @@ export interface ClusterSummary extends NodeInfo {
     kubeVersion: string
     openShiftVersion: string
     type: string
+    operatorNamespace: string
 }
 
 export interface ClusterSummaryResult {
