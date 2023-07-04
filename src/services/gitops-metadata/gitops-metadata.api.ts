@@ -47,8 +47,8 @@ export enum MetadataErrorType {
 export class MetadataMissing extends Error {
     readonly errorType: MetadataErrorType = MetadataErrorType.missing
 
-    constructor() {
-        super('Metadata not found in gitops repository!');
+    constructor(path: string) {
+        super(`Metadata not found in gitops repository: ${path}`);
     }
 }
 
