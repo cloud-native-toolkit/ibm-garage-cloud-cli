@@ -1,12 +1,7 @@
 import {BuildContext, Factory, ObjectFactory} from 'typescript-ioc';
 
 import {AsyncKubeClient} from './client';
-import {
-  AbstractKubernetesClusterResource,
-  AbstractKubernetesNamespacedResource,
-  KubeResource,
-  Props
-} from './kubernetes-resource-manager';
+import {AbstractKubernetesClusterResource, KubeResource, Props} from './kubernetes-resource-manager';
 
 export interface NodeInfo {
   architecture: string
