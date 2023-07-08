@@ -7,6 +7,7 @@ export interface ClusterSummary extends NodeInfo {
     openShiftVersion: string
     type: string
     operatorNamespace: string
+    gitopsNamespace: string
 }
 
 export interface ClusterSummaryResult {
@@ -14,5 +15,5 @@ export interface ClusterSummaryResult {
 }
 
 export abstract class ClusterSummaryApi {
-    abstract summarizeCluster(): Promise<ClusterSummaryResult>
+    abstract summarizeCluster(input?: {gitopsNamespace?: string}): Promise<ClusterSummaryResult>
 }

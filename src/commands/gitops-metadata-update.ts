@@ -12,6 +12,7 @@ export interface GitopsMetadataUpdateOptions {
     bootstrapRepoUrl?: string
     gitopsConfigFile?: string
     gitopsCredentialsFile?: string
+    gitopsNamespace?: string
     autoMerge?: boolean
     rateLimit?: boolean
     username?: string
@@ -51,6 +52,11 @@ export const builder = (yargs: Argv<any>) => {
                 describe: 'Name of yaml or json file that contains the gitops credentials',
                 type: 'string',
                 conflicts: 'token',
+                demandOption: false,
+            },
+            'gitopsNamespace': {
+                describe: 'Namespace where the gitops instance is installed (e.g. openshift-gitops or gitops)',
+                type: 'string',
                 demandOption: false,
             },
             'username': {

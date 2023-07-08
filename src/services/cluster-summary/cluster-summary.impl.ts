@@ -24,7 +24,7 @@ export class ClusterSummaryImpl implements ClusterSummaryApi {
         this.configMapService = Container.get(KubeConfigMap)
     }
 
-    async summarizeCluster(): Promise<ClusterSummaryResult> {
+    async summarizeCluster(input: {gitopsNamespace?: string} = {}): Promise<ClusterSummaryResult> {
         const nodeInfo: NodeInfo = await this.nodeService.list()
             .then(result => first(result.map(node => node.status.nodeInfo)) || {} as NodeInfo)
 
@@ -47,12 +47,14 @@ export class ClusterSummaryImpl implements ClusterSummaryApi {
 
         const operatorNamespace = openShiftVersion ? 'openshift-operators' : 'operators'
 
+        const gitopsNamespace = input.gitopsNamespace || (openShiftVersion ? 'openshift-gitops' : 'gitops')
+
         const cluster: ClusterSummary = Object.assign(
             {},
             defaultOpenShiftIngress,
             defaultIBMIngressInfo,
             nodeInfo,
-            {openShiftVersion, kubeVersion, type, operatorNamespace}
+            {openShiftVersion, kubeVersion, type, operatorNamespace, gitopsNamespace}
         )
 
         return {cluster}

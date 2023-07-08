@@ -42,7 +42,7 @@ export class GitopsMetadataImpl implements GitopsMetadataApi {
 
     async update(options: GitopsMetadataUpdateInput): Promise<GitopsMetadataUpdateResult> {
 
-        const metadata: Metadata = await this.retrieveMetadataFromCluster()
+        const metadata: Metadata = await this.retrieveMetadataFromCluster(options)
 
         const layerConfig: BootstrapConfig = options.gitopsConfig.bootstrap
 
@@ -64,8 +64,8 @@ export class GitopsMetadataImpl implements GitopsMetadataApi {
         return {repoConfig};
     }
 
-    async retrieveMetadataFromCluster(): Promise<Metadata> {
-        const clusterMetadata = await this.clusterService.summarizeCluster()
+    async retrieveMetadataFromCluster(input: {gitopsNamespace?: string}): Promise<Metadata> {
+        const clusterMetadata = await this.clusterService.summarizeCluster(input)
         const packageMetadata = await this.packageService.summarizePackageManifests()
 
         return Object.assign({}, clusterMetadata, packageMetadata);

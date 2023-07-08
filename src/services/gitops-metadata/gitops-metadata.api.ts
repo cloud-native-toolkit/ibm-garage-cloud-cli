@@ -6,6 +6,7 @@ export interface GitopsMetadataInput {
     bootstrapRepoUrl?: string
     gitopsConfig: GitOpsConfig
     gitopsCredentials: GitOpsCredentials
+    gitopsNamespace?: string
     autoMerge?: boolean
     rateLimit?: boolean
     username?: string
