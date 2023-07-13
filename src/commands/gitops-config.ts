@@ -81,20 +81,22 @@ export const handler = async (argv: Arguments<GitopsConfigRetrieveOptions & {deb
     try {
         const gitConfig: BaseGitConfig = await gitopsUtil.defaultGitOpsInputs(argv)
 
+        const result = Object.assign({}, gitConfig.gitopsConfig, {kubesealCert: gitConfig.kubesealCert})
+
         const jsonfileRegex = /^jsonfile=?(.*)/
         switch (argv.output) {
             case 'text':
-                console.log(YAML.dump(gitConfig.gitopsConfig))
+                console.log(YAML.dump(result))
                 break
             case 'json':
-                console.log(JSON.stringify(gitConfig.gitopsConfig, null, 2))
+                console.log(JSON.stringify(result, null, 2))
                 break
             case 'yaml':
-                console.log(YAML.dump(gitConfig.gitopsConfig))
+                console.log(YAML.dump(result))
                 break
             default:
                 if (jsonfileRegex.test(argv.output)) {
-                    const outputContent: string = JSON.stringify(gitConfig.gitopsConfig, null, 2)
+                    const outputContent: string = JSON.stringify(result, null, 2)
 
                     const match = jsonfileRegex.exec(argv.output)
                     const filename = (match && match[1] ? match[1] : './output.json')
@@ -105,7 +107,7 @@ export const handler = async (argv: Arguments<GitopsConfigRetrieveOptions & {deb
                     await mkdirp(filepath)
                     await promises.writeFile(filename, outputContent)
                 } else {
-                    console.log(YAML.dump(gitConfig.gitopsConfig))
+                    console.log(YAML.dump(result))
                 }
         }
     } catch (err) {

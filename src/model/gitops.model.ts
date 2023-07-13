@@ -73,4 +73,5 @@ export interface BaseGitConfig {
     gitopsCredentials: GitOpsCredentials
     branch?: string
     caCert?: {cert: string, certFile: string} | string
+    kubesealCert?: string
 }

@@ -69,13 +69,18 @@ export class GitopsUtil {
 
     async defaultGitOpsInputs(options: {gitopsCredentialsFile?: string, username?: string, token?: string, bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, caCert?: string | {cert: string, certFile: string}}): Promise<BaseGitConfig> {
         const gitopsCredentials: GitOpsCredentials = await this.loadGitOpsCredentials(options);
-        const gitopsConfig: GitOpsConfig = await this.loadGitOpsConfig(Object.assign({}, options, {gitopsCredentials}));
+
+        const optionsWithCredentials = Object.assign({}, options, {gitopsCredentials});
+
+        const gitopsConfig: GitOpsConfig = await this.loadGitOpsConfig(optionsWithCredentials);
+        const kubesealCert: string = await this.loadKubesealCert(optionsWithCredentials);
 
         return {
             gitopsConfig,
             gitopsCredentials,
             branch: options.branch,
-            caCert: options.caCert
+            caCert: options.caCert,
+            kubesealCert,
         }
     }
 
@@ -96,6 +101,16 @@ export class GitopsUtil {
         }
 
         return gitopsConfigEntriesToGitopsConfig(gitopsConfig);
+    }
+
+    async loadKubesealCert({bootstrapRepoUrl, gitopsConfigFile, caCert, branch, gitopsCredentials}: {bootstrapRepoUrl?: string, gitopsConfigFile?: string, branch?: string, caCert?: string | {cert: string, certFile: string}, gitopsCredentials: GitOpsCredentials}): Promise<string> {
+        if (!gitopsConfigFile && !bootstrapRepoUrl && !process.env.GITOPS_CONFIG) {
+            return '';
+        }
+
+        const credential: GitOpsCredential = gitopsUtil.lookupGitCredential(gitopsCredentials, bootstrapRepoUrl);
+
+        return parseGitFile<string>(bootstrapRepoUrl, 'kubeseal_cert.pem', {username: credential.username, password: credential.token, caCert}, branch).catch(() => '');
     }
 
     async loadGitOpsCredentials({gitopsCredentialsFile, username = 'username', token}: {gitopsCredentialsFile?: string, username?: string, token?: string}): Promise<GitOpsCredentials> {
