@@ -184,8 +184,7 @@ export async function parseGitFile<T>(gitUrl: string, filename: string, credenti
 
         return parser(await gitApi.getFileContents({path: filename}));
     } catch (err) {
-        console.log('Error getting file from git: ', {filename, gitUrl})
-        throw err
+        throw new Error(`Error getting file from git: ${filename}, ${gitUrl}`)
     }
 }
 
