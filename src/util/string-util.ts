@@ -25,6 +25,7 @@ export const parsers: {[type: string]: <T> (content: string | Buffer) => T} = {
   'yaml': <T> (content: string | Buffer) => YAML.load(content.toString()) as T,
   'yml': <T> (content: string | Buffer) => YAML.load(content.toString()) as T,
   'json': <T> (content: string | Buffer) => JSON.parse(content.toString()) as T,
+  'pem': <T> (content: string | Buffer) => (content.toString() as unknown) as T,
 };
 
 export async function parseFile<T = any>(filename: string): Promise<T> {
