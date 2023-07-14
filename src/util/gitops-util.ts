@@ -37,7 +37,7 @@ export class GitopsUtil {
 
     lookupGitCredential(credentials: GitOpsCredentials, repo: string): GitOpsCredential {
         const filteredCredentials: GitOpsCredential[] = credentials
-            .filter(c => c.repo === repo || c.url === repo || c.repo === '*')
+            .filter(c => !repo || c.repo === repo || c.url === repo || c.repo === '*')
             .sort((a: GitOpsCredential, b: GitOpsCredential) => {
                 return a.repo === '*' ? 1 : (b.repo === '*' ? -1 : a.repo.localeCompare(b.repo));
             });
