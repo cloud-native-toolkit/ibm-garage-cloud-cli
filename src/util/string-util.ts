@@ -45,10 +45,8 @@ export async function parseString<T = any>(contents: string): Promise<T> {
   const firstChar = contents.charAt(0)
 
   if (firstChar === '{' || firstChar === '[') {
-    console.log('Parsing as json', {contents})
     return parsers.json(contents)
   } else {
-    console.log('Parsing as yaml', {contents})
     return parsers.yaml(contents)
   }
 }
